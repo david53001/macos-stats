@@ -7,7 +7,8 @@ public enum Visibility: Equatable {
 }
 
 /// The adaptive refresh interval (seconds) for a given visibility.
-/// Idle is slow & cheap; open is 1s. (Milestone 3 adds a drilled-in case.)
+/// Idle is slow & cheap; open is 1s. (Milestone 3's per-app drill-in instead runs a
+/// dedicated scan timer in AppModel, so no new Visibility case was needed.)
 public func refreshInterval(for visibility: Visibility) -> TimeInterval {
     switch visibility {
     case .idle: return 3.0

@@ -1,7 +1,7 @@
 # MacStats — Per-App Breakdown (Drill-In) — Design Spec
 
 - **Date:** 2026-05-29
-- **Status:** Approved (design + mockup); implementation plan to follow
+- **Status:** Implemented (Milestone 3 core — CPU + Memory). Built & verified on-device 2026-05-29.
 - **Mockup:** [`docs/mockups/per-app-breakdown-mockup.html`](../../mockups/per-app-breakdown-mockup.html) — open in a browser
 - **Supersedes:** the per-app breakdown portion of Milestone 3 in
   [`2026-05-29-macstats-menubar-design.md`](2026-05-29-macstats-menubar-design.md).
