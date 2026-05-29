@@ -48,7 +48,7 @@ be near-zero cost when idle and only does expensive work while the user is looki
 |------|---------------------------|------------------|--------------------|
 | CPU % | yes (default) | %, temp, P/E split, sparkline | top processes by CPU + Quit |
 | CPU temp | yes (default) | shown on CPU card | — |
-| Memory | optional | used / total, pressure 🟢🟡🔴, sparkline | top processes by RAM + Free Memory |
+| Memory | optional | used / total, pressure 🟢🟡🔴, sparkline | top processes by RAM |
 | Network | optional | ↓/↑ speed, data today, sparkline | top processes by bandwidth *(best-effort, see risks)* |
 | Battery & Power | optional | %, time left, watts in, health %, sparkline | top processes by energy impact *(approximate)* |
 
@@ -56,7 +56,7 @@ be near-zero cost when idle and only does expensive work while the user is looki
 - **History graphs** — in-memory ring buffer per metric (e.g. last ~10 min at 1s while open); sparkline on each card + a bigger chart in the drill-in. History is **not persisted across launches** in v1.
 - **Alerts** — user-set thresholds (high CPU temp, low battery, runaway process); delivered as native macOS notifications.
 - **Customizable menu-bar display** — Settings lets the user pick which 1–3 metrics appear up top and whether each is text or a tiny inline graph.
-- **Quick actions** — per-process **Quit** in drill-in; **Free Memory** on the Memory drill-in.
+- **Quick actions** — per-app **Quit** / **Force Quit** in drill-in.
 
 ### Settings window (standard SwiftUI Settings scene, tabbed)
 - **General:** launch at login, base refresh cadence.
@@ -137,7 +137,7 @@ Small, independently-testable units:
 1. Easy collectors (CPU %, Memory, Network speed, basic Battery) + `MetricsStore` ring buffers + `RefreshScheduler` (adaptive).
 2. Overview popover UI with Swift Charts sparklines, bound to the store.
 3. Hard sensors, isolated: CPU temp (IOKit IOHID) + battery health/watts.
-4. Per-app breakdown (CPU, memory) + drill-in UI + quick actions (Quit / Free Memory).
+4. Per-app breakdown (CPU, memory) + drill-in UI + quick actions (Quit / Force Quit).
 5. Customizable menu-bar display + Settings window.
 6. Alerts (thresholds + notifications).
 - **v2+:** per-app network, Disk, GPU/fans/raw sensors, multiple menu-bar items, persisted history.

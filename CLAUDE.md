@@ -2,7 +2,7 @@
 
 A lightweight **macOS menu-bar system monitor** (native Swift). Lives next to the
 battery/clock. Click the menu-bar item → overview popover with one card per stat +
-live sparkline; click a card → per-app breakdown with quick actions (Quit / Free Memory).
+live sparkline; click a card → per-app breakdown with quick actions (Quit / Force Quit).
 
 ## Status (as of 2026-05-29)
 
@@ -41,7 +41,7 @@ execute it with **superpowers:subagent-driven-development**. To run the current 
 
 - **Milestone 1 (planned):** runnable menu-bar app — live CPU %, Memory, Network, Battery + sparklines + adaptive refresh.
 - **Milestone 2:** CPU temp (IOKit `IOHIDEventSystemClient` — semi-private, sensor keys vary by chip; isolate it), battery health/watts.
-- **Milestone 3:** per-app breakdown + drill-in + quick actions (Quit / Free Memory).
+- **Milestone 3:** per-app breakdown + drill-in + quick actions (Quit / Force Quit).
 - **Milestone 4:** Settings, customizable menu-bar display, alerts; real memory-pressure source.
 - **Deferred (v2+):** per-app network (no clean public API), Disk, GPU/fans/raw sensors, multiple menu-bar items, persisted history.
 

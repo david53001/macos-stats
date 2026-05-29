@@ -12,7 +12,7 @@ hogging the resources it's watching.
 
 Click the menu-bar item to open an overview popover with one card per stat, each with a
 live sparkline. Click a card to drill into the top apps using that resource, with quick
-actions like **Quit** and **Free Memory**.
+actions like **Quit** and **Force Quit**.
 
 A preview of the intended UI lives at [`docs/mockups/menubar-mockup.html`](docs/mockups/menubar-mockup.html)
 — open it in a browser.
@@ -38,7 +38,7 @@ A preview of the intended UI lives at [`docs/mockups/menubar-mockup.html`](docs/
 
 **Planned:**
 - **CPU temperature** and live **power (watts)** / battery health & cycle count
-- **Per-app breakdowns** for each stat + **Quit** / **Free Memory** quick actions
+- **Per-app breakdowns** (CPU + Memory) + **Quit** / **Force Quit** quick actions
 - **Alerts** (high temp, low battery, runaway process), **customizable menu-bar display**, Settings
 
 ## Why it's lightweight

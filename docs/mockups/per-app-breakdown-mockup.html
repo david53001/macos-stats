@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacStats — per-app breakdown mockup</title>
+<style>
+  :root{
+    --green:#30d158; --yellow:#ffd60a; --blue:#0a84ff; --red:#ff453a; --purple:#bf5af0; --orange:#ff9f0a;
+    --txt:rgba(255,255,255,.92); --txt2:rgba(255,255,255,.55); --txt3:rgba(255,255,255,.34);
+    --pop:rgba(38,38,42,.72); --line:rgba(255,255,255,.10);
+    --font:-apple-system,"SF Pro Text","SF Pro Display",system-ui,"Helvetica Neue",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:var(--font); color:var(--txt); -webkit-font-smoothing:antialiased; min-height:100vh;
+    background:
+      radial-gradient(120% 90% at 12% 0%, #3a2d6b 0%, transparent 55%),
+      radial-gradient(120% 90% at 95% 8%, #6b2d52 0%, transparent 50%),
+      radial-gradient(140% 120% at 50% 110%, #16324f 0%, transparent 60%),
+      linear-gradient(160deg,#1d1f33 0%,#2a2140 45%,#1a2230 100%);
+    background-attachment:fixed; padding:34px 24px 70px;
+  }
+  h2.title{text-align:center; font-size:20px; font-weight:700; margin-bottom:4px}
+  p.sub{text-align:center; color:var(--txt2); font-size:13px; margin-bottom:30px}
+
+  .stage{display:flex; gap:46px; justify-content:center; align-items:flex-start; flex-wrap:wrap}
+  .col{display:flex; flex-direction:column; align-items:center; gap:12px; width:300px}
+  .tag{font-size:12.5px; color:var(--txt2); text-align:center; min-height:34px}
+  .tag b{color:var(--txt); font-weight:600}
+  .tag .step{display:inline-block; min-width:18px;height:18px;line-height:18px;border-radius:50%;
+    background:var(--blue); color:#fff; font-size:11px; font-weight:700; text-align:center; margin-right:5px}
+
+  .pop{
+    width:300px; background:var(--pop); position:relative;
+    backdrop-filter:blur(40px) saturate(180%); -webkit-backdrop-filter:blur(40px) saturate(180%);
+    border:1px solid var(--line); border-radius:14px; overflow:hidden;
+    box-shadow:0 18px 50px rgba(0,0,0,.5), 0 0 0 .5px rgba(0,0,0,.4);
+  }
+  .pop-head{display:flex; align-items:center; justify-content:space-between; padding:11px 14px 9px; border-bottom:1px solid rgba(255,255,255,.06)}
+  .pop-head .ttl{font-size:13px; font-weight:700; letter-spacing:.2px}
+  .pop-head .sub2{font-size:12px; color:var(--txt2); font-variant-numeric:tabular-nums}
+  .back{display:flex; align-items:center; gap:5px; font-weight:700; font-size:14px}
+  .back .chev{color:var(--blue); font-size:17px; font-weight:800}
+
+  /* overview cards */
+  .card{display:flex; align-items:center; gap:12px; padding:10px 14px; border-top:1px solid rgba(255,255,255,.05)}
+  .card:first-of-type{border-top:none}
+  .card.tappable{cursor:default}
+  .card.tappable:hover{background:rgba(255,255,255,.05)}
+  .card .info{min-width:120px}
+  .card .lbl{font-size:10.5px; color:var(--txt2); text-transform:uppercase; letter-spacing:.6px; font-weight:600}
+  .card .val{font-size:18px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1.15; margin-top:2px}
+  .card .meta{font-size:10.5px; color:var(--txt2); margin-top:1px}
+  .card .spark{flex:1; min-width:0}
+  .chev-r{color:var(--blue); font-size:17px; font-weight:700; margin-left:2px}
+  .chev-none{width:11px}
+  .pdot{width:7px;height:7px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:4px}
+
+  /* app rows (the breakdown) */
+  .list-h{padding:8px 14px 5px; font-size:10.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--txt2); font-weight:600; display:flex; justify-content:space-between}
+  .scroll{max-height:268px; overflow:hidden; position:relative}
+  .row{display:flex; align-items:center; gap:11px; padding:8px 14px; border-top:1px solid rgba(255,255,255,.05)}
+  .row:hover{background:rgba(255,255,255,.05)}
+  .row.sel{background:rgba(10,132,255,.16); box-shadow:inset 2px 0 0 var(--blue)}
+  .ico{width:24px;height:24px;border-radius:6px;flex:none; display:flex;align-items:center;justify-content:center; font-size:13px; font-weight:700; color:#fff; box-shadow:0 1px 2px rgba(0,0,0,.3)}
+  .rmain{flex:1; min-width:0}
+  .rname{font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500}
+  .track{margin-top:4px; height:4px; border-radius:3px; background:rgba(255,255,255,.08); overflow:hidden}
+  .fill{height:100%; border-radius:3px}
+  .rval{font-size:13px; font-variant-numeric:tabular-nums; color:var(--txt); min-width:48px; text-align:right; font-weight:600}
+  .scrollhint{text-align:center; font-size:10.5px; color:var(--txt3); padding:6px 0 7px; border-top:1px solid rgba(255,255,255,.05)}
+
+  .foot{display:flex; gap:8px; padding:9px 12px; border-top:1px solid rgba(255,255,255,.08); background:rgba(0,0,0,.15)}
+  .foot button{flex:1; font:inherit; font-size:12px; color:var(--txt); background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:6px 0}
+
+  /* right-click context menu */
+  .ctx{position:absolute; width:178px; background:rgba(50,50,54,.82);
+    backdrop-filter:blur(30px) saturate(180%); -webkit-backdrop-filter:blur(30px) saturate(180%);
+    border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:5px; z-index:5;
+    box-shadow:0 14px 40px rgba(0,0,0,.55);}
+  .ctx .mi{font-size:12.5px; padding:6px 10px; border-radius:6px; display:flex; justify-content:space-between; align-items:center}
+  .ctx .mi:hover{background:var(--blue); color:#fff}
+  .ctx .mi.danger{color:#ff6961}
+  .ctx .mi.danger:hover{background:var(--red); color:#fff}
+  .ctx .sep{height:1px; background:rgba(255,255,255,.12); margin:4px 6px}
+  .ctx .hdr{font-size:10.5px; color:var(--txt3); padding:4px 10px 3px; text-transform:uppercase; letter-spacing:.5px}
+
+  /* measuring state */
+  .measuring{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:54px 0}
+  .spinner{width:26px;height:26px;border-radius:50%;border:3px solid rgba(255,255,255,.15); border-top-color:var(--green); animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .measuring .mt{font-size:13px; font-weight:600}
+  .measuring .ms{font-size:11.5px; color:var(--txt2)}
+
+  /* force-quit alert */
+  .alert{width:264px; background:rgba(44,44,48,.92); backdrop-filter:blur(40px) saturate(180%); -webkit-backdrop-filter:blur(40px) saturate(180%);
+    border:1px solid var(--line); border-radius:14px; padding:18px 18px 14px; text-align:center;
+    box-shadow:0 18px 50px rgba(0,0,0,.5);}
+  .alert .aico{width:52px;height:52px;border-radius:12px;margin:0 auto 11px; display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff}
+  .alert .ah{font-size:14px; font-weight:700; margin-bottom:6px}
+  .alert .ab{font-size:12px; color:var(--txt2); line-height:1.45; margin-bottom:15px}
+  .alert .arow{display:flex; gap:9px}
+  .alert button{flex:1; font:inherit; font-size:13px; border-radius:8px; padding:7px 0; border:1px solid rgba(255,255,255,.12)}
+  .alert .cancel{background:rgba(255,255,255,.10); color:var(--txt)}
+  .alert .destroy{background:var(--red); color:#fff; border-color:transparent; font-weight:600}
+</style>
+</head>
+<body>
+
+  <h2 class="title">MacStats — Per-App Breakdown</h2>
+  <p class="sub">Drill into CPU or Memory → ranked apps → right-click to quit. First pass — react freely.</p>
+
+  <div class="stage">
+
+    <!-- 1. OVERVIEW: only CPU & Memory tappable -->
+    <div class="col">
+      <div class="tag"><span class="step">1</span><b>Overview</b> — only CPU &amp; Memory show the <b style="color:#0a84ff">›</b> chevron &amp; are clickable</div>
+      <div class="pop">
+        <div class="pop-head"><span class="ttl">MacStats</span><span class="sub2">every 1s · ⚙</span></div>
+        <div class="card tappable">
+          <div class="info"><div class="lbl">CPU</div><div class="val">37%</div><div class="meta">58°C · P 22% E 41%</div></div>
+          <div class="spark"><svg viewBox="0 0 120 34" width="100%" height="34" preserveAspectRatio="none"><polyline points="0,24 13,20 26,26 39,13 52,17 65,8 78,16 91,10 104,21 120,14" fill="none" stroke="#30d158" stroke-width="1.6"/></svg></div>
+          <span class="chev-r">›</span>
+        </div>
+        <div class="card tappable">
+          <div class="info"><div class="lbl">Memory</div><div class="val">9.2<span style="font-size:12px;color:var(--txt2)"> / 16 GB</span></div><div class="meta"><span class="pdot" style="background:var(--green)"></span>normal</div></div>
+          <div class="spark"><svg viewBox="0 0 120 34" width="100%" height="34" preserveAspectRatio="none"><polyline points="0,20 13,21 26,19 39,20 52,18 65,19 78,18 91,16 104,17 120,16" fill="none" stroke="#0a84ff" stroke-width="1.6"/></svg></div>
+          <span class="chev-r">›</span>
+        </div>
+        <div class="card">
+          <div class="info"><div class="lbl">Network</div><div class="val" style="font-size:15px">↓1.2 <span style="color:var(--txt2);font-size:11px">MB/s</span></div><div class="meta">↑ 0.3 MB/s · 2.1 GB today</div></div>
+          <div class="spark"><svg viewBox="0 0 120 34" width="100%" height="34" preserveAspectRatio="none"><polyline points="0,28 13,25 26,11 39,23 52,7 65,21 78,16 91,27 104,6 120,20" fill="none" stroke="#bf5af0" stroke-width="1.6"/></svg></div>
+          <span class="chev-none"></span>
+        </div>
+        <div class="card">
+          <div class="info"><div class="lbl">Battery</div><div class="val">84%</div><div class="meta">2:14 left · 12W in · health 91%</div></div>
+          <div class="spark"><svg viewBox="0 0 120 34" width="100%" height="34" preserveAspectRatio="none"><polyline points="0,10 13,11 26,11 39,12 52,13 65,13 78,14 91,15 104,16 120,17" fill="none" stroke="#ffd60a" stroke-width="1.6"/></svg></div>
+          <span class="chev-none"></span>
+        </div>
+        <div class="foot"><button>⚙ Settings</button><button>Quit</button></div>
+      </div>
+    </div>
+
+    <!-- 2. CPU DRILL-IN: ranked apps -->
+    <div class="col">
+      <div class="tag"><span class="step">2</span><b>CPU breakdown</b> — apps grouped, top 8 by usage, scroll for more</div>
+      <div class="pop">
+        <div class="pop-head"><span class="back"><span class="chev">‹</span> CPU</span><span class="sub2">37% used</span></div>
+        <div class="list-h"><span>App</span><span>CPU</span></div>
+        <div class="scroll">
+          <div class="row"><div class="ico" style="background:#e8e8e8;color:#444">C</div><div class="rmain"><div class="rname">Google Chrome</div><div class="track"><div class="fill" style="width:100%;background:var(--green)"></div></div></div><div class="rval">42%</div></div>
+          <div class="row"><div class="ico" style="background:#1c8cf0">X</div><div class="rmain"><div class="rname">Xcode</div><div class="track"><div class="fill" style="width:67%;background:var(--green)"></div></div></div><div class="rval">28%</div></div>
+          <div class="row"><div class="ico" style="background:#4a154b">S</div><div class="rmain"><div class="rname">Slack</div><div class="track"><div class="fill" style="width:33%;background:var(--green)"></div></div></div><div class="rval">14%</div></div>
+          <div class="row"><div class="ico" style="background:#1db954">♫</div><div class="rmain"><div class="rname">Spotify</div><div class="track"><div class="fill" style="width:21%;background:var(--green)"></div></div></div><div class="rval">9%</div></div>
+          <div class="row"><div class="ico" style="background:#f24e1e">F</div><div class="rmain"><div class="rname">Figma</div><div class="track"><div class="fill" style="width:17%;background:var(--green)"></div></div></div><div class="rval">7%</div></div>
+          <div class="row"><div class="ico" style="background:#2d8cff">Z</div><div class="rmain"><div class="rname">zoom.us</div><div class="track"><div class="fill" style="width:10%;background:var(--green)"></div></div></div><div class="rval">4%</div></div>
+          <div class="row"><div class="ico" style="background:#ffcc00;color:#5b4500">N</div><div class="rmain"><div class="rname">Notes</div><div class="track"><div class="fill" style="width:5%;background:var(--green)"></div></div></div><div class="rval">2%</div></div>
+          <div class="row"><div class="ico" style="background:#34c759">✉</div><div class="rmain"><div class="rname">Messages</div><div class="track"><div class="fill" style="width:2%;background:var(--green)"></div></div></div><div class="rval">1%</div></div>
+        </div>
+        <div class="scrollhint">⌄ scroll for 6 more</div>
+        <div class="foot"><button>⚙ Settings</button><button>Quit</button></div>
+      </div>
+    </div>
+
+    <!-- 3. RIGHT-CLICK MENU -->
+    <div class="col">
+      <div class="tag"><span class="step">3</span><b>Right-click a row</b> → Quit (graceful) or Force Quit (kills it)</div>
+      <div class="pop">
+        <div class="pop-head"><span class="back"><span class="chev">‹</span> CPU</span><span class="sub2">37% used</span></div>
+        <div class="list-h"><span>App</span><span>CPU</span></div>
+        <div class="scroll">
+          <div class="row sel"><div class="ico" style="background:#e8e8e8;color:#444">C</div><div class="rmain"><div class="rname">Google Chrome</div><div class="track"><div class="fill" style="width:100%;background:var(--green)"></div></div></div><div class="rval">42%</div></div>
+          <div class="row"><div class="ico" style="background:#1c8cf0">X</div><div class="rmain"><div class="rname">Xcode</div><div class="track"><div class="fill" style="width:67%;background:var(--green)"></div></div></div><div class="rval">28%</div></div>
+          <div class="row"><div class="ico" style="background:#4a154b">S</div><div class="rmain"><div class="rname">Slack</div><div class="track"><div class="fill" style="width:33%;background:var(--green)"></div></div></div><div class="rval">14%</div></div>
+          <div class="row"><div class="ico" style="background:#1db954">♫</div><div class="rmain"><div class="rname">Spotify</div><div class="track"><div class="fill" style="width:21%;background:var(--green)"></div></div></div><div class="rval">9%</div></div>
+          <div class="row"><div class="ico" style="background:#f24e1e">F</div><div class="rmain"><div class="rname">Figma</div><div class="track"><div class="fill" style="width:17%;background:var(--green)"></div></div></div><div class="rval">7%</div></div>
+        </div>
+        <div class="scrollhint">⌄ scroll for 9 more</div>
+        <div class="foot"><button>⚙ Settings</button><button>Quit</button></div>
+        <!-- context menu floating over the Chrome row -->
+        <div class="ctx" style="top:70px; left:60px">
+          <div class="hdr">Google Chrome</div>
+          <div class="mi">Quit</div>
+          <div class="sep"></div>
+          <div class="mi danger">Force Quit</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- second cluster: confirm, measuring, memory variant -->
+  <div class="stage" style="margin-top:42px">
+
+    <!-- 4. FORCE QUIT CONFIRM -->
+    <div class="col">
+      <div class="tag"><b>Force Quit confirmation</b> — only Force Quit asks; graceful Quit is instant</div>
+      <div class="alert">
+        <div class="aico" style="background:#e8e8e8;color:#444">C</div>
+        <div class="ah">Force quit “Google Chrome”?</div>
+        <div class="ab">The app will quit immediately and you’ll lose any unsaved changes.</div>
+        <div class="arow"><button class="cancel">Cancel</button><button class="destroy">Force Quit</button></div>
+      </div>
+    </div>
+
+    <!-- 5. MEMORY DRILL-IN -->
+    <div class="col">
+      <div class="tag"><b>Memory breakdown</b> — same layout, values in GB</div>
+      <div class="pop">
+        <div class="pop-head"><span class="back"><span class="chev">‹</span> Memory</span><span class="sub2">9.2 / 16 GB</span></div>
+        <div class="list-h"><span>App</span><span>RAM</span></div>
+        <div class="scroll">
+          <div class="row"><div class="ico" style="background:#e8e8e8;color:#444">C</div><div class="rmain"><div class="rname">Google Chrome</div><div class="track"><div class="fill" style="width:100%;background:var(--blue)"></div></div></div><div class="rval">3.8 GB</div></div>
+          <div class="row"><div class="ico" style="background:#1c8cf0">X</div><div class="rmain"><div class="rname">Xcode</div><div class="track"><div class="fill" style="width:55%;background:var(--blue)"></div></div></div><div class="rval">2.1 GB</div></div>
+          <div class="row"><div class="ico" style="background:#f24e1e">F</div><div class="rmain"><div class="rname">Figma</div><div class="track"><div class="fill" style="width:37%;background:var(--blue)"></div></div></div><div class="rval">1.4 GB</div></div>
+          <div class="row"><div class="ico" style="background:#4a154b">S</div><div class="rmain"><div class="rname">Slack</div><div class="track"><div class="fill" style="width:24%;background:var(--blue)"></div></div></div><div class="rval">0.9 GB</div></div>
+          <div class="row"><div class="ico" style="background:#1db954">♫</div><div class="rmain"><div class="rname">Spotify</div><div class="track"><div class="fill" style="width:16%;background:var(--blue)"></div></div></div><div class="rval">0.6 GB</div></div>
+        </div>
+        <div class="scrollhint">⌄ scroll for more</div>
+        <div class="foot"><button>⚙ Settings</button><button>Quit</button></div>
+      </div>
+    </div>
+
+    <!-- 6. MEASURING STATE -->
+    <div class="col">
+      <div class="tag"><b>First ~1s</b> — CPU % needs two samples, so the list measures briefly</div>
+      <div class="pop">
+        <div class="pop-head"><span class="back"><span class="chev">‹</span> CPU</span><span class="sub2">—</span></div>
+        <div class="measuring">
+          <div class="spinner"></div>
+          <div class="mt">Measuring…</div>
+          <div class="ms">Sampling CPU usage</div>
+        </div>
+        <div class="foot"><button>⚙ Settings</button><button>Quit</button></div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
