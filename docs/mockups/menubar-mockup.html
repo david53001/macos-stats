@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacStats — mockup</title>
+<style>
+  :root{
+    --green:#30d158; --yellow:#ffd60a; --blue:#0a84ff; --red:#ff453a; --purple:#bf5af0;
+    --txt:rgba(255,255,255,.92); --txt2:rgba(255,255,255,.55); --txt3:rgba(255,255,255,.38);
+    --pop:rgba(38,38,42,.72); --line:rgba(255,255,255,.10);
+    --font:-apple-system,"SF Pro Text","SF Pro Display",system-ui,"Helvetica Neue",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--font); color:var(--txt); -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    background:
+      radial-gradient(120% 90% at 12% 0%, #3a2d6b 0%, transparent 55%),
+      radial-gradient(120% 90% at 95% 8%, #6b2d52 0%, transparent 50%),
+      radial-gradient(140% 120% at 50% 110%, #16324f 0%, transparent 60%),
+      linear-gradient(160deg,#1d1f33 0%,#2a2140 45%,#1a2230 100%);
+    background-attachment:fixed;
+    padding-bottom:90px;
+  }
+
+  /* ===== menu bar ===== */
+  .menubar{
+    position:sticky; top:0; z-index:10;
+    height:26px; display:flex; align-items:center; justify-content:flex-end; gap:16px;
+    padding:0 14px;
+    background:rgba(0,0,0,.28); backdrop-filter:blur(18px) saturate(160%);
+    -webkit-backdrop-filter:blur(18px) saturate(160%);
+    font-size:13px; color:rgba(255,255,255,.9);
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .menubar .left{margin-right:auto; display:flex; gap:16px; align-items:center; font-weight:600}
+  .mb-item{display:flex; align-items:center; gap:5px; font-variant-numeric:tabular-nums}
+  .mb-stats{
+    background:rgba(255,255,255,.16); padding:2px 8px; border-radius:6px;
+    font-weight:600; position:relative; box-shadow:0 0 0 1px rgba(255,255,255,.08) inset;
+  }
+  .mb-stats .dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block}
+  .callout-arrow{position:absolute; left:50%; transform:translateX(-50%); top:24px; color:rgba(255,255,255,.5); font-size:11px}
+
+  /* ===== layout of the two popovers ===== */
+  .stage{display:flex; gap:60px; justify-content:center; align-items:flex-start; flex-wrap:wrap; padding:70px 24px 0}
+  .col{display:flex; flex-direction:column; align-items:center; gap:14px}
+  .col .tag{font-size:12px; color:var(--txt2); letter-spacing:.3px}
+  .col .tag b{color:var(--txt); font-weight:600}
+
+  /* ===== popover ===== */
+  .pop{
+    width:320px; background:var(--pop);
+    backdrop-filter:blur(40px) saturate(180%); -webkit-backdrop-filter:blur(40px) saturate(180%);
+    border:1px solid var(--line); border-radius:14px; overflow:hidden;
+    box-shadow:0 18px 50px rgba(0,0,0,.5), 0 0 0 .5px rgba(0,0,0,.4);
+  }
+  .pop-head{display:flex; align-items:center; justify-content:space-between; padding:11px 14px 7px}
+  .pop-head .ttl{font-size:13px; font-weight:700; letter-spacing:.2px}
+  .pop-head .sub{font-size:11px; color:var(--txt2)}
+  .back{display:flex; align-items:center; gap:6px; font-weight:700; font-size:13px; cursor:default}
+  .back .chev{color:var(--blue)}
+
+  .card{
+    display:flex; align-items:center; gap:12px; padding:11px 14px; cursor:default;
+    border-top:1px solid rgba(255,255,255,.05);
+  }
+  .card:hover{background:rgba(255,255,255,.05)}
+  .card .info{min-width:118px}
+  .card .lbl{font-size:11px; color:var(--txt2); text-transform:uppercase; letter-spacing:.6px; font-weight:600}
+  .card .val{font-size:19px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1.15; margin-top:2px}
+  .card .meta{font-size:11px; color:var(--txt2); margin-top:1px; font-variant-numeric:tabular-nums}
+  .card .spark{flex:1; min-width:0}
+  .chev-r{color:var(--txt3); font-size:16px; margin-left:2px}
+  .pdot{width:7px;height:7px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:5px}
+
+  .foot{display:flex; gap:8px; padding:9px 12px; border-top:1px solid rgba(255,255,255,.08); background:rgba(0,0,0,.15)}
+  .foot button{
+    flex:1; font:inherit; font-size:12px; color:var(--txt); background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:6px 0; cursor:default;
+  }
+  .foot button:hover{background:rgba(255,255,255,.12)}
+
+  /* ===== drill-in detail ===== */
+  .detail-chart{padding:6px 14px 12px}
+  .proc-h{padding:4px 14px 6px; font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--txt2); font-weight:600}
+  .proc{display:flex; align-items:center; gap:10px; padding:7px 14px; border-top:1px solid rgba(255,255,255,.05)}
+  .proc:hover{background:rgba(255,255,255,.05)}
+  .proc .pico{width:18px;height:18px;border-radius:5px;flex:none}
+  .proc .pname{flex:1; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .proc .ppct{font-size:13px; font-variant-numeric:tabular-nums; color:var(--txt); width:46px; text-align:right; font-weight:600}
+  .proc .quit{
+    font:inherit; font-size:11px; color:var(--red); background:rgba(255,69,58,.12);
+    border:1px solid rgba(255,69,58,.3); border-radius:6px; padding:3px 9px; cursor:default;
+  }
+  .proc .quit:hover{background:rgba(255,69,58,.22)}
+
+  .legend{
+    position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+    background:rgba(0,0,0,.45); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,.1);
+    border-radius:12px; padding:11px 18px; font-size:12.5px; color:var(--txt2); text-align:center; max-width:680px;
+  }
+  .legend b{color:var(--txt)}
+</style>
+</head>
+<body>
+
+  <!-- ===== fake macOS menu bar ===== -->
+  <div class="menubar">
+    <div class="left"><span>&#63743;</span><span>Finder</span><span style="font-weight:400;color:var(--txt2)">File&nbsp;&nbsp;Edit&nbsp;&nbsp;View</span></div>
+    <div class="mb-item mb-stats"><span class="dot"></span>58&deg; &nbsp;23%
+      <span class="callout-arrow">&#9650; you click here</span>
+    </div>
+    <div class="mb-item">&#128268; 84%</div>
+    <div class="mb-item">&#128246;</div>
+    <div class="mb-item">&#128269;</div>
+    <div class="mb-item">Wed&nbsp;9:41&nbsp;AM</div>
+  </div>
+
+  <div class="stage">
+
+    <!-- ============ OVERVIEW POPOVER ============ -->
+    <div class="col">
+      <div class="tag"><b>1. Click the icon</b> &rarr; overview of every stat (live sparklines)</div>
+      <div class="pop">
+        <div class="pop-head"><span class="ttl">MacStats</span><span class="sub">updating every 1s &#8226; &#9881;</span></div>
+
+        <div class="card">
+          <div class="info">
+            <div class="lbl">CPU</div>
+            <div class="val">23%</div>
+            <div class="meta">58&deg;C &#8226; P 18% E 31%</div>
+          </div>
+          <div class="spark">
+            <svg viewBox="0 0 130 36" width="100%" height="36" preserveAspectRatio="none">
+              <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#30d158" stop-opacity=".45"/><stop offset="1" stop-color="#30d158" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0,26 L13,22 L26,28 L39,15 L52,19 L65,9 L78,17 L91,11 L104,23 L117,13 L130,19 L130,36 L0,36 Z" fill="url(#g1)"/>
+              <polyline points="0,26 13,22 26,28 39,15 52,19 65,9 78,17 91,11 104,23 117,13 130,19" fill="none" stroke="#30d158" stroke-width="1.6"/>
+            </svg>
+          </div>
+          <span class="chev-r">&#8250;</span>
+        </div>
+
+        <div class="card">
+          <div class="info">
+            <div class="lbl">Memory</div>
+            <div class="val">9.2<span style="font-size:13px;color:var(--txt2)"> / 16 GB</span></div>
+            <div class="meta"><span class="pdot" style="background:var(--green)"></span>pressure: normal</div>
+          </div>
+          <div class="spark">
+            <svg viewBox="0 0 130 36" width="100%" height="36" preserveAspectRatio="none">
+              <defs><linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a84ff" stop-opacity=".4"/><stop offset="1" stop-color="#0a84ff" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0,22 L13,23 L26,21 L39,22 L52,20 L65,21 L78,20 L91,18 L104,19 L117,19 L130,18 L130,36 L0,36 Z" fill="url(#g2)"/>
+              <polyline points="0,22 13,23 26,21 39,22 52,20 65,21 78,20 91,18 104,19 117,19 130,18" fill="none" stroke="#0a84ff" stroke-width="1.6"/>
+            </svg>
+          </div>
+          <span class="chev-r">&#8250;</span>
+        </div>
+
+        <div class="card">
+          <div class="info">
+            <div class="lbl">Network</div>
+            <div class="val" style="font-size:15px">&#8595;1.2 <span style="color:var(--txt2);font-size:12px">MB/s</span></div>
+            <div class="meta">&#8593; 0.3 MB/s &#8226; 2.1 GB today</div>
+          </div>
+          <div class="spark">
+            <svg viewBox="0 0 130 36" width="100%" height="36" preserveAspectRatio="none">
+              <defs><linearGradient id="g3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bf5af0" stop-opacity=".4"/><stop offset="1" stop-color="#bf5af0" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0,30 L13,27 L26,11 L39,25 L52,7 L65,23 L78,17 L91,29 L104,5 L117,21 L130,25 L130,36 L0,36 Z" fill="url(#g3)"/>
+              <polyline points="0,30 13,27 26,11 39,25 52,7 65,23 78,17 91,29 104,5 117,21 130,25" fill="none" stroke="#bf5af0" stroke-width="1.6"/>
+            </svg>
+          </div>
+          <span class="chev-r">&#8250;</span>
+        </div>
+
+        <div class="card">
+          <div class="info">
+            <div class="lbl">Battery</div>
+            <div class="val">84%</div>
+            <div class="meta">2:14 left &#8226; 12W in &#8226; health 91%</div>
+          </div>
+          <div class="spark">
+            <svg viewBox="0 0 130 36" width="100%" height="36" preserveAspectRatio="none">
+              <defs><linearGradient id="g4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd60a" stop-opacity=".4"/><stop offset="1" stop-color="#ffd60a" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0,10 L13,11 L26,11 L39,12 L52,13 L65,13 L78,14 L91,15 L104,16 L117,16 L130,17 L130,36 L0,36 Z" fill="url(#g4)"/>
+              <polyline points="0,10 13,11 26,11 39,12 52,13 65,13 78,14 91,15 104,16 117,16 130,17" fill="none" stroke="#ffd60a" stroke-width="1.6"/>
+            </svg>
+          </div>
+          <span class="chev-r">&#8250;</span>
+        </div>
+
+        <div class="foot"><button>&#9881; Settings</button><button>Quit</button></div>
+      </div>
+    </div>
+
+    <!-- ============ DRILL-IN DETAIL ============ -->
+    <div class="col">
+      <div class="tag"><b>2. Click a card</b> &rarr; per-app breakdown + quick actions</div>
+      <div class="pop">
+        <div class="pop-head">
+          <span class="back"><span class="chev">&#8249;</span> CPU</span>
+          <span class="sub">23% &#8226; 58&deg;C</span>
+        </div>
+
+        <div class="detail-chart">
+          <svg viewBox="0 0 292 72" width="100%" height="72" preserveAspectRatio="none">
+            <defs><linearGradient id="gd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#30d158" stop-opacity=".5"/><stop offset="1" stop-color="#30d158" stop-opacity="0"/></linearGradient></defs>
+            <line x1="0" y1="24" x2="292" y2="24" stroke="rgba(255,255,255,.08)"/>
+            <line x1="0" y1="48" x2="292" y2="48" stroke="rgba(255,255,255,.08)"/>
+            <path d="M0,52 L26,44 L52,56 L78,30 L104,38 L130,18 L156,34 L182,22 L208,46 L234,26 L260,38 L292,30 L292,72 L0,72 Z" fill="url(#gd)"/>
+            <polyline points="0,52 26,44 52,56 78,30 104,38 130,18 156,34 182,22 208,46 234,26 260,38 292,30" fill="none" stroke="#30d158" stroke-width="1.8"/>
+          </svg>
+        </div>
+
+        <div class="proc-h">Top processes</div>
+        <div class="proc"><div class="pico" style="background:#5e5ce6"></div><div class="pname">WindowServer</div><div class="ppct">8.2%</div><button class="quit">Quit</button></div>
+        <div class="proc"><div class="pico" style="background:#ffd60a"></div><div class="pname">Google Chrome</div><div class="ppct">6.1%</div><button class="quit">Quit</button></div>
+        <div class="proc"><div class="pico" style="background:#0a84ff"></div><div class="pname">Xcode</div><div class="ppct">4.3%</div><button class="quit">Quit</button></div>
+        <div class="proc"><div class="pico" style="background:#8e8e93"></div><div class="pname">kernel_task</div><div class="ppct">2.0%</div><button class="quit">Quit</button></div>
+        <div class="proc"><div class="pico" style="background:#30d158"></div><div class="pname">Spotlight</div><div class="ppct">1.4%</div><button class="quit">Quit</button></div>
+
+        <div class="foot"><button>&#9881; Settings</button><button>Quit</button></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <b>MacStats mockup.</b> Left = the dropdown after clicking the menu-bar icon (a card per stat with a live sparkline).
+    Right = drilling into the CPU card (top apps + a bigger chart + per-process <b>Quit</b>). Colors map to each stat; pressure/health use 🟢/🟡/🔴.
+  </div>
+
+</body>
+</html>

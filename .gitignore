@@ -1,0 +1,5 @@
+.build/
+MacStats.app/
+.superpowers/
+.DS_Store
+*.swiftpm
