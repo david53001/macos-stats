@@ -14,6 +14,10 @@ public final class MetricsStore: ObservableObject {
     @Published public private(set) var memHistory: [Double] = []      // used fraction 0...1
     @Published public private(set) var netDownHistory: [Double] = []  // bytes/sec
 
+    @Published public private(set) var breakdown: [AppUsage] = []
+    @Published public private(set) var breakdownMeasuring: Bool = false
+    @Published public private(set) var activeBreakdownMetric: BreakdownMetric?
+
     private var cpuBuf: RingBuffer<Double>
     private var memBuf: RingBuffer<Double>
     private var netBuf: RingBuffer<Double>
@@ -46,5 +50,28 @@ public final class MetricsStore: ObservableObject {
         cpuBuf = RingBuffer(capacity: cpuBuf.capacity); cpuHistory = []
         memBuf = RingBuffer(capacity: memBuf.capacity); memHistory = []
         netBuf = RingBuffer(capacity: netBuf.capacity); netDownHistory = []
+
+        clearBreakdown()
+    }
+
+    /// Enter a drill-in for `metric`. CPU starts in the "measuring" state (it needs two
+    /// samples for a delta); memory is instantaneous so it isn't.
+    public func beginBreakdown(metric: BreakdownMetric) {
+        activeBreakdownMetric = metric
+        breakdown = []
+        breakdownMeasuring = (metric == .cpu)
+    }
+
+    /// Publish a fresh scan's grouped result for the active breakdown.
+    public func setBreakdown(_ apps: [AppUsage], measuring: Bool) {
+        breakdown = apps
+        breakdownMeasuring = measuring
+    }
+
+    /// Leave the drill-in (back button or popover closed).
+    public func clearBreakdown() {
+        activeBreakdownMetric = nil
+        breakdown = []
+        breakdownMeasuring = false
     }
 }
