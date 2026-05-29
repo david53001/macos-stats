@@ -8,31 +8,47 @@ final class AppModel: ObservableObject {
 
     private var timer: Timer?
     private var visibility: MacStatsCore.Visibility = .idle
+    private var samplesSinceOpen = 0
     private var prevCPU = readCPUTicks()
     private var prevNet = readNetCounters()
     private var prevTime = Date()
 
-    init() {
-        tick()           // seed an immediate sample
-        scheduleTimer()
-    }
-
     func setVisibility(_ newValue: MacStatsCore.Visibility) {
         guard newValue != visibility else { return }
         visibility = newValue
-        scheduleTimer()
-        if newValue == .popoverOpen { tick() } // refresh right away on open
+        switch newValue {
+        case .popoverOpen:
+            // Re-baseline now so the first sample is an accurate short-window delta rather
+            // than an average over however long the popover sat closed. Then start the
+            // priming burst from sample 0.
+            samplesSinceOpen = 0
+            prevCPU = readCPUTicks()
+            prevNet = readNetCounters()
+            prevTime = Date()
+            scheduleNextTick()
+        case .idle:
+            timer?.invalidate()
+            timer = nil
+            store.reset() // each open session starts with a fresh sparkline
+        }
     }
 
-    private func scheduleTimer() {
+    /// Schedules the next sample as a one-shot timer. The interval is short during the
+    /// opening burst (fills the sparkline with real data fast) and settles to the steady
+    /// cadence afterward — see `openPhaseInterval`.
+    private func scheduleNextTick() {
         timer?.invalidate()
-        let interval = refreshInterval(for: visibility)
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        let interval = openPhaseInterval(samplesSinceOpen: samplesSinceOpen)
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
     }
 
     private func tick() {
+        // A one-shot timer fired after `setVisibility(.idle)` could still be in flight;
+        // bail rather than collect or reschedule.
+        guard visibility == .popoverOpen else { return }
+
         let now = Date()
         let elapsed = now.timeIntervalSince(prevTime)
         let curCPU = readCPUTicks()
@@ -47,6 +63,9 @@ final class AppModel: ObservableObject {
         prevCPU = curCPU
         prevNet = curNet
         prevTime = now
+
+        samplesSinceOpen += 1
+        scheduleNextTick()
     }
 }
 
@@ -60,7 +79,7 @@ struct MacStatsApp: App {
                 .onAppear { model.setVisibility(.popoverOpen) }
                 .onDisappear { model.setVisibility(.idle) }
         } label: {
-            MenuBarLabel(store: model.store)
+            MenuBarLabel()
         }
         .menuBarExtraStyle(.window)
     }
