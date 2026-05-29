@@ -73,3 +73,22 @@ public func owningAppPID(for pid: Int32, ppid: [Int32: Int32], appPIDs: Set<Int3
         current = parent
     }
 }
+
+/// Groups already-attributed process usages by their owning app, sums CPU% and memory,
+/// and returns the apps sorted descending by the chosen metric. Input is assumed to be
+/// pre-filtered to app-owned processes (callers skip processes whose `owningAppPID` is nil),
+/// so the result contains only user apps.
+public func aggregate(_ processes: [ProcessUsage], by metric: BreakdownMetric) -> [AppUsage] {
+    var byApp: [Int32: (pids: [Int32], cpu: Double, mem: UInt64)] = [:]
+    for p in processes {
+        var entry = byApp[p.appPID] ?? (pids: [], cpu: 0, mem: 0)
+        entry.pids.append(p.pid)
+        entry.cpu += p.cpuPercent
+        entry.mem += p.memoryBytes
+        byApp[p.appPID] = entry
+    }
+    let apps = byApp.map { appPID, e in
+        AppUsage(appPID: appPID, pids: e.pids, cpuPercent: e.cpu, memoryBytes: e.mem)
+    }
+    return apps.sorted { $0.value(for: metric) > $1.value(for: metric) }
+}

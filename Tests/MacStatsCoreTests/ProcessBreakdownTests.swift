@@ -50,4 +50,41 @@ import Testing
         let ppid: [Int32: Int32] = [10: 11, 11: 10]
         #expect(owningAppPID(for: 10, ppid: ppid, appPIDs: [999]) == nil)
     }
+
+    // MARK: aggregate
+    @Test func groupsAndSumsByApp() {
+        let procs = [
+            ProcessUsage(pid: 1, appPID: 100, cpuPercent: 10, memoryBytes: 1_000),
+            ProcessUsage(pid: 2, appPID: 100, cpuPercent: 5,  memoryBytes: 2_000),  // same app
+            ProcessUsage(pid: 3, appPID: 200, cpuPercent: 30, memoryBytes: 500),
+        ]
+        let result = aggregate(procs, by: .cpu)
+        #expect(result.count == 2)
+        let chrome = result.first { $0.appPID == 100 }!
+        #expect(abs(chrome.cpuPercent - 15) < 0.001)
+        #expect(chrome.memoryBytes == 3_000)
+        #expect(Set(chrome.pids) == [1, 2])
+    }
+
+    @Test func sortedDescendingByCPU() {
+        let procs = [
+            ProcessUsage(pid: 1, appPID: 100, cpuPercent: 10, memoryBytes: 9_000),
+            ProcessUsage(pid: 2, appPID: 200, cpuPercent: 30, memoryBytes: 1_000),
+        ]
+        let result = aggregate(procs, by: .cpu)
+        #expect(result.map(\.appPID) == [200, 100])    // 30% before 10%
+    }
+
+    @Test func sortedDescendingByMemory() {
+        let procs = [
+            ProcessUsage(pid: 1, appPID: 100, cpuPercent: 99, memoryBytes: 1_000),
+            ProcessUsage(pid: 2, appPID: 200, cpuPercent: 1,  memoryBytes: 8_000),
+        ]
+        let result = aggregate(procs, by: .memory)
+        #expect(result.map(\.appPID) == [200, 100])    // 8000 bytes before 1000
+    }
+
+    @Test func emptyInputYieldsEmpty() {
+        #expect(aggregate([], by: .cpu).isEmpty)
+    }
 }
