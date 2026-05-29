@@ -144,9 +144,7 @@ struct MacStatsApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            OverviewView(store: model.store)
-                .onAppear { model.setVisibility(.popoverOpen) }
-                .onDisappear { model.setVisibility(.idle) }
+            RootView(model: model)
         } label: {
             MenuBarLabel()
         }

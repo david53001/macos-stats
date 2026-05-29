@@ -4,6 +4,8 @@ import MacStatsCore
 /// The popover content: header, a card per stat, footer.
 struct OverviewView: View {
     @ObservedObject var store: MetricsStore
+    /// Drill into a category's per-app breakdown. Only CPU & Memory pass this in.
+    var onSelect: (BreakdownMetric) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,7 +21,8 @@ struct OverviewView: View {
                      meta: "live",
                      color: .green,
                      history: store.cpuHistory,
-                     maxValue: 100)
+                     maxValue: 100,
+                     onTap: { onSelect(.cpu) })
 
             Divider()
             StatCard(label: "Memory",
@@ -27,7 +30,8 @@ struct OverviewView: View {
                      meta: memoryMeta,
                      color: .blue,
                      history: store.memHistory,
-                     maxValue: 1.0)
+                     maxValue: 1.0,
+                     onTap: { onSelect(.memory) })
 
             Divider()
             StatCard(label: "Network",
