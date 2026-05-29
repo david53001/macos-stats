@@ -58,3 +58,18 @@ public func processCPUPercent(previousCPUTimeNs: UInt64, currentCPUTimeNs: UInt6
     let deltaNs = Double(currentCPUTimeNs - previousCPUTimeNs)
     return max(0, deltaNs / (elapsedSeconds * 1_000_000_000) * 100)
 }
+
+/// Walks the parent-pid chain from `pid` upward until it reaches a pid that is a known
+/// GUI app (`appPIDs`). Returns that app's pid, or nil if the chain ends without hitting
+/// an app (e.g. a system daemon reparented to launchd). Guards against cycles and gaps.
+public func owningAppPID(for pid: Int32, ppid: [Int32: Int32], appPIDs: Set<Int32>) -> Int32? {
+    var current = pid
+    var seen = Set<Int32>()
+    while true {
+        if appPIDs.contains(current) { return current }
+        if seen.contains(current) { return nil }      // cycle guard
+        seen.insert(current)
+        guard let parent = ppid[current], parent != current else { return nil }
+        current = parent
+    }
+}
