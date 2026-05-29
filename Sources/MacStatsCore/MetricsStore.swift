@@ -34,4 +34,17 @@ public final class MetricsStore: ObservableObject {
         if let memory { memBuf.append(memory.usedFraction); memHistory = memBuf.values }
         if let network { netBuf.append(network.downBytesPerSec); netDownHistory = netBuf.values }
     }
+
+    /// Clears the latest sample and all history. Called when the popover closes so
+    /// each open session builds a fresh sparkline rather than showing stale points.
+    public func reset() {
+        cpuPercent = 0
+        memory = nil
+        network = nil
+        battery = nil
+
+        cpuBuf = RingBuffer(capacity: cpuBuf.capacity); cpuHistory = []
+        memBuf = RingBuffer(capacity: memBuf.capacity); memHistory = []
+        netBuf = RingBuffer(capacity: netBuf.capacity); netDownHistory = []
+    }
 }
