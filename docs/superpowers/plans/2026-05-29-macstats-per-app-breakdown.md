@@ -895,6 +895,11 @@ struct BreakdownView: View {
         .frame(maxWidth: .infinity).padding(.vertical, 44)
     }
 
+    private func appName(_ appPID: Int32?) -> String {
+        guard let appPID else { return "this app" }
+        return NSRunningApplication(processIdentifier: pid_t(appPID))?.localizedName ?? "PID \(appPID)"
+    }
+
     private func gb(_ bytes: UInt64) -> String {
         String(format: "%.1f", Double(bytes) / 1_073_741_824)
     }
