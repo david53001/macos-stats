@@ -9,22 +9,26 @@ final class AppModel: ObservableObject {
     private var timer: Timer?
     private var visibility: MacStatsCore.Visibility = .idle
     private var samplesSinceOpen = 0
-    private var prevCPU = readCPUTicks()
-    private var prevNet = readNetCounters()
-    private var prevTime = Date()
+
+    /// Cumulative-counter snapshots, oldest→newest, covering ~`rateWindowSeconds`. Rates are
+    /// diffed against the snapshot ~1s back (see `rateBaselineIndex`) so they stay a stable
+    /// trailing average and the fast opening fill doesn't inflate them.
+    private var snapshots: [Snapshot] = []
+    private struct Snapshot {
+        let time: Date
+        let cpu: CPUTicks
+        let net: NetCounters
+    }
 
     func setVisibility(_ newValue: MacStatsCore.Visibility) {
         guard newValue != visibility else { return }
         visibility = newValue
         switch newValue {
         case .popoverOpen:
-            // Re-baseline now so the first sample is an accurate short-window delta rather
-            // than an average over however long the popover sat closed. Then start the
-            // priming burst from sample 0.
+            // Seed the trailing-window baseline now so rates measure from when the popover
+            // opened, not from however long it sat closed. Then start the fill from sample 0.
             samplesSinceOpen = 0
-            prevCPU = readCPUTicks()
-            prevNet = readNetCounters()
-            prevTime = Date()
+            snapshots = [Snapshot(time: Date(), cpu: readCPUTicks(), net: readNetCounters())]
             scheduleNextTick()
         case .idle:
             timer?.invalidate()
@@ -50,19 +54,24 @@ final class AppModel: ObservableObject {
         guard visibility == .popoverOpen else { return }
 
         let now = Date()
-        let elapsed = now.timeIntervalSince(prevTime)
         let curCPU = readCPUTicks()
         let curNet = readNetCounters()
+        snapshots.append(Snapshot(time: now, cpu: curCPU, net: curNet))
 
-        let cpu = cpuBusyPercent(previous: prevCPU, current: curCPU)
-        let net = networkThroughput(previous: prevNet, current: curNet, secondsElapsed: elapsed)
+        // Diff against the snapshot ~`rateWindowSeconds` back so rates are a stable trailing
+        // average independent of the (ramping) sample cadence; drop anything older than that.
+        let base = rateBaselineIndex(times: snapshots.map { $0.time.timeIntervalSinceReferenceDate },
+                                     now: now.timeIntervalSinceReferenceDate, window: rateWindowSeconds)
+        if base > 0 { snapshots.removeFirst(base) }
+        let baseline = snapshots[0]
+
+        let cpu = cpuBusyPercent(previous: baseline.cpu, current: curCPU)
+        let net = networkThroughput(previous: baseline.net, current: curNet,
+                                    secondsElapsed: now.timeIntervalSince(baseline.time))
         let mem = memorySample(raw: readVMRaw(), totalBytes: ProcessInfo.processInfo.physicalMemory)
         let bat = readBattery()
 
         store.update(cpuPercent: cpu, memory: mem, network: net, battery: bat)
-        prevCPU = curCPU
-        prevNet = curNet
-        prevTime = now
 
         samplesSinceOpen += 1
         scheduleNextTick()
