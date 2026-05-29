@@ -7,8 +7,9 @@ live sparkline; click a card → per-app breakdown with quick actions (Quit / Fr
 ## Status (as of 2026-05-29)
 
 - ✅ Design **approved**, visual mockup **approved**.
-- ✅ Milestone 1 implementation plan **written** (not yet built).
-- ⬜ No code written yet. Project is **not yet a git repo** (`git init` is Task 1 of the plan).
+- ✅ Milestone 1 implementation plan **written**.
+- ✅ **Milestone 1 BUILT** — runnable menu-bar app: live CPU %, Memory, Network, Battery + Swift Charts sparklines + adaptive refresh (3s idle / 1s open). Git repo initialized; all 12 plan tasks committed on `main`; `swift build` green; 21 tests pass via `./Scripts/test.sh`; `./Scripts/bundle.sh` produces a Dock-iconless `MacStats.app`. (Final live visual check — menu-bar item, no Dock icon, animating sparkline — is a human acceptance step.)
+- ⬜ Milestones 2–4 not started.
 
 ## Start here
 
@@ -20,9 +21,10 @@ live sparkline; click a card → per-app breakdown with quick actions (Quit / Fr
 
 ## To resume building
 
-Execute the Milestone 1 plan using the **superpowers:subagent-driven-development**
-(recommended) or **superpowers:executing-plans** skill. It is a complete, test-first,
-12-task plan that produces a runnable app.
+Milestone 1 is built (see Status). Next: write a Milestone 2 plan (CPU temp via IOKit
+`IOHIDEventSystemClient`, battery health/watts) with **superpowers:writing-plans**, then
+execute it with **superpowers:subagent-driven-development**. To run the current app:
+`./Scripts/bundle.sh && open MacStats.app`.
 
 ## Locked technical decisions
 
