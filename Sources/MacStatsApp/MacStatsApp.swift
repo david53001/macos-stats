@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import MacStatsCore
 
@@ -9,6 +10,12 @@ final class AppModel: ObservableObject {
     private var timer: Timer?
     private var visibility: MacStatsCore.Visibility = .idle
     private var samplesSinceOpen = 0
+
+    /// Dedicated per-process scan loop — exists only while a breakdown is open, so the
+    /// expensive enumeration never runs otherwise. Kept separate from the sparkline `tick`.
+    private var procTimer: Timer?
+    private var previousProcCPU: [Int32: UInt64] = [:]   // pid → last cumulative CPU ns
+    private var lastProcScan: Date?
 
     /// Cumulative-counter snapshots, oldest→newest, covering ~`rateWindowSeconds`. Rates are
     /// diffed against the snapshot ~1s back (see `rateBaselineIndex`) so they stay a stable
@@ -33,6 +40,7 @@ final class AppModel: ObservableObject {
         case .idle:
             timer?.invalidate()
             timer = nil
+            exitBreakdown()   // stop per-process scanning + clear nav state
             store.reset() // each open session starts with a fresh sparkline
         }
     }
@@ -75,6 +83,58 @@ final class AppModel: ObservableObject {
 
         samplesSinceOpen += 1
         scheduleNextTick()
+    }
+
+    func enterBreakdown(_ metric: MacStatsCore.BreakdownMetric) {
+        store.beginBreakdown(metric: metric)
+        previousProcCPU = [:]
+        lastProcScan = nil
+        procScanTick()   // first scan establishes the CPU baseline (CPU stays "measuring")
+        procTimer?.invalidate()
+        procTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.procScanTick() }
+        }
+    }
+
+    func exitBreakdown() {
+        procTimer?.invalidate()
+        procTimer = nil
+        previousProcCPU = [:]
+        lastProcScan = nil
+        store.clearBreakdown()
+    }
+
+    private func procScanTick() {
+        guard let metric = store.activeBreakdownMetric else { return }
+        let now = Date()
+        let raw = readRawProcesses()
+
+        // GUI apps the user is running = our "user apps only" universe + the grouping anchors.
+        let appPIDs = Set(NSWorkspace.shared.runningApplications.compactMap { app -> Int32? in
+            app.processIdentifier > 0 ? Int32(app.processIdentifier) : nil
+        })
+        let ppidMap = Dictionary(raw.map { ($0.pid, $0.ppid) }, uniquingKeysWith: { a, _ in a })
+        let cpuByPID = Dictionary(raw.map { ($0.pid, $0.cpuTimeNs) }, uniquingKeysWith: { a, _ in a })
+
+        let haveBaseline = lastProcScan != nil
+        let elapsed = lastProcScan.map { now.timeIntervalSince($0) } ?? 0
+
+        var usages: [ProcessUsage] = []
+        for p in raw {
+            guard let appPID = owningAppPID(for: p.pid, ppid: ppidMap, appPIDs: appPIDs) else { continue }
+            let cpu = haveBaseline
+                ? processCPUPercent(previousCPUTimeNs: previousProcCPU[p.pid] ?? p.cpuTimeNs,
+                                    currentCPUTimeNs: p.cpuTimeNs, elapsedSeconds: elapsed)
+                : 0
+            usages.append(ProcessUsage(pid: p.pid, appPID: appPID, cpuPercent: cpu, memoryBytes: p.memoryBytes))
+        }
+
+        previousProcCPU = cpuByPID
+        lastProcScan = now
+
+        // CPU has no real values until the second scan; keep showing "Measuring…" until then.
+        let measuring = (metric == .cpu && !haveBaseline)
+        store.setBreakdown(aggregate(usages, by: metric), measuring: measuring)
     }
 }
 
