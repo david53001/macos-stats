@@ -47,6 +47,11 @@ Execute the Milestone 1 plan using the **superpowers:subagent-driven-development
 
 ```bash
 swift build          # compile
-swift test           # run the unit + smoke tests
+./Scripts/test.sh    # run the unit + smoke tests (Swift Testing; see note)
 ./Scripts/bundle.sh  # assemble MacStats.app (created in Task 12), then: open MacStats.app
 ```
+
+> **Tests use Swift Testing, not XCTest.** This machine has Command Line Tools only
+> (no full Xcode), so XCTest is unavailable. Tests use `import Testing` / `@Test` /
+> `#expect`; `Scripts/test.sh` wraps `swift test` with the CLT framework search path.
+> Do not use `swift test` directly (it can't find the test framework).
