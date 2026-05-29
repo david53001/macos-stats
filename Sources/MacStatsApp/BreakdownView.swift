@@ -54,6 +54,8 @@ struct BreakdownView: View {
                         ForEach(store.breakdown) { app in
                             AppRow(app: app, metric: metric, maxValue: maxValue)
                                 .contextMenu {
+                                    Button(appName(app.appPID)) {}.disabled(true)   // faint header
+                                    Divider()
                                     Button("Quit") { ProcessActions.quit(appPID: app.appPID) }
                                     Divider()
                                     Button("Force Quit", role: .destructive) { forceQuitTarget = app }
@@ -63,6 +65,11 @@ struct BreakdownView: View {
                     }
                 }
                 .frame(maxHeight: 300)   // ~8 rows visible, scroll for the rest
+                if store.breakdown.count > 8 {
+                    Text("⌄ scroll for \(store.breakdown.count - 8) more")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity).padding(.vertical, 5)
+                }
             }
 
             Divider()
