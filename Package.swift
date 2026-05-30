@@ -5,7 +5,11 @@ let package = Package(
     name: "MacStats",
     platforms: [.macOS(.v14)],
     targets: [
-        .target(name: "MacStatsCore"),
+        .target(
+            name: "CAppleSensors",
+            linkerSettings: [.linkedFramework("IOKit")]
+        ),
+        .target(name: "MacStatsCore", dependencies: ["CAppleSensors"]),
         .executableTarget(
             name: "MacStatsApp",
             dependencies: ["MacStatsCore"]
