@@ -113,7 +113,7 @@ mock sensor lists. Only the raw IOHID read is impure (smoke-tested on-device).
 
 ### Real memory-pressure source (also fixes a scan finding)
 
-Replace the misleading **used-fraction** pressure heuristic (flagged 🟡 in `CODEBASE-SCAN.md`) with
+Replace the misleading **used-fraction** pressure heuristic with
 the kernel's actual level, read via `sysctlbyname("kern.memorystatus_vm_pressure_level", …)`:
 
 - Mapping (pure, tested): `1 → normal`, `2 → warning`, `4 → critical`, anything else → `normal`.
