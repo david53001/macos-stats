@@ -123,15 +123,39 @@ final class AppModel: ObservableObject {
         store.clearBreakdown()
     }
 
-    func emptyTrash() {
+    /// Confirms, then empties the Trash. The confirmation and any error are shown with
+    /// AppKit `NSAlert`, not SwiftUI's `.confirmationDialog`/`.alert`: those can't be
+    /// presented from inside a `MenuBarExtra(.window)` panel — interacting with them shifts
+    /// focus, which dismisses the whole menu-bar panel before the action can run. `NSAlert`
+    /// runs its own modal window, independent of the panel.
+    func confirmAndEmptyTrash() {
+        let confirm = NSAlert()
+        confirm.messageText = "Empty the Trash?"
+        confirm.informativeText = "Items in the Trash will be permanently deleted."
+        confirm.alertStyle = .warning
+        confirm.addButton(withTitle: "Empty Trash")
+        confirm.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard confirm.runModal() == .alertFirstButtonReturn else { return }
+
         DispatchQueue.global(qos: .userInitiated).async {
             let message = TrashActions.emptyTrash()
             let bytes = TrashActions.trashSize()   // reflect the new (usually empty) Trash
             Task { @MainActor in
-                self.store.trashMessage = message
                 self.store.setTrashBytes(bytes)
+                if let message { self.presentTrashError(message) }
             }
         }
+    }
+
+    private func presentTrashError(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = "Couldn't empty the Trash"
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     /// Reads the Trash size via Finder off the main thread and publishes it. Run on popover

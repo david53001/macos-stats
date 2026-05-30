@@ -18,7 +18,7 @@ struct RootView: View {
             } else {
                 OverviewView(store: store,
                              onSelect: { model.enterBreakdown($0) },
-                             onEmptyTrash: { model.emptyTrash() })
+                             onEmptyTrash: { model.confirmAndEmptyTrash() })
             }
         }
         .onAppear { model.setVisibility(.popoverOpen) }

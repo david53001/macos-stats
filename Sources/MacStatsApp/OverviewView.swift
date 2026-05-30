@@ -8,8 +8,6 @@ struct OverviewView: View {
     var onSelect: (BreakdownMetric) -> Void
     var onEmptyTrash: () -> Void
 
-    @State private var showEmptyConfirm = false
-
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -59,7 +57,7 @@ struct OverviewView: View {
                 Text("Trash").font(.callout)
                 Spacer()
                 Text(trashValue).font(.callout).fontWeight(.semibold).monospacedDigit()
-                Button("Empty") { showEmptyConfirm = true }
+                Button("Empty") { onEmptyTrash() }
                     .disabled((store.trashBytes ?? 0) == 0)
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
@@ -71,19 +69,6 @@ struct OverviewView: View {
             .padding(.horizontal, 12).padding(.vertical, 9)
         }
         .frame(width: 320)
-        .confirmationDialog("Empty the Trash?", isPresented: $showEmptyConfirm, titleVisibility: .visible) {
-            Button("Empty Trash", role: .destructive) { onEmptyTrash() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Items in the Trash will be permanently deleted.")
-        }
-        .alert("Couldn't empty the Trash",
-               isPresented: Binding(get: { store.trashMessage != nil },
-                                    set: { if !$0 { store.trashMessage = nil } })) {
-            Button("OK", role: .cancel) { store.trashMessage = nil }
-        } message: {
-            Text(store.trashMessage ?? "")
-        }
     }
 
     private func gb(_ bytes: UInt64) -> String {

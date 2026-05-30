@@ -15,7 +15,6 @@ public final class MetricsStore: ObservableObject {
     @Published public private(set) var netDownHistory: [Double] = []  // bytes/sec
 
     @Published public private(set) var trashBytes: UInt64?
-    @Published public var trashMessage: String?      // set when an Empty Trash attempt fails
 
     @Published public private(set) var cpuTempCelsius: Double?
 
@@ -65,7 +64,6 @@ public final class MetricsStore: ObservableObject {
         netBuf = RingBuffer(capacity: netBuf.capacity); netDownHistory = []
 
         trashBytes = nil
-        trashMessage = nil
         cpuTempCelsius = nil
 
         clearBreakdown()
