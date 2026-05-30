@@ -29,12 +29,20 @@ public struct MemorySample: Equatable {
     }
 }
 
+/// Maps the kernel's `kern.memorystatus_vm_pressure_level` to our enum.
+public func memoryPressure(fromLevel level: Int) -> MemoryPressure {
+    switch level {
+    case 2: return .warning
+    case 4: return .critical
+    default: return .normal   // 1 (normal) and anything unexpected
+    }
+}
+
 /// Approximates Activity Monitor's "memory used" as (active + wired + compressed).
-/// NOTE: pressure here is a used-fraction heuristic; a real memory-pressure source
-/// (DISPATCH_SOURCE_TYPE_MEMORYPRESSURE) is a later refinement.
-public func memorySample(raw: VMRaw, totalBytes: UInt64) -> MemorySample {
+/// Pressure comes from the kernel's real pressure level (see `memoryPressure(fromLevel:)`),
+/// not a used-fraction heuristic.
+public func memorySample(raw: VMRaw, totalBytes: UInt64, pressureLevel: Int) -> MemorySample {
     let used = (raw.active + raw.wired + raw.compressed) * raw.pageSize
-    let frac = totalBytes > 0 ? Double(used) / Double(totalBytes) : 0
-    let pressure: MemoryPressure = frac > 0.90 ? .critical : (frac > 0.75 ? .warning : .normal)
-    return MemorySample(usedBytes: used, totalBytes: totalBytes, pressure: pressure)
+    return MemorySample(usedBytes: used, totalBytes: totalBytes,
+                        pressure: memoryPressure(fromLevel: pressureLevel))
 }
