@@ -12,7 +12,12 @@ let package = Package(
         ),
         .testTarget(
             name: "MacStatsCoreTests",
-            dependencies: ["MacStatsCore"]
+            dependencies: ["MacStatsCore"],
+            swiftSettings: [
+                // CLT-only: suppress the _Testing_Foundation cross-import overlay
+                // that is triggered when both Foundation and Testing are imported.
+                .unsafeFlags(["-disable-cross-import-overlays"])
+            ]
         ),
     ],
     swiftLanguageModes: [.v5]
