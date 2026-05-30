@@ -14,5 +14,7 @@
     <key>NSPrincipalClass</key>        <string>NSApplication</string>
     <key>NSHighResolutionCapable</key> <true/>
     <key>LSUIElement</key>             <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>MacStats controls Finder to read the size of the Trash and to empty it when you choose.</string>
 </dict>
 </plist>
