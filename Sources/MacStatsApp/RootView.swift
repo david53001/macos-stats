@@ -17,7 +17,8 @@ struct RootView: View {
                               onBack: { model.exitBreakdown() })
             } else {
                 OverviewView(store: store,
-                             onSelect: { model.enterBreakdown($0) })
+                             onSelect: { model.enterBreakdown($0) },
+                             onEmptyTrash: { model.emptyTrash() })
             }
         }
         .onAppear { model.setVisibility(.popoverOpen) }

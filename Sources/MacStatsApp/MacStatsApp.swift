@@ -79,7 +79,9 @@ final class AppModel: ObservableObject {
         let mem = memorySample(raw: readVMRaw(), totalBytes: ProcessInfo.processInfo.physicalMemory)
         let bat = readBattery()
 
-        store.update(cpuPercent: cpu, memory: mem, network: net, battery: bat)
+        let trash = directorySize(at: FileManager.default.homeDirectoryForCurrentUser
+                                       .appendingPathComponent(".Trash"))
+        store.update(cpuPercent: cpu, memory: mem, network: net, battery: bat, trashBytes: trash)
 
         samplesSinceOpen += 1
         scheduleNextTick()
@@ -102,6 +104,13 @@ final class AppModel: ObservableObject {
         previousProcCPU = [:]
         lastProcScan = nil
         store.clearBreakdown()
+    }
+
+    func emptyTrash() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let message = TrashActions.emptyTrash()
+            Task { @MainActor in self.store.trashMessage = message }
+        }
     }
 
     private func procScanTick() {

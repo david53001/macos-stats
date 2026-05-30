@@ -14,6 +14,9 @@ public final class MetricsStore: ObservableObject {
     @Published public private(set) var memHistory: [Double] = []      // used fraction 0...1
     @Published public private(set) var netDownHistory: [Double] = []  // bytes/sec
 
+    @Published public private(set) var trashBytes: UInt64?
+    @Published public var trashMessage: String?      // set when an Empty Trash attempt fails
+
     @Published public private(set) var breakdown: [AppUsage] = []
     @Published public private(set) var breakdownMeasuring: Bool = false
     @Published public private(set) var activeBreakdownMetric: BreakdownMetric?
@@ -28,12 +31,14 @@ public final class MetricsStore: ObservableObject {
         netBuf = RingBuffer(capacity: historyCapacity)
     }
 
-    public func update(cpuPercent: Double, memory: MemorySample?, network: NetworkSample?, battery: BatterySample?) {
+    public func update(cpuPercent: Double, memory: MemorySample?, network: NetworkSample?,
+                       battery: BatterySample?, cpuTemp: Double? = nil, trashBytes: UInt64? = nil) {
         self.cpuPercent = cpuPercent
         self.memory = memory
         self.network = network
         self.battery = battery
-
+        self.trashBytes = trashBytes
+        // (cpuTemp is wired to a published property in a later phase)
         cpuBuf.append(cpuPercent); cpuHistory = cpuBuf.values
         if let memory { memBuf.append(memory.usedFraction); memHistory = memBuf.values }
         if let network { netBuf.append(network.downBytesPerSec); netDownHistory = netBuf.values }
@@ -50,6 +55,9 @@ public final class MetricsStore: ObservableObject {
         cpuBuf = RingBuffer(capacity: cpuBuf.capacity); cpuHistory = []
         memBuf = RingBuffer(capacity: memBuf.capacity); memHistory = []
         netBuf = RingBuffer(capacity: netBuf.capacity); netDownHistory = []
+
+        trashBytes = nil
+        trashMessage = nil
 
         clearBreakdown()
     }
