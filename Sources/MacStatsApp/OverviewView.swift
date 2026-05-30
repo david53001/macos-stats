@@ -21,7 +21,7 @@ struct OverviewView: View {
 
             StatCard(label: "CPU",
                      value: "\(Int(store.cpuPercent.rounded()))%",
-                     meta: "live",
+                     meta: cpuMeta,
                      color: .green,
                      history: store.cpuHistory,
                      maxValue: 100,
@@ -102,6 +102,10 @@ struct OverviewView: View {
         guard let bytes = store.trashBytes, bytes > 0 else { return "empty" }
         let mb = Double(bytes) / 1_048_576
         return mb >= 1024 ? String(format: "%.1f GB", mb / 1024) : String(format: "%.0f MB", mb)
+    }
+    private var cpuMeta: String {
+        guard let t = store.cpuTempCelsius else { return "live" }
+        return "\(Int(t))°C"
     }
     private var memoryMeta: String {
         switch store.memory?.pressure {

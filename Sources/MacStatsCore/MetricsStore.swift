@@ -17,6 +17,8 @@ public final class MetricsStore: ObservableObject {
     @Published public private(set) var trashBytes: UInt64?
     @Published public var trashMessage: String?      // set when an Empty Trash attempt fails
 
+    @Published public private(set) var cpuTempCelsius: Double?
+
     @Published public private(set) var breakdown: [AppUsage] = []
     @Published public private(set) var breakdownMeasuring: Bool = false
     @Published public private(set) var activeBreakdownMetric: BreakdownMetric?
@@ -38,7 +40,7 @@ public final class MetricsStore: ObservableObject {
         self.network = network
         self.battery = battery
         self.trashBytes = trashBytes
-        // (cpuTemp is wired to a published property in a later phase)
+        self.cpuTempCelsius = cpuTemp
         cpuBuf.append(cpuPercent); cpuHistory = cpuBuf.values
         if let memory { memBuf.append(memory.usedFraction); memHistory = memBuf.values }
         if let network { netBuf.append(network.downBytesPerSec); netDownHistory = netBuf.values }
@@ -58,6 +60,7 @@ public final class MetricsStore: ObservableObject {
 
         trashBytes = nil
         trashMessage = nil
+        cpuTempCelsius = nil
 
         clearBreakdown()
     }

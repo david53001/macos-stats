@@ -96,7 +96,9 @@ final class AppModel: ObservableObject {
 
         let trash = directorySize(at: FileManager.default.homeDirectoryForCurrentUser
                                        .appendingPathComponent(".Trash"))
-        store.update(cpuPercent: cpu, memory: mem, network: net, battery: bat, trashBytes: trash)
+        let temp = cpuTemperature(from: readAppleThermalSensors())
+        store.update(cpuPercent: cpu, memory: mem, network: net, battery: bat,
+                     cpuTemp: temp, trashBytes: trash)
         fireAlerts(cpu: cpu, pressure: mem.pressure)
 
         samplesSinceOpen += 1
