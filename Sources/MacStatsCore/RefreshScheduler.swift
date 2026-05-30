@@ -11,7 +11,7 @@ public enum Visibility: Equatable {
 /// dedicated scan timer in AppModel, so no new Visibility case was needed.)
 public func refreshInterval(for visibility: Visibility) -> TimeInterval {
     switch visibility {
-    case .idle: return 3.0
+    case .idle: return 10.0
     case .popoverOpen: return 1.0
     }
 }

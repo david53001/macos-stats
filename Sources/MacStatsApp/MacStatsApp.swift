@@ -27,11 +27,23 @@ final class AppModel: ObservableObject {
         let net: NetCounters
     }
 
+    private let alertMonitor = AlertMonitor()
+    private let notifier = AlertNotifier()
+    private let alertsEnabled = true            // no Settings UI yet; default on
+    private var alertTimer: Timer?
+    private var alertBaselineCPU: CPUTicks?      // baseline for the slow idle CPU sample
+
+    init() {
+        notifier.requestAuthorization()
+        startAlertSampler()
+    }
+
     func setVisibility(_ newValue: MacStatsCore.Visibility) {
         guard newValue != visibility else { return }
         visibility = newValue
         switch newValue {
         case .popoverOpen:
+            stopAlertSampler()
             // Seed the trailing-window baseline now so rates measure from when the popover
             // opened, not from however long it sat closed. Then start the fill from sample 0.
             samplesSinceOpen = 0
@@ -42,6 +54,7 @@ final class AppModel: ObservableObject {
             timer = nil
             exitBreakdown()   // stop per-process scanning + clear nav state
             store.reset() // each open session starts with a fresh sparkline
+            startAlertSampler()
         }
     }
 
@@ -84,6 +97,7 @@ final class AppModel: ObservableObject {
         let trash = directorySize(at: FileManager.default.homeDirectoryForCurrentUser
                                        .appendingPathComponent(".Trash"))
         store.update(cpuPercent: cpu, memory: mem, network: net, battery: bat, trashBytes: trash)
+        fireAlerts(cpu: cpu, pressure: mem.pressure)
 
         samplesSinceOpen += 1
         scheduleNextTick()
@@ -113,6 +127,41 @@ final class AppModel: ObservableObject {
             let message = TrashActions.emptyTrash()
             Task { @MainActor in self.store.trashMessage = message }
         }
+    }
+
+    /// Slow background sampler: reads only system-wide CPU% + memory pressure (no per-app
+    /// scan, no sparkline writes) and feeds the alert monitor. Runs while the popover is closed.
+    private func startAlertSampler() {
+        guard alertsEnabled else { return }
+        alertTimer?.invalidate()
+        alertBaselineCPU = readCPUTicks()
+        alertTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval(for: .idle),
+                                          repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.alertSampleTick() }
+        }
+    }
+
+    private func stopAlertSampler() {
+        alertTimer?.invalidate()
+        alertTimer = nil
+        alertBaselineCPU = nil
+    }
+
+    private func alertSampleTick() {
+        let current = readCPUTicks()
+        defer { alertBaselineCPU = current }
+        guard let baseline = alertBaselineCPU else { return }   // need two samples
+        let cpu = cpuBusyPercent(previous: baseline, current: current)
+        let pressure = memoryPressure(fromLevel: readMemoryPressureLevel())
+        fireAlerts(cpu: cpu, pressure: pressure)
+    }
+
+    /// Feeds the monitor and posts whatever it returns. Shared by the idle sampler and the
+    /// open-popover tick, so alerts fire regardless of visibility.
+    private func fireAlerts(cpu: Double, pressure: MemoryPressure) {
+        guard alertsEnabled else { return }
+        let alerts = alertMonitor.ingest(AlertSample(cpuPercent: cpu, pressure: pressure, time: Date()))
+        for alert in alerts { notifier.post(alert) }
     }
 
     private func procScanTick() {
