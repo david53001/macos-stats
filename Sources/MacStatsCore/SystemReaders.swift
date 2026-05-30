@@ -67,6 +67,15 @@ public func readNetCounters() -> NetCounters {
     return NetCounters(rxBytes: rx, txBytes: tx)
 }
 
+/// Reads the kernel's current memory-pressure level via sysctl.
+/// Returns 1 (normal), 2 (warning), or 4 (critical); 1 on failure.
+public func readMemoryPressureLevel() -> Int {
+    var level: Int32 = 0
+    var size = MemoryLayout<Int32>.size
+    let ok = sysctlbyname("kern.memorystatus_vm_pressure_level", &level, &size, nil, 0) == 0
+    return ok ? Int(level) : 1
+}
+
 /// Reads the first usable power source via IOKit. Returns nil if no battery.
 public func readBattery() -> BatterySample? {
     guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),

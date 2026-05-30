@@ -25,4 +25,9 @@ import Testing
         }
         // nil is acceptable (e.g. a desktop Mac with no battery)
     }
+
+    @Test func memoryPressureLevelIsKnown() {
+        let level = readMemoryPressureLevel()
+        #expect([1, 2, 4].contains(level))
+    }
 }
