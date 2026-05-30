@@ -33,16 +33,20 @@ and the per-app breakdown at [`docs/mockups/per-app-breakdown-mockup.html`](docs
 ## Features
 
 **Built:**
-- Live **CPU %**, **Memory** (used / total + pressure), **Network** (↓/↑ speed), **Battery %**
+- Live **CPU %** with **CPU temperature**, **Memory** (used / total + real pressure level),
+  **Network** (↓/↑ speed), **Battery %**
 - Per-stat **history sparklines** (Swift Charts)
 - **Adaptive refresh** — near-zero cost when idle; 1s updates only while you're looking
 - **Per-app breakdown** — click the **CPU** or **Memory** card to drill into the apps using
   that resource, grouped by app and ranked; right-click a row to **Quit** or **Force Quit**.
   Per-process scanning runs only while a breakdown is open.
+- **Threshold alerts** — a notification when CPU runs sustained-high or the system hits real
+  memory pressure, even while the popover is closed (lightweight 10s background check).
+- **Empty Trash** — a Trash-size readout and a one-click Empty (confirms first).
 
 **Planned:**
-- **CPU temperature** and live **power (watts)** / battery health & cycle count
-- **Alerts** (high temp, low battery, runaway process), **customizable menu-bar display**, Settings
+- Live **power (watts)** / battery health & cycle count
+- **Settings** — customizable menu-bar display, adjustable alert thresholds
 - Per-app **Network/Battery** breakdowns (deferred — no clean per-app network API)
 
 ## Why it's lightweight
@@ -70,6 +74,12 @@ open MacStats.app      # launch (appears in the menu bar, no Dock icon)
 > Tests use **Swift Testing**; `Scripts/test.sh` adds the framework search path that a bare
 > `swift test` lacks on Command-Line-Tools-only setups (no full Xcode), so use the script.
 
+> **Threshold notifications** require the bundled `MacStats.app` (not the bare `swift build`
+> binary) and macOS notification permission on first launch. **Empty Trash** asks once for
+> permission to control Finder (System Settings → Privacy & Security → Automation). **CPU
+> temperature** uses a private IOKit sensor API and shows the SoC die temperature on Apple
+> Silicon; if no usable sensor is found it falls back to showing "live".
+
 To quit: open the popover → **Quit** (or `pkill MacStats`).
 
 > The app is **not sandboxed** (it needs direct sensor access) and is **not** distributed via
@@ -84,9 +94,9 @@ Swift · SwiftUI (`MenuBarExtra`) · Swift Charts · IOKit / Mach / `getifaddrs`
 | Milestone | Scope | Status |
 |-----------|-------|--------|
 | **1** | Runnable menu-bar app: live CPU %, Memory, Network, Battery + sparklines + adaptive refresh | ✅ Built |
-| **2** | CPU temperature (IOKit IOHID), battery health & live watts | ⬜ Planned |
+| **2** | CPU temperature (IOKit IOHID), battery health & live watts | 🟡 CPU temp built; battery health/watts planned |
 | **3** | Per-app breakdown + drill-in views + quick actions | ✅ CPU + Memory built (Network/Battery deferred) |
-| **4** | Settings, customizable menu-bar display, alerts | ⬜ Planned |
+| **4** | Settings, customizable menu-bar display, alerts | 🟡 Threshold alerts + Empty Trash built; Settings/display planned |
 | v2+ | Per-app network, disk, GPU/fans, multiple menu-bar items, persisted history | ⬜ Deferred |
 
 Design: [`menubar-design.md`](docs/superpowers/specs/2026-05-29-macstats-menubar-design.md) ·
