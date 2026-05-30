@@ -76,7 +76,9 @@ final class AppModel: ObservableObject {
         let cpu = cpuBusyPercent(previous: baseline.cpu, current: curCPU)
         let net = networkThroughput(previous: baseline.net, current: curNet,
                                     secondsElapsed: now.timeIntervalSince(baseline.time))
-        let mem = memorySample(raw: readVMRaw(), totalBytes: ProcessInfo.processInfo.physicalMemory)
+        let mem = memorySample(raw: readVMRaw(),
+                               totalBytes: ProcessInfo.processInfo.physicalMemory,
+                               pressureLevel: readMemoryPressureLevel())
         let bat = readBattery()
 
         let trash = directorySize(at: FileManager.default.homeDirectoryForCurrentUser
