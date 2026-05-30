@@ -99,7 +99,8 @@ struct OverviewView: View {
         return "\(gb(m.usedBytes)) / \(gb(m.totalBytes)) GB"
     }
     private var trashValue: String {
-        guard let bytes = store.trashBytes, bytes > 0 else { return "empty" }
+        guard let bytes = store.trashBytes else { return "—" }   // still reading / unknown
+        guard bytes > 0 else { return "empty" }
         let mb = Double(bytes) / 1_048_576
         return mb >= 1024 ? String(format: "%.1f GB", mb / 1024) : String(format: "%.0f MB", mb)
     }

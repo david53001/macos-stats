@@ -49,6 +49,7 @@ final class AppModel: ObservableObject {
             samplesSinceOpen = 0
             snapshots = [Snapshot(time: Date(), cpu: readCPUTicks(), net: readNetCounters())]
             scheduleNextTick()
+            refreshTrashSize()
         case .idle:
             timer?.invalidate()
             timer = nil
@@ -94,11 +95,9 @@ final class AppModel: ObservableObject {
                                pressureLevel: readMemoryPressureLevel())
         let bat = readBattery()
 
-        let trash = directorySize(at: FileManager.default.homeDirectoryForCurrentUser
-                                       .appendingPathComponent(".Trash"))
         let temp = cpuTemperature(from: readAppleThermalSensors())
         store.update(cpuPercent: cpu, memory: mem, network: net, battery: bat,
-                     cpuTemp: temp, trashBytes: trash)
+                     cpuTemp: temp)
         fireAlerts(cpu: cpu, pressure: mem.pressure)
 
         samplesSinceOpen += 1
@@ -127,7 +126,21 @@ final class AppModel: ObservableObject {
     func emptyTrash() {
         DispatchQueue.global(qos: .userInitiated).async {
             let message = TrashActions.emptyTrash()
-            Task { @MainActor in self.store.trashMessage = message }
+            let bytes = TrashActions.trashSize()   // reflect the new (usually empty) Trash
+            Task { @MainActor in
+                self.store.trashMessage = message
+                self.store.setTrashBytes(bytes)
+            }
+        }
+    }
+
+    /// Reads the Trash size via Finder off the main thread and publishes it. Run on popover
+    /// open and after an Empty — not on the 1s tick, since Finder Apple Events are too heavy
+    /// to issue every second.
+    private func refreshTrashSize() {
+        DispatchQueue.global(qos: .utility).async {
+            let bytes = TrashActions.trashSize()
+            Task { @MainActor in self.store.setTrashBytes(bytes) }
         }
     }
 

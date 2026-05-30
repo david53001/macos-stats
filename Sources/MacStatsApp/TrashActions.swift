@@ -16,4 +16,28 @@ enum TrashActions {
         }
         return "Couldn't empty the Trash (error \(code))."
     }
+
+    /// Total logical size (bytes) of everything in the Trash, read via Finder. A direct
+    /// filesystem scan of `~/.Trash` fails ("Operation not permitted") without Full Disk
+    /// Access — it's a TCC-protected location — so we ask Finder, which is exempt (same as
+    /// `emptyTrash`). Returns nil when Finder can't be reached or permission is refused, i.e.
+    /// the size is genuinely unknown (distinct from an empty Trash, which returns 0).
+    static func trashSize() -> UInt64? {
+        let script = NSAppleScript(source: """
+            tell application "Finder"
+                set total to 0
+                repeat with anItem in (get items of trash)
+                    try
+                        set total to total + (size of anItem)
+                    end try
+                end repeat
+                return total
+            end tell
+            """)
+        var error: NSDictionary?
+        let result = script?.executeAndReturnError(&error)
+        if error != nil { return nil }
+        guard let value = result?.doubleValue, value.isFinite, value >= 0 else { return nil }
+        return UInt64(value)
+    }
 }

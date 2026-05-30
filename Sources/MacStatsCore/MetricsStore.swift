@@ -34,16 +34,22 @@ public final class MetricsStore: ObservableObject {
     }
 
     public func update(cpuPercent: Double, memory: MemorySample?, network: NetworkSample?,
-                       battery: BatterySample?, cpuTemp: Double? = nil, trashBytes: UInt64? = nil) {
+                       battery: BatterySample?, cpuTemp: Double? = nil) {
         self.cpuPercent = cpuPercent
         self.memory = memory
         self.network = network
         self.battery = battery
-        self.trashBytes = trashBytes
         self.cpuTempCelsius = cpuTemp
         cpuBuf.append(cpuPercent); cpuHistory = cpuBuf.values
         if let memory { memBuf.append(memory.usedFraction); memHistory = memBuf.values }
         if let network { netBuf.append(network.downBytesPerSec); netDownHistory = netBuf.values }
+    }
+
+    /// Publishes the latest Trash size (bytes). `nil` means "not yet read / unreadable" —
+    /// kept distinct from `0` ("empty"). Set off the main tick because the Trash is read via
+    /// Finder (`~/.Trash` is TCC-protected), not on the per-second collection path.
+    public func setTrashBytes(_ bytes: UInt64?) {
+        trashBytes = bytes
     }
 
     /// Clears the latest sample and all history. Called when the popover closes so
