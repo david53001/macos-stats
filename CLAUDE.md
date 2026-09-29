@@ -24,6 +24,7 @@ live sparkline; click a card → per-app breakdown with quick actions (Quit / Fo
 | Overall design spec | `docs/superpowers/specs/2026-05-29-macstats-menubar-design.md` |
 | Per-app breakdown spec | `docs/superpowers/specs/2026-05-29-macstats-per-app-breakdown-design.md` |
 | Per-app breakdown plan | `docs/superpowers/plans/2026-05-29-macstats-per-app-breakdown.md` |
+| Design language (reusable in other apps) + JVoice / BetterScreenshot redesign specs | `docs/design-language/` |
 | Approved UI mockups | `docs/mockups/menubar-mockup.html`, `docs/mockups/per-app-breakdown-mockup.html` (open in a browser) |
 
 ## To resume building
