@@ -35,8 +35,8 @@ and the per-app breakdown at [`docs/mockups/per-app-breakdown-mockup.html`](docs
 **Built:**
 - Live **CPU %** with **CPU temperature**, **Memory** (used / total + real pressure level),
   **Network** (↓/↑ speed), **Battery %**
-- Per-stat **history sparklines** (Swift Charts)
-- **Adaptive refresh** — near-zero cost when idle; 1s updates only while you're looking
+- Per-stat **history sparklines** (custom SwiftUI, Apple-style gradient; history kept between opens)
+- **Adaptive refresh** — near-zero cost when idle (one cheap sample every 10s); 0.5s updates only while you're looking
 - **Per-app breakdown** — click the **CPU** or **Memory** card to drill into the apps using
   that resource, grouped by app and ranked; right-click a row to **Quit** or **Force Quit**.
   Per-process scanning runs only while a breakdown is open.
@@ -91,7 +91,7 @@ To quit: open the popover → **Quit** (or `pkill MacStats`).
 
 ## Tech stack
 
-Swift · SwiftUI (`MenuBarExtra`) · Swift Charts · IOKit / Mach / `getifaddrs` · Swift Package Manager
+Swift · SwiftUI (`MenuBarExtra`) · IOKit / Mach / `getifaddrs` · Swift Package Manager
 
 ## Roadmap
 

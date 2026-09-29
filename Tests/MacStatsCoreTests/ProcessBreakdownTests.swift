@@ -87,4 +87,9 @@ import Testing
     @Test func emptyInputYieldsEmpty() {
         #expect(aggregate([], by: .cpu).isEmpty)
     }
+
+    @Test func tiesKeepStablePidOrder() {
+        let procs = [30, 10, 20].map { ProcessUsage(pid: Int32($0), appPID: Int32($0), cpuPercent: 0, memoryBytes: 0) }
+        #expect(aggregate(procs, by: .cpu).map(\.appPID) == [10, 20, 30])
+    }
 }

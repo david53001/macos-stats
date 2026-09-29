@@ -7,7 +7,7 @@ import SwiftUI
 struct StatCard<Graph: View>: View {
     let label: String
     let value: String
-    /// Numeric form of `value`, which drives the rolling-digit transition.
+    /// Numeric form of `value`, which keys the soft number-change transition.
     let number: Double
     let meta: String
     /// Optional status dot before `meta` (memory pressure).
@@ -37,8 +37,8 @@ struct StatCard<Graph: View>: View {
                 Text(value)
                     .font(.title3).fontWeight(.semibold)
                     .monospacedDigit()
-                    .contentTransition(.numericText(value: number))
-                    .animation(.snappy(duration: 0.3), value: number)
+                    .contentTransition(.interpolate)
+                    .animation(.easeInOut(duration: 0.25), value: number)
                 HStack(spacing: 4) {
                     if let metaDot {
                         Circle().fill(metaDot).frame(width: 6, height: 6)
@@ -47,8 +47,8 @@ struct StatCard<Graph: View>: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .animation(.snappy(duration: 0.3), value: meta)
+                        .contentTransition(.interpolate)
+                        .animation(.easeInOut(duration: 0.25), value: meta)
                 }
             }
             .lineLimit(1)

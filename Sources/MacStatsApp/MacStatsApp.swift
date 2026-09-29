@@ -48,6 +48,7 @@ final class AppModel: ObservableObject {
         LoginItem.registerOnce()
         notifier.requestAuthorization()
         sample(at: Date())   // just stores the first baseline; history starts at the next sample
+        readSlowSensors()    // so even the first open has battery + temperature on frame one
         startIdleSampler()
     }
 
@@ -126,6 +127,14 @@ final class AppModel: ObservableObject {
         let now = Date()
         if let last = snapshots.last?.time, now.timeIntervalSince(last) < prewarmMinInterval { return }
         sample(at: now)
+        readSlowSensors()
+    }
+
+    /// Battery + temperature aren't sampled while closed, so refresh them ahead of an open
+    /// (launch, hover); otherwise the first frame would show placeholders that then roll in.
+    private func readSlowSensors() {
+        store.setBattery(readBattery())
+        store.setCPUTemperature(thermal.read())
     }
 
     func enterBreakdown(_ metric: MacStatsCore.BreakdownMetric) {

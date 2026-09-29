@@ -90,5 +90,10 @@ public func aggregate(_ processes: [ProcessUsage], by metric: BreakdownMetric) -
     let apps = byApp.map { appPID, e in
         AppUsage(appPID: appPID, pids: e.pids, cpuPercent: e.cpu, memoryBytes: e.mem)
     }
-    return apps.sorted { $0.value(for: metric) > $1.value(for: metric) }
+    // Ties (e.g. many idle apps at 0% CPU) break by pid, so equal rows keep a stable order
+    // between scans instead of shuffling with dictionary iteration order.
+    return apps.sorted {
+        let (a, b) = ($0.value(for: metric), $1.value(for: metric))
+        return a != b ? a > b : $0.appPID < $1.appPID
+    }
 }

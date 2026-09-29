@@ -46,8 +46,8 @@ struct BreakdownView: View {
                 Spacer()
                 Text(liveTotal)
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                    .contentTransition(.numericText(value: liveTotalNumber))
-                    .animation(.snappy(duration: 0.3), value: liveTotalNumber)
+                    .contentTransition(.interpolate)
+                    .animation(.easeInOut(duration: 0.25), value: liveTotalNumber)
             }
 
             list
@@ -93,8 +93,6 @@ struct BreakdownView: View {
                     }
                 }
                 .padding(4)
-                // Rows glide to their new rank instead of jumping when the order changes.
-                .animation(.snappy(duration: 0.3), value: store.breakdown.map(\.appPID))
             }
         }
     }
@@ -142,8 +140,8 @@ private struct AppRow: View {
             Spacer(minLength: 8)
             Text(valueText)
                 .font(.callout).fontWeight(.semibold).monospacedDigit()
-                .contentTransition(.numericText(value: app.value(for: metric)))
-                .animation(.snappy(duration: 0.3), value: app.value(for: metric))
+                .contentTransition(.interpolate)
+                .animation(.easeInOut(duration: 0.25), value: app.value(for: metric))
                 .frame(width: 62, alignment: .trailing)
         }
         .padding(.horizontal, 8).padding(.vertical, 6)

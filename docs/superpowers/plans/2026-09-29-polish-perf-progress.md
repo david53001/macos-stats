@@ -33,11 +33,15 @@ before merging, find their work with `git worktree list` and `git branch`, then 
 
 - [x] Base scaffolding committed: `SamplePoint` (Core), time-stamped histories in `MetricsStore`, `Design.swift` shared
       geometry, `@main` moved to `MacStatsMain.swift`, `AppModel.prewarm()` stub, placeholder `Sparkline` (no Charts).
-- [ ] Agent A — data pipeline & perf (Core + `AppModel`).
-- [ ] Agent B — visuals (Sparkline, cards, overview/breakdown, transitions, icon cache, Force Quit via NSAlert).
+- [x] Agent A — data pipeline & perf (Core + `AppModel`) — merged.
+- [x] Agent B — visuals (Sparkline, cards, overview/breakdown, transitions, icon cache, Force Quit via NSAlert) — merged.
 - [x] Lead — hover pre-warm hook (`StatusItemHover.swift`, wired in `MacStatsMain.swift`); keep `MenuBarExtra`.
-- [ ] Merge A and B (worktree branches), bundle, screenshot/screen-record the open, measure RAM vs the 46 MB baseline.
-- [ ] Update `CLAUDE.md` / `README.md` status + the Swift Charts locked decision.
+- [x] Merged, bundled, screenshot/screen-recorded: open is complete on frame one; RAM 46→40 MB footprint, peak 121→41 MB.
+- [x] User feedback after preview: subtler number changes (`.interpolate` fade, no rolling digits), no graph end dot,
+      keep the gradient highlight, graph slides slowly/linearly per 0.5s sample. Breakdown rows no longer animate
+      reordering; ties sort by pid.
+- [x] `CLAUDE.md` / `README.md` updated.
+- [ ] Next: user eyeballs the live app; merge `feat/polish-perf` when happy.
 
 ## How to check the UI without clicking
 `osascript -e 'tell application "System Events" to tell process "MacStats" to click menu bar item 1 of menu bar 2'`
