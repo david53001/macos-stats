@@ -1,4 +1,5 @@
 import SwiftUI
+import MacStatsCore
 
 /// One row in the overview popover: label + big value + secondary line + sparkline.
 /// When `onTap` is set, the whole row is clickable and shows a trailing chevron
@@ -8,7 +9,7 @@ struct StatCard: View {
     let value: String
     let meta: String
     let color: Color
-    let history: [Double]
+    let history: [SamplePoint]
     let maxValue: Double
     var onTap: (() -> Void)? = nil
 
@@ -28,7 +29,7 @@ struct StatCard: View {
             }
             .frame(width: 118, alignment: .leading)
 
-            Sparkline(values: history, color: color, maxValue: maxValue)
+            Sparkline(points: history, color: color, maxValue: maxValue)
 
             if onTap != nil {
                 Image(systemName: "chevron.right")

@@ -10,9 +10,9 @@ public final class MetricsStore: ObservableObject {
     @Published public private(set) var network: NetworkSample?
     @Published public private(set) var battery: BatterySample?
 
-    @Published public private(set) var cpuHistory: [Double] = []      // percent 0...100
-    @Published public private(set) var memHistory: [Double] = []      // used fraction 0...1
-    @Published public private(set) var netDownHistory: [Double] = []  // bytes/sec
+    @Published public private(set) var cpuHistory: [SamplePoint] = []      // percent 0...100
+    @Published public private(set) var memHistory: [SamplePoint] = []      // used fraction 0...1
+    @Published public private(set) var netDownHistory: [SamplePoint] = []  // bytes/sec
 
     @Published public private(set) var trashBytes: UInt64?
 
@@ -22,9 +22,9 @@ public final class MetricsStore: ObservableObject {
     @Published public private(set) var breakdownMeasuring: Bool = false
     @Published public private(set) var activeBreakdownMetric: BreakdownMetric?
 
-    private var cpuBuf: RingBuffer<Double>
-    private var memBuf: RingBuffer<Double>
-    private var netBuf: RingBuffer<Double>
+    private var cpuBuf: RingBuffer<SamplePoint>
+    private var memBuf: RingBuffer<SamplePoint>
+    private var netBuf: RingBuffer<SamplePoint>
 
     public init(historyCapacity: Int = 60) {
         cpuBuf = RingBuffer(capacity: historyCapacity)
@@ -33,15 +33,20 @@ public final class MetricsStore: ObservableObject {
     }
 
     public func update(cpuPercent: Double, memory: MemorySample?, network: NetworkSample?,
-                       battery: BatterySample?, cpuTemp: Double? = nil) {
+                       battery: BatterySample?, cpuTemp: Double? = nil,
+                       time: TimeInterval = Date().timeIntervalSinceReferenceDate) {
         self.cpuPercent = cpuPercent
         self.memory = memory
         self.network = network
         self.battery = battery
         self.cpuTempCelsius = cpuTemp
-        cpuBuf.append(cpuPercent); cpuHistory = cpuBuf.values
-        if let memory { memBuf.append(memory.usedFraction); memHistory = memBuf.values }
-        if let network { netBuf.append(network.downBytesPerSec); netDownHistory = netBuf.values }
+        cpuBuf.append(SamplePoint(time: time, value: cpuPercent)); cpuHistory = cpuBuf.values
+        if let memory {
+            memBuf.append(SamplePoint(time: time, value: memory.usedFraction)); memHistory = memBuf.values
+        }
+        if let network {
+            netBuf.append(SamplePoint(time: time, value: network.downBytesPerSec)); netDownHistory = netBuf.values
+        }
     }
 
     /// Publishes the latest Trash size (bytes). `nil` means "not yet read / unreadable" —

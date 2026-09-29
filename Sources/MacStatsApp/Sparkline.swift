@@ -1,27 +1,28 @@
 import SwiftUI
-import Charts
+import MacStatsCore
 
-/// A compact area+line chart for a metric's recent history.
+/// A compact line chart of a metric's recent history on a fixed time axis: the newest
+/// point sits at the right edge and `window` seconds span the full width.
+/// (Placeholder polyline — replaced by the Apple-style chart in the polish work.)
 struct Sparkline: View {
-    let values: [Double]
+    let points: [SamplePoint]
     let color: Color
     let maxValue: Double   // upper bound for the Y scale (0 if dynamic)
+    var window: TimeInterval = 60
 
     var body: some View {
-        let upper = max(maxValue, values.max() ?? 1, 1)
-        Chart(Array(values.enumerated()), id: \.offset) { index, value in
-            AreaMark(x: .value("i", index), y: .value("v", value))
-                .foregroundStyle(
-                    LinearGradient(colors: [color.opacity(0.45), color.opacity(0)],
-                                   startPoint: .top, endPoint: .bottom)
-                )
-            LineMark(x: .value("i", index), y: .value("v", value))
-                .foregroundStyle(color)
-                .lineStyle(StrokeStyle(lineWidth: 1.6))
+        let upper = max(maxValue, points.map(\.value).max() ?? 1, 1)
+        let end = points.last?.time ?? 0
+        GeometryReader { geo in
+            Path { path in
+                for (i, p) in points.enumerated() {
+                    let pt = CGPoint(x: geo.size.width * (1 - (end - p.time) / window),
+                                     y: geo.size.height * (1 - p.value / upper))
+                    if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
+                }
+            }
+            .stroke(color, lineWidth: 1.6)
         }
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
-        .chartYScale(domain: 0...upper)
         .frame(height: 36)
     }
 }

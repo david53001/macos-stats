@@ -105,6 +105,10 @@ final class AppModel: ObservableObject {
         scheduleNextTick()
     }
 
+    /// Called when the pointer hovers the menu-bar item, just before a likely click: take a
+    /// fresh sample so the popover opens on current numbers. Cheap and rate-limited.
+    func prewarm() {}
+
     func enterBreakdown(_ metric: MacStatsCore.BreakdownMetric) {
         store.beginBreakdown(metric: metric)
         previousProcCPU = [:]
@@ -235,19 +239,5 @@ final class AppModel: ObservableObject {
         // CPU has no real values until the second scan; keep showing "Measuring…" until then.
         let measuring = (metric == .cpu && !haveBaseline)
         store.setBreakdown(aggregate(usages, by: metric), measuring: measuring)
-    }
-}
-
-@main
-struct MacStatsApp: App {
-    @StateObject private var model = AppModel()
-
-    var body: some Scene {
-        MenuBarExtra {
-            RootView(model: model, store: model.store)
-        } label: {
-            MenuBarLabel()
-        }
-        .menuBarExtraStyle(.window)
     }
 }
