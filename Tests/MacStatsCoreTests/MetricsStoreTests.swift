@@ -2,42 +2,58 @@ import Testing
 @testable import MacStatsCore
 
 @Suite @MainActor struct MetricsStoreTests {
-    @Test func keepsLatestAndBoundedHistory() {
-        let store = MetricsStore(historyCapacity: 2)
-        store.update(cpuPercent: 10, memory: nil, network: nil, battery: nil)
-        store.update(cpuPercent: 20, memory: nil, network: nil, battery: nil)
-        store.update(cpuPercent: 30, memory: nil, network: nil, battery: nil)
-        #expect(store.cpuPercent == 30)
-        #expect(store.cpuHistory.map(\.value) == [20, 30]) // capacity 2
-    }
+    private let mem = MemorySample(usedBytes: 50, totalBytes: 100, pressure: .normal)
+    private let net = NetworkSample(downBytesPerSec: 100, upBytesPerSec: 50)
 
-    @Test func memoryHistoryTracksUsedFraction() {
-        let store = MetricsStore(historyCapacity: 5)
-        let mem = MemorySample(usedBytes: 50, totalBytes: 100, pressure: .normal)
-        store.update(cpuPercent: 0, memory: mem, network: nil, battery: nil)
-        #expect(store.memHistory.map(\.value) == [0.5])
+    @Test func recordKeepsLatestAndAppendsHistory() {
+        let store = MetricsStore()
+        store.record(cpuPercent: 10, memory: mem, network: net, time: 0)
+        store.record(cpuPercent: 20, memory: mem, network: net, time: 1)
+        #expect(store.cpuPercent == 20)
+        #expect(store.cpuHistory.map(\.value) == [10, 20])
+        #expect(store.cpuHistory.map(\.time) == [0, 1])
+        #expect(store.memHistory.map(\.value) == [0.5, 0.5])
+        #expect(store.netDownHistory.map(\.value) == [100, 100])
         #expect(store.memory?.usedBytes == 50)
+        #expect(store.network == net)
     }
 
-    @Test func resetClearsLatestAndHistory() {
-        let store = MetricsStore(historyCapacity: 5)
-        let mem = MemorySample(usedBytes: 50, totalBytes: 100, pressure: .normal)
-        let net = NetworkSample(downBytesPerSec: 100, upBytesPerSec: 50)
-        store.update(cpuPercent: 42, memory: mem, network: net, battery: nil)
+    @Test func historyIsTrimmedByTime() {
+        let store = MetricsStore(historyWindow: 60)
+        for t in stride(from: 0.0, through: 100, by: 10) {   // 0, 10, …, 100
+            store.record(cpuPercent: t, memory: mem, network: net, time: t)
+        }
+        // Newest is 100: keep 50…100 (inside the window) plus 40, the one point just older.
+        #expect(store.cpuHistory.map(\.time) == [40, 50, 60, 70, 80, 90, 100])
+        #expect(store.memHistory.count == 7)
+        #expect(store.netDownHistory.count == 7)
+    }
 
-        store.reset()
+    @Test func historyHasHardCountCap() {
+        let store = MetricsStore(historyWindow: 60, maxHistoryPoints: 3)
+        for t in 0..<10 { store.record(cpuPercent: Double(t), memory: mem, network: net, time: Double(t)) }
+        #expect(store.cpuHistory.map(\.value) == [7, 8, 9])
+    }
 
-        #expect(store.cpuPercent == 0)
-        #expect(store.memory == nil)
-        #expect(store.network == nil)
+    @Test func recordDoesNotClobberBatteryOrTemperature() {
+        let store = MetricsStore()
+        let bat = BatterySample(percent: 80, isCharging: false, timeToEmptyMinutes: 120)
+        store.setBattery(bat)
+        store.setCPUTemperature(47)
+        store.record(cpuPercent: 5, memory: mem, network: net, time: 0)
+        #expect(store.battery == bat)
+        #expect(store.cpuTempCelsius == 47)
+    }
+
+    @Test func slowSettersDoNotTouchHistory() {
+        let store = MetricsStore()
+        store.record(cpuPercent: 5, memory: mem, network: net, time: 0)
+        store.setBattery(nil)            // nil = no battery
+        store.setCPUTemperature(nil)     // nil = no usable sensor
         #expect(store.battery == nil)
-        #expect(store.cpuHistory.isEmpty)
-        #expect(store.memHistory.isEmpty)
-        #expect(store.netDownHistory.isEmpty)
-
-        // After reset, history rebuilds from empty.
-        store.update(cpuPercent: 5, memory: nil, network: nil, battery: nil)
-        #expect(store.cpuHistory.map(\.value) == [5])
+        #expect(store.cpuTempCelsius == nil)
+        #expect(store.cpuPercent == 5)
+        #expect(store.cpuHistory.count == 1)
     }
 
     @Test func breakdownLifecycle() {
@@ -62,13 +78,5 @@ import Testing
         let store = MetricsStore()
         store.beginBreakdown(metric: .memory)
         #expect(store.breakdownMeasuring == false)       // memory is instantaneous
-    }
-
-    @Test func resetClearsBreakdown() {
-        let store = MetricsStore()
-        store.beginBreakdown(metric: .cpu)
-        store.reset()
-        #expect(store.activeBreakdownMetric == nil)
-        #expect(store.breakdown.isEmpty)
     }
 }

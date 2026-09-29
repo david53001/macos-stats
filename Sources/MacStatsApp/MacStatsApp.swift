@@ -1,15 +1,21 @@
 import AppKit
+import Darwin
 import SwiftUI
 import MacStatsCore
 
-/// Owns the store, the syscall pipeline, and the adaptive refresh timer.
+/// Owns the store, the syscall pipeline, and the adaptive refresh timers.
+///
+/// One sampling path (`sample`) serves both modes: while the popover is closed a 10s timer
+/// runs it (alerts + a coarse history, so the graph isn't empty on open); while open a 0.5s
+/// timer runs it plus the slower sensor tiers (temperature ~2s, battery ~10s).
 @MainActor
 final class AppModel: ObservableObject {
-    let store = MetricsStore(historyCapacity: 60)
+    let store = MetricsStore(historyWindow: 60)
 
-    private var timer: Timer?
+    private var timer: Timer?                    // open-popover tick (one-shot, rescheduled)
+    private var idleTimer: Timer?                // closed-popover sampler (repeating)
+    private var reliefTimer: Timer?              // returns freed memory to the OS after close
     private var visibility: MacStatsCore.Visibility = .idle
-    private var samplesSinceOpen = 0
 
     /// Dedicated per-process scan loop — exists only while a breakdown is open, so the
     /// expensive enumeration never runs otherwise. Kept separate from the sparkline `tick`.
@@ -17,9 +23,11 @@ final class AppModel: ObservableObject {
     private var previousProcCPU: [Int32: UInt64] = [:]   // pid → last cumulative CPU ns
     private var lastProcScan: Date?
 
-    /// Cumulative-counter snapshots, oldest→newest, covering ~`rateWindowSeconds`. Rates are
-    /// diffed against the snapshot ~1s back (see `rateBaselineIndex`) so they stay a stable
-    /// trailing average and the fast opening fill doesn't inflate them.
+    /// Cumulative-counter snapshots, oldest→newest, covering ~`rateWindowSeconds` (just the
+    /// last two while idle). Rates diff against the snapshot ~1s back (see `rateBaselineIndex`)
+    /// so fast ticks still show a stable trailing average. Survives close/open, so the first
+    /// sample after opening diffs against the idle sampler's last reading — real values on the
+    /// first frame with no wait.
     private var snapshots: [Snapshot] = []
     private struct Snapshot {
         let time: Date
@@ -27,16 +35,20 @@ final class AppModel: ObservableObject {
         let net: NetCounters
     }
 
+    private let thermal = CPUTemperatureReader()
+    private var lastTempRead: Date?
+    private var lastBatteryRead: Date?
+    private let totalMemory = ProcessInfo.processInfo.physicalMemory
+
     private let alertMonitor = AlertMonitor()
     private let notifier = AlertNotifier()
     private let alertsEnabled = true            // no Settings UI yet; default on
-    private var alertTimer: Timer?
-    private var alertBaselineCPU: CPUTicks?      // baseline for the slow idle CPU sample
 
     init() {
         LoginItem.registerOnce()
         notifier.requestAuthorization()
-        startAlertSampler()
+        sample(at: Date())   // just stores the first baseline; history starts at the next sample
+        startIdleSampler()
     }
 
     func setVisibility(_ newValue: MacStatsCore.Visibility) {
@@ -44,79 +56,89 @@ final class AppModel: ObservableObject {
         visibility = newValue
         switch newValue {
         case .popoverOpen:
-            stopAlertSampler()
-            // Seed the trailing-window baseline now so rates measure from when the popover
-            // opened, not from however long it sat closed. Then start the fill from sample 0.
-            samplesSinceOpen = 0
-            snapshots = [Snapshot(time: Date(), cpu: readCPUTicks(), net: readNetCounters())]
-            scheduleNextTick()
+            stopIdleSampler()
+            reliefTimer?.invalidate()
+            reliefTimer = nil
+            // Force the slow tiers on this first tick, and run it synchronously so every value
+            // is real before the first frame (rates diff against the idle sampler's snapshots).
+            lastTempRead = nil
+            lastBatteryRead = nil
+            tick()
             refreshTrashSize()
         case .idle:
             timer?.invalidate()
             timer = nil
             exitBreakdown()   // stop per-process scanning + clear nav state
-            store.reset() // each open session starts with a fresh sparkline
-            startAlertSampler()
+            startIdleSampler()
+            scheduleMemoryRelief()
         }
     }
 
-    /// Schedules the next sample as a one-shot timer. The interval is short during the
-    /// opening burst (fills the sparkline with real data fast) and settles to the steady
-    /// cadence afterward — see `openPhaseInterval`.
     private func scheduleNextTick() {
         timer?.invalidate()
-        let interval = openPhaseInterval(samplesSinceOpen: samplesSinceOpen)
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
-            Task { @MainActor in self?.tick() }
-        }
+        timer = makeTimer(after: refreshInterval(for: .popoverOpen),
+                          tolerance: refreshTolerance(for: .popoverOpen)) { $0.tick() }
     }
 
     private func tick() {
         // A one-shot timer fired after `setVisibility(.idle)` could still be in flight;
         // bail rather than collect or reschedule.
         guard visibility == .popoverOpen else { return }
-
         let now = Date()
-        let curCPU = readCPUTicks()
-        let curNet = readNetCounters()
-        snapshots.append(Snapshot(time: now, cpu: curCPU, net: curNet))
-
-        // Diff against the snapshot ~`rateWindowSeconds` back so rates are a stable trailing
-        // average independent of the (ramping) sample cadence; drop anything older than that.
-        let base = rateBaselineIndex(times: snapshots.map { $0.time.timeIntervalSinceReferenceDate },
-                                     now: now.timeIntervalSinceReferenceDate, window: rateWindowSeconds)
-        if base > 0 { snapshots.removeFirst(base) }
-        let baseline = snapshots[0]
-
-        let cpu = cpuBusyPercent(previous: baseline.cpu, current: curCPU)
-        let net = networkThroughput(previous: baseline.net, current: curNet,
-                                    secondsElapsed: now.timeIntervalSince(baseline.time))
-        let mem = memorySample(raw: readVMRaw(),
-                               totalBytes: ProcessInfo.processInfo.physicalMemory,
-                               pressureLevel: readMemoryPressureLevel())
-        let bat = readBattery()
-
-        let temp = cpuTemperature(from: readAppleThermalSensors())
-        store.update(cpuPercent: cpu, memory: mem, network: net, battery: bat,
-                     cpuTemp: temp)
-        fireAlerts(cpu: cpu, pressure: mem.pressure)
-
-        samplesSinceOpen += 1
+        sample(at: now)
+        if isDue(last: lastTempRead, now: now, every: temperatureInterval) {
+            store.setCPUTemperature(thermal.read())
+            lastTempRead = now
+        }
+        if isDue(last: lastBatteryRead, now: now, every: batteryInterval) {
+            store.setBattery(readBattery())
+            lastBatteryRead = now
+        }
         scheduleNextTick()
     }
 
-    /// Called when the pointer hovers the menu-bar item, just before a likely click: take a
-    /// fresh sample so the popover opens on current numbers. Cheap and rate-limited.
-    func prewarm() {}
+    /// The cheap every-tick read (CPU ticks, net counters, VM stats — microseconds): computes
+    /// rates over the trailing window, records latest values + history, and feeds alerts.
+    /// Only stores a baseline when there's no earlier snapshot to diff against.
+    private func sample(at now: Date) {
+        snapshots.append(Snapshot(time: now, cpu: readCPUTicks(), net: readNetCounters()))
+        let base = rateBaselineIndex(times: snapshots.lazy.map { $0.time.timeIntervalSinceReferenceDate },
+                                     now: now.timeIntervalSinceReferenceDate, window: rateWindowSeconds)
+        if base > 0 { snapshots.removeFirst(base) }
+        guard snapshots.count > 1, let current = snapshots.last else { return }
+        let baseline = snapshots[0]
+
+        let cpu = cpuBusyPercent(previous: baseline.cpu, current: current.cpu)
+        let net = networkThroughput(previous: baseline.net, current: current.net,
+                                    secondsElapsed: now.timeIntervalSince(baseline.time))
+        let mem = memorySample(raw: readVMRaw(), totalBytes: totalMemory,
+                               pressureLevel: readMemoryPressureLevel())
+        store.record(cpuPercent: cpu, memory: mem, network: net,
+                     time: now.timeIntervalSinceReferenceDate)
+        fireAlerts(cpu: cpu, pressure: mem.pressure, at: now)
+    }
+
+    /// Called when the pointer hovers the menu-bar item, just before a likely click: take an
+    /// idle-style sample now so the popover opens on current numbers. Rate-limited, and a
+    /// no-op while open (the open tick is already live).
+    func prewarm() {
+        guard visibility == .idle else { return }
+        let now = Date()
+        if let last = snapshots.last?.time, now.timeIntervalSince(last) < prewarmMinInterval { return }
+        sample(at: now)
+    }
 
     func enterBreakdown(_ metric: MacStatsCore.BreakdownMetric) {
         store.beginBreakdown(metric: metric)
         previousProcCPU = [:]
         lastProcScan = nil
         procScanTick()   // first scan establishes the CPU baseline (CPU stays "measuring")
+        // Second scan soon after, so CPU leaves "Measuring…" quickly; then the steady cadence.
         procTimer?.invalidate()
-        procTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.procScanTick() }
+        procTimer = makeTimer(after: breakdownFirstRescanDelay, tolerance: 0.03) { model in
+            model.procScanTick()
+            model.procTimer = model.makeTimer(after: breakdownScanInterval, tolerance: 0.1,
+                                              repeats: true) { $0.procScanTick() }
         }
     }
 
@@ -173,38 +195,52 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Slow background sampler: reads only system-wide CPU% + memory pressure (no per-app
-    /// scan, no sparkline writes) and feeds the alert monitor. Runs while the popover is closed.
-    private func startAlertSampler() {
-        guard alertsEnabled else { return }
-        alertTimer?.invalidate()
-        alertBaselineCPU = readCPUTicks()
-        alertTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval(for: .idle),
-                                          repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.alertSampleTick() }
+    /// Background sampler while the popover is closed: CPU%, memory and network every ~10s
+    /// (no per-app scan, no temperature/battery). Feeds alerts and keeps the history warm.
+    private func startIdleSampler() {
+        idleTimer?.invalidate()
+        idleTimer = makeTimer(after: refreshInterval(for: .idle), tolerance: refreshTolerance(for: .idle),
+                              repeats: true) { $0.sample(at: Date()) }
+    }
+
+    private func stopIdleSampler() {
+        idleTimer?.invalidate()
+        idleTimer = nil
+    }
+
+    /// After the popover closes SwiftUI frees the view's memory, but malloc keeps those pages
+    /// for reuse (measured: ~24MB held that way). Once teardown has settled, hand them back.
+    private func scheduleMemoryRelief() {
+        reliefTimer?.invalidate()
+        reliefTimer = makeTimer(after: 1.5, tolerance: 0.5) { model in
+            model.reliefTimer = nil
+            guard model.visibility == .idle else { return }
+            malloc_zone_pressure_relief(nil, 0)
         }
     }
 
-    private func stopAlertSampler() {
-        alertTimer?.invalidate()
-        alertTimer = nil
-        alertBaselineCPU = nil
+    /// A main-run-loop timer with coalescing tolerance. `.common` mode so it keeps firing while
+    /// a scroll view is tracking (default-mode timers pause then). Timers on the main run loop
+    /// fire on the main thread, hence `assumeIsolated` instead of allocating a `Task` per tick.
+    private func makeTimer(after interval: TimeInterval, tolerance: TimeInterval, repeats: Bool = false,
+                           _ action: @escaping @MainActor (AppModel) -> Void) -> Timer {
+        let timer = Timer(timeInterval: interval, repeats: repeats) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                action(self)
+            }
+        }
+        timer.tolerance = tolerance
+        RunLoop.main.add(timer, forMode: .common)
+        return timer
     }
 
-    private func alertSampleTick() {
-        let current = readCPUTicks()
-        defer { alertBaselineCPU = current }
-        guard let baseline = alertBaselineCPU else { return }   // need two samples
-        let cpu = cpuBusyPercent(previous: baseline, current: current)
-        let pressure = memoryPressure(fromLevel: readMemoryPressureLevel())
-        fireAlerts(cpu: cpu, pressure: pressure)
-    }
-
-    /// Feeds the monitor and posts whatever it returns. Shared by the idle sampler and the
-    /// open-popover tick, so alerts fire regardless of visibility.
-    private func fireAlerts(cpu: Double, pressure: MemoryPressure) {
+    /// Feeds the monitor and posts whatever it returns. Shared by every sample (idle, prewarm,
+    /// open), so alerts fire regardless of visibility. The monitor is time-based, so the
+    /// irregular cadence doesn't change when an alert fires.
+    private func fireAlerts(cpu: Double, pressure: MemoryPressure, at time: Date) {
         guard alertsEnabled else { return }
-        let alerts = alertMonitor.ingest(AlertSample(cpuPercent: cpu, pressure: pressure, time: Date()))
+        let alerts = alertMonitor.ingest(AlertSample(cpuPercent: cpu, pressure: pressure, time: time))
         for alert in alerts { notifier.post(alert) }
     }
 
