@@ -2,11 +2,15 @@ import Foundation
 import CoreFoundation
 import CAppleSensors
 
+/// Our shim's client type, spelled out: IOKit's own HID headers (pulled in by other imports in
+/// this module, e.g. CoreGraphics) declare a same-named type, which makes the bare name ambiguous.
+private typealias ThermalClient = CAppleSensors.IOHIDEventSystemClient
+
 private let kIOHIDEventTypeTemperature: Int64 = 15
 private let temperatureField = Int32(kIOHIDEventTypeTemperature << 16)   // 983040
 
 /// A client matching the thermal sensors (vendor usage page 0xff00, usage 5), or nil.
-private func makeThermalClient() -> IOHIDEventSystemClient? {
+private func makeThermalClient() -> ThermalClient? {
     guard let client = IOHIDEventSystemClientCreate(kCFAllocatorDefault) else { return nil }
     let matching: [String: Int] = ["PrimaryUsagePage": 0xff00, "PrimaryUsage": 5]
     IOHIDEventSystemClientSetMatching(client, matching as CFDictionary)
@@ -14,7 +18,7 @@ private func makeThermalClient() -> IOHIDEventSystemClient? {
 }
 
 /// (sensor name, service) for every sensor the client currently matches.
-private func thermalServices(_ client: IOHIDEventSystemClient) -> [(name: String, service: AnyObject)] {
+private func thermalServices(_ client: ThermalClient) -> [(name: String, service: AnyObject)] {
     guard let services = IOHIDEventSystemClientCopyServices(client) as? [AnyObject] else { return [] }
     return services.compactMap { service in
         guard let name = IOHIDServiceClientCopyProperty(service, "Product" as CFString) as? String
@@ -47,7 +51,7 @@ public func readAppleThermalSensors() -> [(name: String, celsius: Double)] {
 /// Re-discovers only while the cache is empty (e.g. no usable sensor on this chip). Not
 /// thread-safe — use from one thread (the app reads it on the main actor).
 public final class CPUTemperatureReader {
-    private let client: IOHIDEventSystemClient? = makeThermalClient()
+    private let client: ThermalClient? = makeThermalClient()
     private var cpuSensors: [(name: String, service: AnyObject)] = []
 
     public init() {}
