@@ -1,20 +1,17 @@
 #!/bin/bash
-# Build, bundle, and install MacStats into ~/Applications so Spotlight indexes it.
+# Build and install MacStats (release) into ~/Applications so Spotlight indexes it.
 # After this, typing "MacStats" in Spotlight finds the app.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# Build + assemble MacStats.app (release).
+# bundle.sh assembles straight into ~/Applications/MacStats.app — the single canonical copy.
 "$ROOT/Scripts/bundle.sh" release
 
-DEST="$HOME/Applications"
-mkdir -p "$DEST"
-rm -rf "$DEST/MacStats.app"
-cp -R "$ROOT/MacStats.app" "$DEST/MacStats.app"
+APP="$HOME/Applications/MacStats.app"
 
 # Register with Launch Services + Spotlight now, rather than waiting for the next scan.
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
-[ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$DEST/MacStats.app" || true
-mdimport "$DEST/MacStats.app" || true
+[ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$APP" || true
+mdimport "$APP" || true
 
-echo "Installed $DEST/MacStats.app — type \"MacStats\" in Spotlight to launch."
+echo "Installed $APP — type \"MacStats\" in Spotlight to launch."

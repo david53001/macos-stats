@@ -34,6 +34,7 @@ final class AppModel: ObservableObject {
     private var alertBaselineCPU: CPUTicks?      // baseline for the slow idle CPU sample
 
     init() {
+        LoginItem.registerOnce()
         notifier.requestAuthorization()
         startAlertSampler()
     }

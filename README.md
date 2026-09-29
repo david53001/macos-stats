@@ -43,6 +43,8 @@ and the per-app breakdown at [`docs/mockups/per-app-breakdown-mockup.html`](docs
 - **Threshold alerts** — a notification when CPU runs sustained-high or the system hits real
   memory pressure, even while the popover is closed (lightweight 10s background check).
 - **Empty Trash** — a Trash-size readout and a one-click Empty (confirms first).
+- **Launch at login** — enrolls itself to start at login on first run; manage it any time in
+  System Settings → General → Login Items (removing it there sticks).
 
 **Planned:**
 - Live **power (watts)** / battery health & cycle count
@@ -67,8 +69,8 @@ happens only when you drill into a card.
 ```bash
 swift build            # compile
 ./Scripts/test.sh      # run the test suite (Swift Testing — NOT bare `swift test`)
-./Scripts/bundle.sh    # assemble MacStats.app
-open MacStats.app      # launch (appears in the menu bar, no Dock icon)
+./Scripts/bundle.sh    # build + install ~/Applications/MacStats.app
+open ~/Applications/MacStats.app   # launch (appears in the menu bar, no Dock icon)
 ```
 
 > Tests use **Swift Testing**; `Scripts/test.sh` adds the framework search path that a bare
@@ -78,7 +80,9 @@ open MacStats.app      # launch (appears in the menu bar, no Dock icon)
 > binary) and macOS notification permission on first launch. **Empty Trash** asks once for
 > permission to control Finder (System Settings → Privacy & Security → Automation). **CPU
 > temperature** uses a private IOKit sensor API and shows the SoC die temperature on Apple
-> Silicon; if no usable sensor is found it falls back to showing "live".
+> Silicon; if no usable sensor is found it falls back to showing "live". **Launch at login**
+> likewise needs the bundled, signed app (the API keys off the app bundle) — install it to
+> `~/Applications` via `./Scripts/install.sh` for reliable startup.
 
 To quit: open the popover → **Quit** (or `pkill MacStats`).
 
