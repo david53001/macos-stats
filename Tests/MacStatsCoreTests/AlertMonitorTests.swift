@@ -50,6 +50,32 @@ import Foundation
         #expect(m.ingest(sample(cpu: 0, .normal, at: 30)) == [])
         #expect(m.ingest(sample(cpu: 0, .critical, at: 400)) == [.memoryPressure])
     }
+    @Test func denseSamplesFireOnElapsedTimeNotSampleCount() {
+        // 0.5s open-popover samples: 60 samples in 29.5s must not fire; 30s must.
+        let m = monitor()
+        for s in stride(from: 0.0, through: 29.5, by: 0.5) {
+            #expect(m.ingest(sample(cpu: 90, .normal, at: s)) == [])
+        }
+        #expect(m.ingest(sample(cpu: 90, .normal, at: 30)) == [.highCPU])
+    }
+    @Test func mixedIrregularCadenceStillMeasuresSustainByTime() {
+        // Idle 10s samples, a prewarm at 23s, then 0.5s open ticks — fires exactly at 30s.
+        let m = monitor()
+        for s in [0.0, 10, 20, 23, 23.5, 29.5] {
+            #expect(m.ingest(sample(cpu: 90, .normal, at: s)) == [])
+        }
+        #expect(m.ingest(sample(cpu: 90, .normal, at: 30)) == [.highCPU])
+    }
+    @Test func extraSamplesDuringCooldownDoNotRefire() {
+        let m = monitor()
+        _ = m.ingest(sample(cpu: 90, .normal, at: 0))
+        #expect(m.ingest(sample(cpu: 90, .normal, at: 30)) == [.highCPU])
+        _ = m.ingest(sample(cpu: 50, .normal, at: 31))              // recovered
+        for s in stride(from: 40.0, to: 330, by: 0.5) {             // dense, above, in cooldown
+            #expect(m.ingest(sample(cpu: 90, .normal, at: s)) == [])
+        }
+        #expect(m.ingest(sample(cpu: 90, .normal, at: 330)) == [.highCPU])   // 300s after 30
+    }
     @Test func bothCanFireInOneSample() {
         let m = monitor()
         _ = m.ingest(sample(cpu: 90, .normal, at: 0))
