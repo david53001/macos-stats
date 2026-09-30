@@ -1,4 +1,5 @@
 import SwiftUI
+import MacStatsCore
 
 /// One inset card in the overview: label + big value + secondary line on the left, a
 /// graph (sparkline or gauge) on the right. When `onTap` is set the whole card is a button
@@ -70,11 +71,13 @@ struct StatCard<Graph: View>: View {
 /// The inset card surface: a faint fill (the blurred window shows through) and a hairline,
 /// with continuous (squircle) corners concentric with the panel.
 struct CardBackground: View {
-    var fill: Double = Design.cardFill
+    /// nil = the resting fill, which thins slightly with the Opacity setting (`UIOpacity`).
+    var fill: Double? = nil
+    @AppStorage(UIOpacity.key) private var uiOpacity = UIOpacity.defaultValue
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Design.cardCornerRadius, style: .continuous)
-        shape.fill(Color.primary.opacity(fill))
+        shape.fill(Color.primary.opacity(fill ?? UIOpacity.cardFill(uiOpacity, designed: Design.cardFill)))
             .overlay(shape.strokeBorder(Color.primary.opacity(Design.cardHairline), lineWidth: 0.5))
     }
 }
@@ -93,7 +96,7 @@ struct CardButtonStyle: ButtonStyle {
         var body: some View {
             label
                 .background(CardBackground(fill: isPressed ? Design.cardPressedFill
-                                            : hovering ? Design.cardHoverFill : Design.cardFill))
+                                            : hovering ? Design.cardHoverFill : nil))
                 .scaleEffect(isPressed ? 0.985 : 1)
                 .animation(.easeOut(duration: 0.12), value: hovering)
                 .animation(.easeOut(duration: 0.08), value: isPressed)

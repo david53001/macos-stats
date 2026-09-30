@@ -7,6 +7,7 @@ struct OverviewView: View {
     /// Drill into a category's per-app breakdown. Only CPU & Memory pass this in.
     var onSelect: (BreakdownMetric) -> Void
     var onEmptyTrash: () -> Void
+    var onSettings: () -> Void
 
     var body: some View {
         VStack(spacing: Design.cardSpacing) {
@@ -34,7 +35,7 @@ struct OverviewView: View {
             }
 
             trashCard
-            PanelFooter()
+            PanelFooter { SettingsButton(action: onSettings) }
         }
         .padding([.horizontal, .bottom], Design.panelInset)
         .frame(width: Design.panelWidth, height: Design.panelHeight, alignment: .top)
