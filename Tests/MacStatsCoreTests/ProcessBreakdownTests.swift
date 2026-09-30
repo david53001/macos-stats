@@ -92,4 +92,21 @@ import Testing
         let procs = [30, 10, 20].map { ProcessUsage(pid: Int32($0), appPID: Int32($0), cpuPercent: 0, memoryBytes: 0) }
         #expect(aggregate(procs, by: .cpu).map(\.appPID) == [10, 20, 30])
     }
+
+    @Test func processWattsFromEnergyDelta() {
+        #expect(processWatts(previousNj: 1_000_000_000, currentNj: 4_000_000_000, elapsedSeconds: 2) == 1.5)
+        #expect(processWatts(previousNj: 5, currentNj: 1, elapsedSeconds: 1) == 0)   // pid reused
+        #expect(processWatts(previousNj: 0, currentNj: 10, elapsedSeconds: 0) == 0)
+    }
+
+    @Test func energySumsWattsPerAppAndRanks() {
+        let procs = [
+            ProcessUsage(pid: 1, appPID: 1, cpuPercent: 0, memoryBytes: 0, watts: 0.5),
+            ProcessUsage(pid: 2, appPID: 2, cpuPercent: 0, memoryBytes: 0, watts: 1.0),
+            ProcessUsage(pid: 3, appPID: 1, cpuPercent: 0, memoryBytes: 0, watts: 0.75),
+        ]
+        let apps = aggregate(procs, by: .energy)
+        #expect(apps.map(\.appPID) == [1, 2])
+        #expect(apps.first?.watts == 1.25)
+    }
 }

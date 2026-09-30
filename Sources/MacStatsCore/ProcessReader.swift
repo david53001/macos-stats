@@ -5,7 +5,8 @@ import Darwin
 /// CPU time, resident memory, and parent pid. Other users' processes are skipped (we can
 /// only act on our own, and they shouldn't appear in a "your apps" list). Best-effort:
 /// processes that disappear mid-scan or refuse a read are simply omitted.
-public func readRawProcesses() -> [RawProcess] {
+/// `includeEnergy` adds each process's cumulative CPU energy (one more syscall per process).
+public func readRawProcesses(includeEnergy: Bool = false) -> [RawProcess] {
     let uid = getuid()
 
     // First call sizes the buffer (bytes), then fetch with headroom for races.
@@ -33,11 +34,23 @@ public func readRawProcesses() -> [RawProcess] {
         var task = proc_taskinfo()
         guard proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &task, taskSize) == taskSize else { continue }
 
+        var energyNj: UInt64 = 0
+        if includeEnergy {
+            var usage = rusage_info_v6()
+            let ok = withUnsafeMutablePointer(to: &usage) {
+                $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
+                    proc_pid_rusage(pid, RUSAGE_INFO_V6, $0) == 0
+                }
+            }
+            if ok { energyNj = usage.ri_energy_nj }
+        }
+
         result.append(RawProcess(
             pid: pid,
             ppid: Int32(bitPattern: bsd.pbi_ppid),
             cpuTimeNs: task.pti_total_user + task.pti_total_system,
-            memoryBytes: task.pti_resident_size
+            memoryBytes: task.pti_resident_size,
+            energyNj: energyNj
         ))
     }
     return result

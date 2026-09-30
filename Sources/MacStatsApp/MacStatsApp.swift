@@ -1,5 +1,6 @@
 import AppKit
 import Darwin
+import IOKit.ps
 import SwiftUI
 import MacStatsCore
 
@@ -38,6 +39,21 @@ final class AppModel: ObservableObject {
     private let thermal = CPUTemperatureReader()
     private var lastTempRead: Date?
     private var lastBatteryRead: Date?
+
+    /// Battery time-left: the gauge's power readings feed a smoothed estimator whose
+    /// long-run "typical use" average is persisted across launches.
+    private let smartBattery = SmartBatteryReader()
+    private var estimator = BatteryEstimator(
+        typicalWatts: UserDefaults.standard.object(forKey: Keys.typicalWatts) as? Double,
+        typicalSeconds: UserDefaults.standard.double(forKey: Keys.typicalSeconds))
+    private var lastTelemetry: BatteryTelemetry?
+    private var lastBatteryState: BatteryState?
+    private var powerSourceObserver: CFRunLoopSource?
+    private enum Keys {
+        static let typicalWatts = "batteryTypicalWatts"
+        static let typicalSeconds = "batteryTypicalSeconds"
+    }
+    private var procEnergy: [Int32: UInt64] = [:]        // pid → last cumulative energy nJ
     private let totalMemory = ProcessInfo.processInfo.physicalMemory
 
     private let alertMonitor = AlertMonitor()
@@ -49,6 +65,7 @@ final class AppModel: ObservableObject {
         notifier.requestAuthorization()
         sample(at: Date())   // just stores the first baseline; history starts at the next sample
         readSlowSensors()    // so even the first open has battery + temperature on frame one
+        observePowerSource()
         startIdleSampler()
     }
 
@@ -92,7 +109,7 @@ final class AppModel: ObservableObject {
             lastTempRead = now
         }
         if isDue(last: lastBatteryRead, now: now, every: batteryInterval) {
-            store.setBattery(readBattery())
+            refreshBattery()
             lastBatteryRead = now
         }
         scheduleNextTick()
@@ -133,13 +150,60 @@ final class AppModel: ObservableObject {
     /// Battery + temperature aren't sampled while closed, so refresh them ahead of an open
     /// (launch, hover); otherwise the first frame would show placeholders that then roll in.
     private func readSlowSensors() {
-        store.setBattery(readBattery())
+        refreshBattery()
         store.setCPUTemperature(thermal.read())
+    }
+
+    /// Reads the power source (state, %, macOS times) and the gauge (power, charge left),
+    /// feeds each new gauge reading (about once a minute) to the estimator, and publishes the
+    /// estimator's time-left in place of macOS's jumpy one. ~0.1 ms, so it also runs in the
+    /// closed-popover sampler, keeping the estimate's history continuous.
+    private func refreshBattery() {
+        guard var sample = readBattery() else {
+            store.setBattery(nil)
+            store.setBatteryTelemetry(nil, expectedWatts: nil)
+            return
+        }
+        let discharging = sample.state == .discharging
+        if sample.state != lastBatteryState {
+            // Plug/unplug: don't average power across it; the estimator starts a new session.
+            lastTelemetry = nil
+            lastBatteryState = sample.state
+            if !discharging { estimator.ingest(watts: 0, at: 0, discharging: false) }
+        }
+        let telemetry = smartBattery.read()
+        if let telemetry, telemetry.updateTime != lastTelemetry?.updateTime {
+            if let watts = averageWatts(from: lastTelemetry, to: telemetry) {
+                estimator.ingest(watts: watts, at: TimeInterval(telemetry.updateTime), discharging: discharging)
+                UserDefaults.standard.set(estimator.typicalWatts, forKey: Keys.typicalWatts)
+                UserDefaults.standard.set(estimator.typicalSeconds, forKey: Keys.typicalSeconds)
+            }
+            lastTelemetry = telemetry
+        }
+        if discharging, let wh = telemetry?.remainingWh, let minutes = estimator.minutesLeft(remainingWh: wh) {
+            sample.timeToEmptyMinutes = minutes
+        }
+        store.setBattery(sample)
+        store.setBatteryTelemetry(telemetry, expectedWatts: discharging ? estimator.expectedWatts : nil)
+    }
+
+    /// Re-reads the battery the moment macOS reports a power-source change (plug/unplug,
+    /// a percent step), open or closed, instead of waiting for the next timed read.
+    private func observePowerSource() {
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        guard let source = IOPSNotificationCreateRunLoopSource({ context in
+            guard let context else { return }
+            let model = Unmanaged<AppModel>.fromOpaque(context).takeUnretainedValue()
+            MainActor.assumeIsolated { model.refreshBattery() }
+        }, context)?.takeRetainedValue() else { return }
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        powerSourceObserver = source   // AppModel lives as long as the app; never removed
     }
 
     func enterBreakdown(_ metric: MacStatsCore.BreakdownMetric) {
         store.beginBreakdown(metric: metric)
         previousProcCPU = [:]
+        procEnergy = [:]
         lastProcScan = nil
         procScanTick()   // first scan establishes the CPU baseline (CPU stays "measuring")
         // Second scan soon after, so CPU leaves "Measuring…" quickly; then the steady cadence.
@@ -155,6 +219,7 @@ final class AppModel: ObservableObject {
         procTimer?.invalidate()
         procTimer = nil
         previousProcCPU = [:]
+        procEnergy = [:]
         lastProcScan = nil
         store.clearBreakdown()
     }
@@ -205,11 +270,15 @@ final class AppModel: ObservableObject {
     }
 
     /// Background sampler while the popover is closed: CPU%, memory and network every ~10s
-    /// (no per-app scan, no temperature/battery). Feeds alerts and keeps the history warm.
+    /// plus the battery (no per-app scan, no temperature). Feeds alerts, keeps the history
+    /// warm, and keeps the battery estimate learning while the popover is closed.
     private func startIdleSampler() {
         idleTimer?.invalidate()
         idleTimer = makeTimer(after: refreshInterval(for: .idle), tolerance: refreshTolerance(for: .idle),
-                              repeats: true) { $0.sample(at: Date()) }
+                              repeats: true) { model in
+            model.sample(at: Date())
+            model.refreshBattery()
+        }
     }
 
     private func stopIdleSampler() {
@@ -256,7 +325,7 @@ final class AppModel: ObservableObject {
     private func procScanTick() {
         guard let metric = store.activeBreakdownMetric else { return }
         let now = Date()
-        let raw = readRawProcesses()
+        let raw = readRawProcesses(includeEnergy: metric == .energy)
 
         // GUI apps the user is running = our "user apps only" universe + the grouping anchors.
         let appPIDs = Set(NSWorkspace.shared.runningApplications.compactMap { app -> Int32? in
@@ -275,14 +344,22 @@ final class AppModel: ObservableObject {
                 ? processCPUPercent(previousCPUTimeNs: previousProcCPU[p.pid] ?? p.cpuTimeNs,
                                     currentCPUTimeNs: p.cpuTimeNs, elapsedSeconds: elapsed)
                 : 0
-            usages.append(ProcessUsage(pid: p.pid, appPID: appPID, cpuPercent: cpu, memoryBytes: p.memoryBytes))
+            let watts = haveBaseline && metric == .energy
+                ? processWatts(previousNj: procEnergy[p.pid] ?? p.energyNj, currentNj: p.energyNj,
+                               elapsedSeconds: elapsed)
+                : 0
+            usages.append(ProcessUsage(pid: p.pid, appPID: appPID, cpuPercent: cpu,
+                                       memoryBytes: p.memoryBytes, watts: watts))
         }
 
         previousProcCPU = cpuByPID
+        if metric == .energy {
+            procEnergy = Dictionary(raw.map { ($0.pid, $0.energyNj) }, uniquingKeysWith: { a, _ in a })
+        }
         lastProcScan = now
 
-        // CPU has no real values until the second scan; keep showing "Measuring…" until then.
-        let measuring = (metric == .cpu && !haveBaseline)
+        // CPU and energy have no real values until the second scan; show "Measuring…" until then.
+        let measuring = (metric != .memory && !haveBaseline)
         store.setBreakdown(aggregate(usages, by: metric), measuring: measuring)
     }
 }

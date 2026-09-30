@@ -13,7 +13,13 @@ struct BreakdownView: View {
     /// Names + small icons, resolved once per app and freed when the breakdown closes.
     @StateObject private var apps = AppInfoCache()
 
-    private var title: String { metric == .cpu ? "CPU" : "Memory" }
+    private var title: String {
+        switch metric {
+        case .cpu: return "CPU"
+        case .memory: return "Memory"
+        case .energy: return "Battery"
+        }
+    }
 
     private var liveTotal: String {
         switch metric {
@@ -22,11 +28,18 @@ struct BreakdownView: View {
         case .memory:
             guard let m = store.memory else { return "—" }
             return "\(gb(m.usedBytes)) / \(gb(m.totalBytes)) GB"
+        case .energy:
+            guard let b = store.battery else { return "—" }
+            return "\(b.percent)%"
         }
     }
 
     private var liveTotalNumber: Double {
-        metric == .cpu ? store.cpuPercent.rounded() : Double(store.memory?.usedBytes ?? 0)
+        switch metric {
+        case .cpu: return store.cpuPercent.rounded()
+        case .memory: return Double(store.memory?.usedBytes ?? 0)
+        case .energy: return Double(store.battery?.percent ?? 0)
+        }
     }
 
     /// Top app's value — used to scale the usage bars (sorted desc, so it's the first row).
@@ -50,13 +63,18 @@ struct BreakdownView: View {
                     .animation(.easeInOut(duration: 0.25), value: liveTotalNumber)
             }
 
+            if metric == .energy { BatteryDetailsCard(store: store) }
+
             list
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(CardBackground())
                 .clipShape(RoundedRectangle(cornerRadius: Design.cardCornerRadius, style: .continuous))
 
             PanelFooter {
-                if store.breakdown.count > 8 && !store.breakdownMeasuring {
+                if metric == .energy {
+                    Text("App power counts CPU only")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                } else if store.breakdown.count > 8 && !store.breakdownMeasuring {
                     Text("\(store.breakdown.count) apps \u{2014} scroll for more")
                         .font(.caption2).foregroundStyle(.tertiary)
                 }
@@ -71,7 +89,8 @@ struct BreakdownView: View {
             VStack(spacing: 10) {
                 ProgressView().controlSize(.small)
                 Text("Measuring\u{2026}").font(.callout).fontWeight(.semibold)
-                Text("Sampling CPU usage").font(.caption).foregroundStyle(.secondary)
+                Text(metric == .energy ? "Sampling energy use" : "Sampling CPU usage")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         } else if store.breakdown.isEmpty {
             Text("No apps").font(.callout).foregroundStyle(.secondary)
@@ -112,7 +131,11 @@ private struct AppRow: View {
     @State private var hovering = false
 
     var body: some View {
-        let color: Color = metric == .cpu ? .green : .blue
+        let color: Color = switch metric {
+        case .cpu: .green
+        case .memory: .blue
+        case .energy: .yellow
+        }
 
         HStack(spacing: 10) {
             Group {
@@ -164,6 +187,9 @@ private struct AppRow: View {
         case .memory:
             let mb = Double(app.memoryBytes) / 1_048_576
             return mb >= 1024 ? String(format: "%.1f GB", mb / 1024) : String(format: "%.0f MB", mb)
+        case .energy:
+            // Most apps idle well under a watt; two decimals keep them from all reading 0.0.
+            return app.watts < 1 ? String(format: "%.2f W", app.watts) : formatWatts(app.watts)
         }
     }
 }

@@ -4,7 +4,7 @@ import MacStatsCore
 /// The popover content: header, an inset card per stat, the Trash card, footer.
 struct OverviewView: View {
     @ObservedObject var store: MetricsStore
-    /// Drill into a category's per-app breakdown. Only CPU & Memory pass this in.
+    /// Drill into a category's per-app breakdown (CPU, Memory, Battery).
     var onSelect: (BreakdownMetric) -> Void
     var onEmptyTrash: () -> Void
     var onSettings: () -> Void
@@ -30,7 +30,8 @@ struct OverviewView: View {
                           dynamicMinimum: 10_000)
             }
             StatCard(label: "Battery", value: batteryValue,
-                     number: Double(store.battery?.percent ?? 0), meta: batteryMeta) {
+                     number: Double(store.battery?.percent ?? 0), meta: batteryMeta,
+                     onTap: store.battery == nil ? nil : { onSelect(.energy) }) {
                 BatteryGauge(battery: store.battery)
             }
 
@@ -110,15 +111,12 @@ struct OverviewView: View {
         return "\(b.percent)%"
     }
     private var batteryMeta: String {
-        guard let b = store.battery else { return "no battery" }
-        if b.isCharging { return "charging" }
-        if let t = b.timeToEmptyMinutes { return "\(t / 60)h \(t % 60)m left" }
-        return "on battery"
+        store.battery?.cardMeta ?? "no battery"
     }
 }
 
 /// Horizontal battery level in the battery card's graph slot, like the level bar in the
-/// macOS battery menu: green while charging, red at 20 % or below, otherwise the card's
+/// macOS battery menu: green while plugged in, red at 20 % or below, otherwise the card's
 /// yellow. Hidden (space kept) on Macs without a battery.
 private struct BatteryGauge: View {
     let battery: BatterySample?
@@ -142,7 +140,7 @@ private struct BatteryGauge: View {
 
     private var tint: Color {
         guard let battery else { return .yellow }
-        if battery.isCharging { return .green }
+        if battery.state.isPluggedIn { return .green }
         return battery.percent <= 20 ? .red : .yellow
     }
 }

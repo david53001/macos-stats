@@ -13,6 +13,10 @@ public final class MetricsStore: ObservableObject {
     @Published public private(set) var memory: MemorySample?
     @Published public private(set) var network: NetworkSample?
     @Published public private(set) var battery: BatterySample?
+    /// Gauge readings behind the Battery drill-in (power, health, temperature).
+    @Published public private(set) var batteryTelemetry: BatteryTelemetry?
+    /// The draw the time-left estimate assumes (W); nil unless on battery with data.
+    @Published public private(set) var batteryExpectedWatts: Double?
 
     @Published public private(set) var cpuHistory: [SamplePoint] = []      // percent 0...100
     @Published public private(set) var memHistory: [SamplePoint] = []      // used fraction 0...1
@@ -52,7 +56,12 @@ public final class MetricsStore: ObservableObject {
 
     /// `nil` means "this Mac has no battery" (not "unchanged").
     public func setBattery(_ battery: BatterySample?) {
-        self.battery = battery
+        if battery != self.battery { self.battery = battery }
+    }
+
+    public func setBatteryTelemetry(_ telemetry: BatteryTelemetry?, expectedWatts: Double?) {
+        if telemetry != batteryTelemetry { batteryTelemetry = telemetry }
+        if expectedWatts != batteryExpectedWatts { batteryExpectedWatts = expectedWatts }
     }
 
     /// `nil` means "no usable CPU sensor" (the card falls back to a label).
@@ -74,12 +83,12 @@ public final class MetricsStore: ObservableObject {
         trashBytes = bytes
     }
 
-    /// Enter a drill-in for `metric`. CPU starts in the "measuring" state (it needs two
-    /// samples for a delta); memory is instantaneous so it isn't.
+    /// Enter a drill-in for `metric`. CPU and energy start in the "measuring" state (they
+    /// need two samples for a delta); memory is instantaneous so it isn't.
     public func beginBreakdown(metric: BreakdownMetric) {
         activeBreakdownMetric = metric
         breakdown = []
-        breakdownMeasuring = (metric == .cpu)
+        breakdownMeasuring = (metric != .memory)
     }
 
     /// Publish a fresh scan's grouped result for the active breakdown.

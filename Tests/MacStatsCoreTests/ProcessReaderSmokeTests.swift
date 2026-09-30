@@ -13,4 +13,10 @@ import Darwin
         // CPU time is cumulative-since-launch (could be small but non-negative); memory > 0.
         #expect((me?.memoryBytes ?? 0) > 0)
     }
+
+    @Test func energyIsReadForOwnProcess() {
+        let me = readRawProcesses(includeEnergy: true).first { $0.pid == getpid() }
+        #expect(me != nil)
+        #expect((me?.energyNj ?? 0) > 0)
+    }
 }

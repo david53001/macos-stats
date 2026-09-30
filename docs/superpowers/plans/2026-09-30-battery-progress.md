@@ -1,5 +1,30 @@
 # Battery status improvements — progress note (2026-09-30)
 
+## ✅ DONE (second session, 2026-09-30) — all plan steps 1–8 built
+- **States** (`BatteryParse.swift`): `BatteryState` = charging / charged / notCharging / discharging,
+  from `Power Source State` + `Is Charging` + `Is Charged`; `timeToFullMinutes` from `Time to Full Charge`.
+- **Gauge reader** (`BatteryTelemetry.swift`): `SmartBatteryReader` (cached registry entry, 10 single-key
+  reads) → `BatteryTelemetry` (updateTime, V, mA, mAh, health %, cycles, °C, adapter W, SystemLoad + its
+  running sum/count). `averageWatts(from:to:)` = Δsum/Δcount between gauge updates (verified live:
+  11.4 W average over a minute where the instant value jumped 11 → 3.7 W).
+- **Estimator** (`BatteryEstimator.swift`): recent (τ 10 min, this unplugged session) blended with typical
+  (τ 3 h, **learns from all awake time incl. plugged-in** — whole-Mac draw measures the same apps; persisted
+  as `batteryTypicalWatts` / `batteryTypicalSeconds` in standard defaults). Typical weight ramps 0 → 50 %
+  over its first hour of evidence. Time left = remaining Wh (mAh × V) ÷ expected W.
+- **AppModel**: `refreshBattery()` runs at launch, on hover, every 10 s open **and** closed (idle sampler),
+  and on `IOPSNotificationCreateRunLoopSource` (plug/unplug). Ingests only when the gauge's `UpdateTime`
+  changes; resets the session on any state change.
+- **UI**: Battery card meta = "6h 23m left" / "1h 5m to full" / "fully charged" / "not charging" /
+  "calculating…"; gauge green whenever plugged in. Card is tappable → **Battery drill-in** (same
+  `BreakdownView`, metric `.energy`): `BatteryDetailsCard` (Status, Time left/to full, Power now · avg,
+  Adapter, Health · cycles, Temperature) above apps ranked by CPU power from `ri_energy_nj`
+  (`readRawProcesses(includeEnergy:)`; scan only while the drill-in is open). Footer: "App power counts CPU only".
+- 114 tests pass. Verified on-device on battery (screenshot). **Not yet seen live: the charging/charged
+  states** — plug in and check the card says "… to full" / "fully charged".
+
+## Original handoff (kept for reference)
+
+
 **Where:** branch `feat/battery-status`, git worktree
 `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/battery`
 (branched from `feat/polish-perf` at `85d66d6`). A parallel session built the opacity setting on

@@ -37,7 +37,7 @@ import Testing
 
     @Test func recordDoesNotClobberBatteryOrTemperature() {
         let store = MetricsStore()
-        let bat = BatterySample(percent: 80, isCharging: false, timeToEmptyMinutes: 120)
+        let bat = BatterySample(percent: 80, state: .discharging, timeToEmptyMinutes: 120)
         store.setBattery(bat)
         store.setCPUTemperature(47)
         store.record(cpuPercent: 5, memory: mem, network: net, time: 0)
