@@ -8,10 +8,11 @@ swift build -c "$CONFIG"
 BIN="$ROOT/.build/$CONFIG/MacStatsApp"
 # Install straight into ~/Applications — the single canonical copy. Assembling in the
 # repo root left a second MacStats.app that drifted out of date with the installed one.
-APP="$HOME/Applications/MacStats.app"
+# MACSTATS_APP overrides the destination (package-release.sh builds into dist/).
+APP="${MACSTATS_APP:-$HOME/Applications/MacStats.app}"
 
 # Quit any running copy so a relaunch picks up the new build instead of the old process.
-pkill -x MacStats 2>/dev/null || true
+[ -z "${MACSTATS_APP:-}" ] && { pkill -x MacStats 2>/dev/null || true; }
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"

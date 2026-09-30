@@ -3,3 +3,6 @@ MacStats.app/
 .superpowers/
 .DS_Store
 *.swiftpm
+.claude/
+.vscode/
+dist/
