@@ -13,7 +13,7 @@ public struct RawProcess: Equatable {
     public let pid: Int32
     public let ppid: Int32
     public let cpuTimeNs: UInt64    // cumulative user+system CPU time, nanoseconds
-    public let memoryBytes: UInt64  // resident size (RSS)
+    public let memoryBytes: UInt64  // physical footprint (Activity Monitor's Memory); RSS fallback
     public let energyNj: UInt64     // cumulative CPU energy, nanojoules (0 unless requested)
 
     public init(pid: Int32, ppid: Int32, cpuTimeNs: UInt64, memoryBytes: UInt64, energyNj: UInt64 = 0) {

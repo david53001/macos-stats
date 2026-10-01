@@ -2,10 +2,13 @@ import Foundation
 import Darwin
 
 /// Enumerates the current user's processes via libproc and reads each one's cumulative
-/// CPU time, resident memory, and parent pid. Other users' processes are skipped (we can
-/// only act on our own, and they shouldn't appear in a "your apps" list). Best-effort:
-/// processes that disappear mid-scan or refuse a read are simply omitted.
-/// `includeEnergy` adds each process's cumulative CPU energy (one more syscall per process).
+/// CPU time, memory, and parent pid. Other users' processes are skipped (we can only act on
+/// our own, and they shouldn't appear in a "your apps" list). Best-effort: processes that
+/// disappear mid-scan or refuse a read are simply omitted.
+/// Memory is the physical footprint (`ri_phys_footprint`), the figure Activity Monitor's
+/// Memory column shows; resident size (RSS) is used only if the rusage read fails, since it
+/// also counts shared framework pages and overstates an app by tens of MB.
+/// The same rusage read carries cumulative CPU energy, reported only when `includeEnergy`.
 public func readRawProcesses(includeEnergy: Bool = false) -> [RawProcess] {
     let uid = getuid()
 
@@ -34,22 +37,20 @@ public func readRawProcesses(includeEnergy: Bool = false) -> [RawProcess] {
         var task = proc_taskinfo()
         guard proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &task, taskSize) == taskSize else { continue }
 
-        var energyNj: UInt64 = 0
-        if includeEnergy {
-            var usage = rusage_info_v6()
-            let ok = withUnsafeMutablePointer(to: &usage) {
-                $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
-                    proc_pid_rusage(pid, RUSAGE_INFO_V6, $0) == 0
-                }
+        // One rusage read per process gives both the footprint and the energy counter.
+        var usage = rusage_info_v6()
+        let haveUsage = withUnsafeMutablePointer(to: &usage) {
+            $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
+                proc_pid_rusage(pid, RUSAGE_INFO_V6, $0) == 0
             }
-            if ok { energyNj = usage.ri_energy_nj }
         }
+        let energyNj: UInt64 = includeEnergy && haveUsage ? usage.ri_energy_nj : 0
 
         result.append(RawProcess(
             pid: pid,
             ppid: Int32(bitPattern: bsd.pbi_ppid),
             cpuTimeNs: task.pti_total_user + task.pti_total_system,
-            memoryBytes: task.pti_resident_size,
+            memoryBytes: haveUsage ? usage.ri_phys_footprint : task.pti_resident_size,
             energyNj: energyNj
         ))
     }
