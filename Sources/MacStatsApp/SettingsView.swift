@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 import MacStatsCore
 
 /// The in-popover Settings screen, pushed from the overview's footer gear. Same fixed size,
@@ -20,6 +21,7 @@ struct SettingsView: View {
                 Spacer()
             }
 
+            GeneralCard()
             AppearanceCard()
 
             Spacer(minLength: 0)
@@ -27,6 +29,55 @@ struct SettingsView: View {
         }
         .padding([.horizontal, .bottom], Design.panelInset)
         .frame(width: Design.panelWidth, height: Design.panelHeight, alignment: .top)
+    }
+}
+
+/// "General" → Launch at login: a switch backed directly by `SMAppService.mainApp.status`
+/// (`LoginItem.swift`). Re-read each time Settings opens, since the user may have changed it in
+/// System Settings. Only when macOS needs the user's approval do we offer a jump to Login Items.
+private struct GeneralCard: View {
+    @State private var status: SMAppService.Status = LoginItem.status
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("GENERAL")
+                .font(.caption2).fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Text("Launch at login").font(.callout)
+                Spacer()
+                Toggle("Launch at login", isOn: Binding(
+                    get: { status == .enabled },
+                    set: { status = LoginItem.setEnabled($0) }   // re-reads, so a failure reverts
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            }
+
+            if status == .requiresApproval {
+                HStack {
+                    Text("Needs your approval in Login Items.")
+                    Spacer()
+                    Button("Open") { SMAppService.openSystemSettingsLoginItems() }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            } else {
+                Text("Open MacStats automatically when you log in.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, Design.cardPadding)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CardBackground())
+        .onAppear { status = LoginItem.status }
     }
 }
 
