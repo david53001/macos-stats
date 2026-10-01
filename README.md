@@ -19,6 +19,16 @@ Requires macOS 14 or newer on an Apple Silicon Mac. You can also download
 The app isn't notarized, so if you install it by hand, run
 `xattr -dr com.apple.quarantine ~/Applications/MacStats.app` once before opening it.
 
+## Uninstall
+
+Paste this into Terminal:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/david53001/macos-stats/main/uninstall.sh | bash
+```
+
+It quits MacStats and removes the app, its settings (including the battery-usage history) and its caches. You can read the script first: [`uninstall.sh`](uninstall.sh).
+
 ## What it shows
 
 Click the graph icon in the menu bar to open the panel.
