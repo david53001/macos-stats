@@ -341,7 +341,9 @@ final class AppModel: ObservableObject {
         for p in raw {
             guard let appPID = owningAppPID(for: p.pid, ppid: ppidMap, appPIDs: appPIDs) else { continue }
             let cpu = haveBaseline
-                ? processCPUPercent(previousCPUTimeNs: previousProcCPU[p.pid] ?? p.cpuTimeNs,
+                // A pid missing from the last scan started since then, so all of its CPU time
+                // falls in this interval (the last scan listed every one of our processes).
+                ? processCPUPercent(previousCPUTimeNs: previousProcCPU[p.pid] ?? 0,
                                     currentCPUTimeNs: p.cpuTimeNs, elapsedSeconds: elapsed)
                 : 0
             let watts = haveBaseline && metric == .energy
