@@ -48,10 +48,29 @@ public func readRawProcesses(includeEnergy: Bool = false) -> [RawProcess] {
         result.append(RawProcess(
             pid: pid,
             ppid: Int32(bitPattern: bsd.pbi_ppid),
-            cpuTimeNs: task.pti_total_user + task.pti_total_system,
+            cpuTimeNs: machTicksToNanoseconds(task.pti_total_user + task.pti_total_system,
+                                              numer: machTimebase.numer, denom: machTimebase.denom),
             memoryBytes: task.pti_resident_size,
             energyNj: energyNj
         ))
     }
     return result
+}
+
+/// `pti_total_user`/`pti_total_system` are in Mach absolute-time units, not nanoseconds:
+/// 1 unit = numer/denom ns. That's 1/1 on Intel but 125/3 on Apple Silicon (24 MHz ticks),
+/// so the raw values read ~41.7× too low there. Read once; it never changes.
+private let machTimebase: mach_timebase_info_data_t = {
+    var info = mach_timebase_info_data_t()
+    guard mach_timebase_info(&info) == KERN_SUCCESS, info.denom != 0 else {
+        return mach_timebase_info_data_t(numer: 1, denom: 1)
+    }
+    return info
+}()
+
+/// Converts Mach absolute-time units to nanoseconds without overflowing the intermediate
+/// product (`ticks * numer` would overflow for large tick counts).
+func machTicksToNanoseconds(_ ticks: UInt64, numer: UInt32, denom: UInt32) -> UInt64 {
+    let n = UInt64(numer), d = UInt64(denom)
+    return ticks / d * n + ticks % d * n / d
 }
