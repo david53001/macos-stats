@@ -124,3 +124,52 @@ import Foundation
         }
     }
 }
+
+/// Out of sample: a charge logged live on 2026-10-05 22:03–22:42 (after the model was fitted),
+/// sampled every 30 s from `ioreg -rn AppleSmartBattery`: seconds before charging stopped,
+/// `AppleRawCurrentCapacity` (of 4407 mAh), `Amperage`. Raw 52.6 → 79.0 %, stopped by
+/// Optimized Charging's 80 % hold (powerd listed it next to the 85 % limit). Seconds carry the
+/// 30 s sampling, so the stop is known to ±30 s.
+@Suite struct LiveChargeTests {
+    static let readings: [(t: Int, mAh: Int, mA: Int)] = [
+        (-2285, 2340, 1209), (-2225, 2366, 2002), (-2165, 2400, 2044), (-2135, 2424, 2081), (-2075, 2452, 1452), (-2045, 2468, 2067),
+        (-1985, 2494, 1439), (-1925, 2512, 2059), (-1865, 2538, 1425), (-1835, 2557, 2034), (-1774, 2590, 2020), (-1744, 2601, 1987),
+        (-1684, 2630, 1999), (-1654, 2645, 2001), (-1624, 2671, 2036), (-1564, 2689, 1981), (-1504, 2720, 1879), (-1474, 2733, 1998),
+        (-1444, 2761, 1489), (-1383, 2777, 1255), (-1323, 2806, 1937), (-1293, 2821, 1936), (-1233, 2850, 1914), (-1203, 2865, 1957),
+        (-1143, 2909, 1950), (-1083, 2937, 1537), (-1053, 2953, 1992), (-992, 2983, 1447), (-962, 2997, 1426), (-902, 3029, 2014),
+        (-872, 3041, 2009), (-812, 3073, 2001), (-782, 3085, 1977), (-722, 3129, 2001), (-662, 3162, 1996), (-632, 3174, 1992),
+        (-571, 3206, 1987), (-541, 3218, 1967), (-481, 3262, 1992), (-421, 3295, 1987), (-391, 3306, 1988), (-331, 3338, 1982),
+        (-301, 3350, 1979), (-241, 3394, 1970), (-180, 3426, 1954), (-150, 3438, 1952), (-90, 3470, 1945), (-60, 3482, 1951),
+    ]
+
+    /// (predicted − actual) minutes at each reading with an estimate, toward `target` %.
+    private func errors(target: Int) -> [Double] {
+        var current = ChargeCurrent()
+        var previous: Int?
+        var out: [Double] = []
+        for r in Self.readings {
+            current.ingest(milliamps: r.mA, seconds: previous.map { Double(r.t - $0) } ?? 0)
+            previous = r.t
+            if let mA = current.milliamps,
+               let m = minutesToTarget(currentMAh: r.mAh, maxMAh: 4407, chargeMA: mA, targetPercent: target) {
+                out.append(Double(m) - Double(-r.t) / 60)
+            }
+        }
+        return out
+    }
+
+    @Test func timeToTheHoldMatchesWhereChargingStopped() {
+        let e = errors(target: 80)
+        let mean = e.map(abs).reduce(0, +) / Double(e.count)
+        #expect(e.count >= 40)
+        #expect(mean < 2)                        // 1.1 min
+        #expect(e.map(abs).max()! < 5)           // 3.9 min, at 2 minutes of current average
+    }
+
+    @Test func targetingTheWrongStopIsWhatGoesWrong() {
+        // The same charge aimed at the 85 % limit, or at 100 % (round 2's "limit unknown").
+        let to85 = errors(target: 85), to100 = errors(target: 100)
+        #expect(to85.reduce(0, +) / Double(to85.count) > 6)      // +8.5 min
+        #expect(to100.reduce(0, +) / Double(to100.count) > 50)   // +65 min
+    }
+}
