@@ -266,3 +266,110 @@ Measured with `ps -o rss=,pcpu=,time= -p <pid>` every 2 s and `footprint -p <pid
    `sudo powermetrics`.
 8. **Release:** not published. To ship: `./Scripts/package-release.sh`, merge to `main` and push, then
    `gh release create v1.1.0 dist/MacStats.app.zip --title "MacStats 1.1.0" --notes "..."`.
+
+---
+
+## Review fixes (round 1): battery (2026-10-05, branch `review-fix/battery`)
+
+Input: two independent accuracy reviews (`docs/reviews/2026-10-05-readings-accuracy-review-A.md`
+and `-B.md`, evidence under `docs/reviews/2026-10-05-readings-accuracy/A|B/`). Both scored Battery
+7/10. Reviewer B's High issue was the time-to-full cliff; both flagged "Power now" and the
+late save of the learned drain. Per-app battery power (reviewer A's B1) belongs to the
+process/memory fix branch and was not touched here. **Tests:** `./Scripts/test.sh` → 189 tests in
+29 suites pass (184 before).
+
+### 1. Time to full / time to the charge limit (High, fixed)
+- **Bug:** `minutesToTarget` (`Sources/MacStatsCore/BatteryCharging.swift`) charged the 80–100 %
+  stretch at 0.45 × current below the 80 % knee, but used the measured current unchanged at or
+  above it: at 2000 mA it said 60 min at 79 % and 26 min at 80 %. Its 0.45 taper came from a
+  pmset log gap (63 → 85 % "in 35 min" was only an upper bound: the Mac slept in between).
+- **Calibration data:** macOS's **powerlog**, which is world-readable:
+  `/private/var/db/powerlog/Library/BatteryLife/CurrentPowerlog.PLSQL` plus the gzipped
+  `Archives/powerlog_*.PLSQL.gz` (one per day, about a week back). Table
+  `PLBatteryAgent_EventBackward_Battery` has one row per gauge update (~1/min while awake) with
+  `timestamp` (Unix s), `Level` (shown %), `RawLevel`, `AppleRawCurrentCapacity`,
+  `AppleRawMaxCapacity`, `InstantAmperage` (= the gauge `Amperage` the app reads; checked live),
+  `IsCharging`, `ExternalConnected`, `NotChargingReason`. Copy the files before querying, e.g.
+  `sqlite3 copy.PLSQL "select timestamp, Level, RawLevel, AppleRawCurrentCapacity,
+  AppleRawMaxCapacity, InstantAmperage, IsCharging from PLBatteryAgent_EventBackward_Battery"`.
+  `pmset -g log` turned out too sparse (a charge level only when some event is logged).
+- **What the data shows** (8 awake charging sessions, Sep 28 – Oct 5, raw 21 % → 84 %, ~30 W
+  adapter, 1.5–2.2 A):
+  - The current is not constant below 80 %: it drifts down with the charge level (Oct 4: 2.2 A
+    at 40 % → 1.45 A at 82 %), then falls faster above ~80 %.
+  - **Shown vs raw percent while charging:** macOS shows ⌊raw⌋ + 1 in 440 of 457 readings.
+    16 of the other 17 come from the first 4 minutes after plug-in, while the shown percent still
+    holds the higher value it had while discharging (e.g. 65 % shown at raw 61.9 %). The 85 %
+    charge limit stopped charging at raw **84.00–84.02 %** in all 5 sessions that reached it. So
+    the target for a limit T is raw (T − 1) %, and the distance is measured from the raw charge
+    (the old code placed the charge at the shown percent, ~3 points high just after plug-in).
+    While discharging the shown percent runs ahead of raw (62 % at raw 59.4 %, 99 % at 94.1 %).
+    That doesn't affect time left, which is computed from the raw mAh.
+  - No awake charge ever went above raw 85 %. The limit is 85 %, and the one charge to 100 %
+    (Sep 29–30) happened while the Mac was asleep or off, so there are no powerlog rows for it.
+- **New model:** the current at raw level s is I(s) = I₀ (1 − 0.4 s) up to the knee at 0.80.
+  Above the knee it falls linearly to 0 at s = 1 (the constant-voltage phase), and it is
+  continuous at the knee. I₀ is inferred from the measured current divided by the model's factor
+  at the present s, and the time is ∫ full · ds / I(s), in closed form. "Full" is where the
+  tapering current reaches C/20 (capacity / 20 h ≈ 220 mA, a standard Li-ion termination
+  current; `chargeTerminationHours`). When the current is already below that, the function
+  returns nil and the UI says "Almost full" (from 90 %) instead of a "1m" that could stick.
+  Knee 0.80 and decline 0.4 minimise the error over all 10 767 (start, later level) pairs ≥ 5 min
+  apart. A knee of 0.78–0.80 is best on the 2 329 pairs that end above raw 80 %.
+- **Charge-current average** (`ChargeCurrent`): it is now a bias-corrected, time-weighted EMA
+  like `BatteryEstimator`'s. It is not reported until a second reading arrives, because the first
+  reading after plug-in is often a transient (Sep 28: 1096 mA, then 2278 mA 43 s later; Oct 1:
+  827 → 1894 mA). This mattered: replaying the sessions, the plain EMA seeded at full weight gave
+  first-10-minute errors up to 55 min.
+- **Fit error** (replay of the 4 sessions that ran to the 85 % limit, fed like the app: gaps
+  > 180 s count as 0 s, duplicate gauge rows skipped; predicted vs real minutes to the stop):
+
+  | | readings | mean error (bias) | mean abs error | 90th pct | worst |
+  |---|---|---|---|---|---|
+  | v1.1.0 model, after 3 min | 192 | +4.0 min | 5.0 min | 7.6 min | 22 min |
+  | **new**, after 3 min | 192 | −1.6 min | **1.7 min** | 2.8 min | 12 min |
+  | v1.1.0, every reading | 207 | +4.3 min | 5.6 min | 8.0 min | 55 min |
+  | **new**, from the 2nd reading | 203 | −1.7 min | **1.8 min** | 3.0 min | 12 min |
+
+  The worst case (−12 min at 39 % on Oct 4) is a session whose current fell 34 % over the
+  charge, more than the fitted 0.4 decline. Mean |error| / real time: 6.4 % (was 23 %).
+  Tests (`Tests/MacStatsCoreTests/ChargeCalibrationTests.swift`) embed these 4 sessions and
+  require every estimate after 3 min to be within 3.5 min or 20 % (mean abs error < 2 min), and
+  from the 2nd reading within 4.5 min or 25 %. `ChargeTimeTests` in `BatteryEstimatorTests.swift`
+  checks the rest: no cliff at 79 → 80 % (≤ 3 min with the measured current held), continuous
+  and monotone in 1 % steps over 20–99 % (each step lowers the estimate by that 1 %'s modelled
+  time + ≤ 1.5 min of rounding), sensible near full, and the limit target.
+- **Not verified:** the stretch from raw 85 % to 100 % is the physical model, not a fit. Its
+  predictions are 80 % → full ≈ 1 h at ~1.5 A, and ≈ 4–8 min at 99 % with 400 mA. To check it,
+  turn the charge limit off once, charge to 100 % while awake, then rerun the powerlog query
+  above.
+
+### 2. "Power now" (fixed)
+It showed one instantaneous `SystemLoad` from the last gauge update. Reviewer A measured it up to
+4.8× off the same minute's average (13.2 W in a minute that averaged 3.2 W), and it stayed on
+screen for that whole minute. Now `intervalWatts(from:to:)` (`Sources/MacStatsCore/BatteryTelemetry.swift`)
+returns the average over the last gauge interval from `AccumulatedSystemLoad` /
+`SystemLoadAccumulatorCount`, the same source the time-left estimate uses. With no awake
+interval (first reading, or after sleep) it returns the instant reading. The Battery drill-in
+(`Sources/MacStatsApp/BatteryDetailsCard.swift`) shows "Power, last min" and a separate row
+"Avg since unplugged", or "Avg since MacStats started" when the app launched on battery
+(`MetricsStore.batteryPowerWatts` / `batteryAverageSinceUnplug`).
+
+### 3. Learned drain saved late (fixed)
+`saveEstimator()` (`Sources/MacStatsApp/MacStatsApp.swift`) stamped the save time even when it
+had nothing to write, so the call at launch pushed the first real save ~10 min out, and quitting
+saved nothing. Now only a real write stamps it, which puts the first save at the first on-battery
+gauge update (~1 min). After that it saves every 10 min, on plug/unplug, and on quit. Unchanged
+values are not rewritten. Quit covers both `NSApplication.willTerminateNotification` (Quit
+button, logout) and SIGTERM through a `DispatchSource`, since `install.sh` and `bundle.sh` stop
+the running copy with `pkill`. That path was checked with a scratch program: `pkill`, then the
+value saved, then exit 0. No new timers.
+
+### 4. Other battery findings: not changed (all Low)
+- **Learned limit from a pause** (A-B4): powerlog shows it happens. On Sep 30 charging paused for
+  one reading at 84 % (`NotChargingReason` 128) and resumed. The existing rule "charging past the
+  limit forgets it" already clears it a minute later, and an active powerd limit takes
+  precedence anyway.
+- **Health −1 % in the first minutes after launch** (A-B7), **Intel health fallback** and
+  **untested glue** (B-B8), **remaining-energy voltage model** not checked against a full
+  discharge (B-B3), and the **stale prior** (B-B6, by design).
