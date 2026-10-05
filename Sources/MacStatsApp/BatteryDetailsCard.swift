@@ -33,9 +33,9 @@ struct BatteryDetailsCard: View {
 
         switch b.state {
         case .discharging:
-            rows.append(("Time left", b.timeToEmptyMinutes.map(formatDuration) ?? "Calculating…"))
+            rows.append(("Time left", b.timeToEmptyMinutes.map(formatTimeLeft) ?? "Calculating…"))
         case .charging:
-            rows.append((b.chargeTargetLabel, b.timeToFullMinutes.map(formatDuration)
+            rows.append((b.chargeTargetLabel, b.timeToFullMinutes.map(formatTimeToFull)
                             ?? (b.atChargeLimit ? "Almost done" : b.percent >= 90 ? "Almost full" : "Calculating…")))
         case .charged, .notCharging:
             // Optimized Charging's pause is not the user's limit: show both.
@@ -93,18 +93,13 @@ extension BatterySample {
     var cardMeta: String {
         switch state {
         case .charging:
-            return timeToFullMinutes.map { "\(formatDuration($0)) to \(chargeTargetName)" }
+            return timeToFullMinutes.map { "\(formatTimeToFull($0)) to \(chargeTargetName)" }
                 ?? (atChargeLimit ? "almost done" : percent >= 90 ? "almost full" : "charging")   // no estimate in the last trickle
         case .charged: return "fully charged"
         case .notCharging: return "not charging"
-        case .discharging: return timeToEmptyMinutes.map { "\(formatDuration($0)) left" } ?? "calculating…"
+        case .discharging: return timeToEmptyMinutes.map { "\(formatTimeLeft($0)) left" } ?? "calculating…"
         }
     }
-}
-
-/// "6h 40m", or "45m" under an hour.
-func formatDuration(_ minutes: Int) -> String {
-    minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
 }
 
 func formatWatts(_ watts: Double) -> String {
