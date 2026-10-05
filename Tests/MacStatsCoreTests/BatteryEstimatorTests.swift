@@ -183,38 +183,86 @@ import Foundation
 }
 
 @Suite struct ChargeTimeTests {
-    @Test func constantCurrentBelowTheKnee() {
-        // 50 % → 80 % of 4000 mAh at 2000 mA: 1200 mAh / 2000 mA = 36 min, no taper.
-        #expect(minutesToTarget(currentMAh: 2000, maxMAh: 4000, chargeMA: 2000, targetPercent: 80) == 36)
+    /// The current the model expects at raw level `s` for a charge that starts at `base` mA
+    /// (−40 % of the level up to the 80 % knee, then linear to 0 at full).
+    private func modelMA(_ s: Double, base: Double = 2200) -> Double {
+        s <= 0.8 ? base * (1 - 0.4 * s) : base * 0.68 * (1 - s) / 0.2
     }
 
-    @Test func taperAboveTheKnee() {
-        // 3213 → 4400 at 1846 mA: 10 min to the knee, then 880 mAh at 45 % of the current.
-        let m = minutesToTarget(currentMAh: 3213, maxMAh: 4400, chargeMA: 1846, targetPercent: 100)!
-        #expect(m >= 70 && m <= 78)
+    private func minutes(at s: Double, mA: Double, maxMAh: Int = 4400, target: Int = 100) -> Int? {
+        minutesToTarget(currentMAh: Int((s * Double(maxMAh)).rounded()), maxMAh: maxMAh,
+                        chargeMA: mA, targetPercent: target)
+    }
+
+    /// Minutes the model takes from raw level `a` to `b` (a numeric integral, independent of
+    /// the closed form under test).
+    private func modelMinutes(from a: Double, to b: Double, maxMAh: Double = 4400) -> Double {
+        let n = 200, h = (b - a) / Double(n)
+        return (0..<n).reduce(0) { $0 + h / modelMA(a + (Double($1) + 0.5) * h) } * maxMAh * 60
+    }
+
+    @Test func withoutDeclineBelowTheKneeItIsConstantCurrent() {
+        // 50 % → raw 80 % (81 % shown) of 4000 mAh at 2000 mA: 1200 mAh / 2000 mA = 36 min.
+        #expect(minutesToTarget(currentMAh: 2000, maxMAh: 4000, chargeMA: 2000, targetPercent: 81, decline: 0) == 36)
+    }
+
+    @Test func noCliffAtTheKnee() {
+        // The shipped v1.1.0 formula said 60 min at 79 % and 26 min at 80 % (2000 mA, 4430 mAh;
+        // reviewer B's table). One percent at 2 A takes ~1.3 min; with the measured current
+        // held (the average lags a little), the estimate may drop by that and a little more.
+        for target in [85, 100] {
+            let at79 = minutes(at: 0.79, mA: 2000, maxMAh: 4430, target: target)!
+            let at80 = minutes(at: 0.80, mA: 2000, maxMAh: 4430, target: target)!
+            #expect(at79 >= at80 && at79 - at80 <= 3)
+        }
+    }
+
+    @Test func continuousAndMonotoneOverTheWholeCharge() {
+        // Charge stepped 1 % at a time, with the current the model expects at each level: every
+        // step lowers the estimate by the time that 1 % takes, within rounding.
+        for target in [85, 100] {
+            var previous: (s: Double, minutes: Int)?
+            for percent in 20...99 {
+                let s = Double(percent) / 100
+                guard let m = minutes(at: s, mA: modelMA(s), target: target) else { break }
+                if let previous {
+                    #expect(m <= previous.minutes)
+                    let step = modelMinutes(from: previous.s, to: s)
+                    #expect(Double(previous.minutes - m) <= step + 1.5, "at \(percent) %")
+                }
+                previous = (s, m)
+            }
+        }
+    }
+
+    @Test func sensibleNearFull() {
+        // 99 % with the model's current (~75 mA, already under C/20 = 220 mA): finishing now.
+        #expect(minutes(at: 0.99, mA: modelMA(0.99)) == 1)
+        // 99 % but still taking 400 mA: a few minutes, not an hour.
+        let late = minutes(at: 0.99, mA: 400)!
+        #expect(late >= 2 && late <= 8)
+        // From the knee at 1500 mA to full: about an hour (the constant-voltage phase; this
+        // stretch is the physical model, as no session here went past the 85 % limit awake).
+        let fromKnee = minutes(at: 0.80, mA: 1500)!
+        #expect(fromKnee >= 50 && fromKnee <= 75)
     }
 
     @Test func chargeLimitIsTheTarget() {
-        // The live case: 74 % with an 85 % limit at 1846 mA. macOS said 82 min (its figure
-        // ignores the limit); 10 min to 80 % plus ~16 min tapered to 85 %. (pmset log, Sep 28:
-        // 63 → 85 % took 35 min at ~1980 mA, vs 29 min at constant current: a taper above 80 %.)
-        let m = minutesToTarget(currentMAh: 3213, maxMAh: 4400, chargeMA: 1846, targetPercent: 85)!
-        #expect(m >= 22 && m <= 28)
+        // 74 % shown (raw 73 %) with an 85 % limit at 1846 mA. Real charges from raw 73 % to the
+        // limit took 16 min at ~2000 mA (Sep 30) and 19 min at ~1700 mA (Oct 4); the shipped
+        // formula said 25. macOS said 82 min (its figure ignores the limit).
+        let m = minutesToTarget(currentMAh: 3212, maxMAh: 4400, chargeMA: 1846, targetPercent: 85)!
+        #expect(m >= 15 && m <= 19)
     }
 
-    @Test func measuredCurrentAboveTheKneeIsNotTaperedTwice() {
-        // At 90 % the measured current is already the tapered one.
-        #expect(minutesToTarget(currentMAh: 3600, maxMAh: 4000, chargeMA: 400, targetPercent: 100) == 60)
-    }
-
-    @Test func targetIsInTheShownPercentNotTheRawCharge() {
-        // Live: 71 % shown at 3004 / 4431 mAh (67.8 % raw). Measured from raw mAh, "time to
-        // 85 %" aimed at raw 85 % (~89 % shown); from the shown percent it is 14 points.
-        let shown = minutesToTarget(percent: 71, maxMAh: 4431, chargeMA: 2000, targetPercent: 85)!
-        let raw = minutesToTarget(currentMAh: 3004, maxMAh: 4431, chargeMA: 2000, targetPercent: 85)!
-        #expect(shown == minutesToTarget(currentMAh: 3146, maxMAh: 4431, chargeMA: 2000, targetPercent: 85))
-        #expect(raw - shown >= 4)
-        #expect(minutesToTarget(percent: 85, maxMAh: 4431, chargeMA: 2000, targetPercent: 85) == nil)
+    @Test func limitTargetIsOneBelowTheShownPercentInRawCharge() {
+        // While charging macOS shows ⌊raw⌋ + 1, and the 85 % limit stopped charging at raw 84.0 %.
+        #expect(minutesToTarget(currentMAh: 3712, maxMAh: 4419, chargeMA: 1900, targetPercent: 85) == nil)
+        // Sep 30, 19:56: plugged in at 65 % shown but raw 61.9 % (the shown percent holds the
+        // discharging value for a few minutes); charging stopped at the limit 31.4 min later.
+        // Placing the charge at the shown 65 % (the old way) said ~25 min.
+        let m = minutesToTarget(currentMAh: 2736, maxMAh: 4419, chargeMA: 2000, targetPercent: 85)!
+        #expect(abs(m - 31) <= 2)
     }
 
     @Test func atOrPastTheTargetOrNoCurrentIsNil() {
@@ -223,14 +271,27 @@ import Foundation
         #expect(minutesToTarget(currentMAh: 2000, maxMAh: 0, chargeMA: 1000, targetPercent: 100) == nil)
     }
 
+    @Test func chargeCurrentSkipsThePlugInTransient() {
+        // Sep 28: 1096 mA right after plug-in, then 2278 and 2269 mA.
+        var c = ChargeCurrent()
+        c.ingest(milliamps: 1096, seconds: 0)
+        #expect(c.milliamps == nil)                  // one reading isn't reported
+        c.ingest(milliamps: 2278, seconds: 43)
+        #expect(c.milliamps == 2278)                 // and the next one replaces it
+        c.ingest(milliamps: 2269, seconds: 74)       // then a time-weighted running mean
+        #expect(abs(c.milliamps! - 2272) < 3)
+    }
+
     @Test func chargeCurrentAverageSmoothsADip() {
         var c = ChargeCurrent()
         c.ingest(milliamps: 2000, seconds: 0)
-        #expect(c.milliamps == 2000)
-        c.ingest(milliamps: 1300, seconds: 60)   // one low gauge reading
+        for _ in 0..<11 { c.ingest(milliamps: 2000, seconds: 60) }
+        c.ingest(milliamps: 1300, seconds: 60)       // one low gauge reading
         #expect(c.milliamps! > 1800)
-        c.ingest(milliamps: -150, seconds: 60)   // discharging readings are ignored
-        #expect(c.milliamps! > 1800)
+        let afterDip = c.milliamps
+        c.ingest(milliamps: -150, seconds: 60)       // discharging readings are ignored
+        c.ingest(milliamps: 2000, seconds: 0)        // so is one that doesn't follow an awake interval
+        #expect(c.milliamps == afterDip)
         c.reset()
         #expect(c.milliamps == nil)
     }
