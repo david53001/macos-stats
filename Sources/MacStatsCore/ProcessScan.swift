@@ -317,8 +317,10 @@ public final class ProcessSampler {
 
 /// One breakdown's scan pipeline: attribution + interval usage + the CPU header over the
 /// same interval. Lives only while a breakdown is open (a new one per drill-in).
-public final class BreakdownScanner {
-    public struct Result: Equatable {
+/// Not thread-safe: `@unchecked Sendable` so it can be handed to the app's serial scan queue,
+/// which is the only place it is used.
+public final class BreakdownScanner: @unchecked Sendable {
+    public struct Result: Equatable, Sendable {
         public let apps: [AppUsage]
         /// Whole-machine CPU % over exactly the interval the rows cover (nil until measured).
         public let totalCPUPercent: Double?
@@ -342,15 +344,15 @@ public final class BreakdownScanner {
         self.attributor = ProcessAttributor(responsible: responsible, allParents: allParents)
     }
 
-    /// `memoryInUseBytes`: for a memory breakdown, the Mac's memory in use counted the way the
-    /// rows are (`memoryInUseAtFullSize`); adds the "System & other" row.
     public func scan(_ processes: [RawProcess], appPIDs: Set<Int32>, fallbackAppPIDs: Set<Int32> = [],
                      metric: BreakdownMetric, time: TimeInterval, absTime: UInt64,
-                     cpuTicks: CPUTicks, memoryInUseBytes: UInt64? = nil) -> Result {
+                     cpuTicks: CPUTicks) -> Result {
         let owners = attributor.owners(for: processes, appPIDs: appPIDs, fallbackAppPIDs: fallbackAppPIDs)
         let deltas = sampler.ingest(processes, time: time, absTime: absTime)
         let elapsed = sampler.elapsedSeconds
-        let total = lastTicks.map { cpuBusyPercent(previous: $0, current: cpuTicks) }
+        // Ticks that didn't move (a failed or stale read) span no time: that read 0 % over
+        // 25 % of rows. No header for that scan rather than a wrong one.
+        let total = lastTicks.flatMap { $0 == cpuTicks ? nil : cpuBusyPercent(previous: $0, current: cpuTicks) }
         lastTicks = cpuTicks
         let previousOwners = lastOwners
         lastOwners = owners
@@ -391,7 +393,6 @@ public final class BreakdownScanner {
             let d = deltas?[p.pid]
             let cpu = d.map {
                 let ns = $0.cpuNs - $0.childCreditNs + UInt64(Double($0.childCreditNs) * creditScale)
-                    + (exitCredit[p.pid] ?? 0)
                 return processCPUPercent(previousCPUTimeNs: 0, currentCPUTimeNs: ns, elapsedSeconds: elapsed) / cores
             } ?? 0
             var watts = 0.0
@@ -403,15 +404,25 @@ public final class BreakdownScanner {
                                        cpuPercent: cpu, memoryBytes: p.memoryBytes, watts: watts,
                                        startTime: p.startTime))
         }
+        // Exit credit is work by processes that are gone, so it gets its own child row in the
+        // app the credited process belongs to instead of landing on a live process: credited to
+        // the app's main process, an idle VS Code read 79 % of one core after an orphaned `yes`
+        // was killed, on the very row someone would Force Quit.
+        var exitedByApp: [Int32: UInt64] = [:]
+        for (pid, ns) in exitCredit {
+            exitedByApp[owners[pid] ?? BreakdownGroup.otherProcesses, default: 0] += ns
+        }
+        for (app, ns) in exitedByApp {
+            let cpu = processCPUPercent(previousCPUTimeNs: 0, currentCPUTimeNs: ns, elapsedSeconds: elapsed) / cores
+            usages.append(ProcessUsage(pid: BreakdownGroup.exitedProcesses, appPID: app, cpuPercent: cpu,
+                                       memoryBytes: 0))
+        }
 
         let measuring = metric != .memory && deltas == nil
         var apps = aggregate(usages, by: metric)
         if metric == .cpu, !measuring, let total {
             apps = addingSystemRow(to: apps, totalCPUPercent: total)
             lastSystemPercent = apps.first { $0.appPID == BreakdownGroup.system }?.cpuPercent
-        }
-        if metric == .memory, let memoryInUseBytes {
-            apps = addingMemoryRemainderRow(to: apps, inUseBytes: memoryInUseBytes)
         }
         return Result(apps: apps, totalCPUPercent: measuring ? nil : total, measuring: measuring)
     }
@@ -428,8 +439,9 @@ public final class BreakdownScanner {
 ///
 /// - `unexplained`: surviving ancestor pid → its vanished descendants' candidate work.
 /// - `orphans`: vanished pid with no surviving ancestor → candidate work, credited to the app
-///   it belonged to (`previousOwners`), on the app's main process, if that is still `alive`.
-/// Returns surviving pid → ns to add.
+///   it belonged to (`previousOwners`), keyed by the app's main process, if that is still `alive`.
+/// Returns surviving pid → ns credited on its behalf. `BreakdownScanner` shows it in that
+/// process's app as an "Exited processes" child row, not on the process itself.
 public func exitWorkCredit(unexplained: [Int32: UInt64], orphans: [Int32: UInt64],
                            previousOwners: [Int32: Int32], alive: (Int32) -> Bool,
                            budgetNs: Double) -> [Int32: UInt64] {

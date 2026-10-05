@@ -24,7 +24,7 @@ struct BreakdownView: View {
         _store = ObservedObject(wrappedValue: store)
         self.metric = metric
         self.onBack = onBack
-        _apps = StateObject(wrappedValue: AppInfoCache(metric: metric))
+        _apps = StateObject(wrappedValue: AppInfoCache())
     }
 
     private var title: String {
@@ -45,7 +45,7 @@ struct BreakdownView: View {
             return "\(Int(cpuTotal.rounded()))% used"
         case .memory:
             guard let m = store.memory else { return "—" }
-            return "\(gb(m.usedBytes)) / \(gb(m.totalBytes)) GB"
+            return "\(gb(m.usedBytes)) / \(gb(m.totalBytes)) GB used"
         case .energy:
             guard let b = store.battery else { return "—" }
             return "\(b.percent)%"
@@ -90,6 +90,7 @@ struct BreakdownView: View {
             }
 
             if metric == .energy { BatteryDetailsCard(store: store) }
+            if metric == .memory { MemoryPartsCard(store: store) }
 
             list
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -99,7 +100,8 @@ struct BreakdownView: View {
             PanelFooter {
                 Text(footnote)
                     .font(.caption2).foregroundStyle(.tertiary)
-                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .multilineTextAlignment(.trailing)
+                    .lineLimit(metric == .memory ? 2 : 1).minimumScaleFactor(0.8)
             }
         }
         .padding([.horizontal, .bottom], Design.panelInset)
@@ -110,7 +112,9 @@ struct BreakdownView: View {
     private var footnote: String {
         switch metric {
         case .cpu: return "Share of the whole Mac (all \(Self.cores) cores)"
-        case .memory: return "Rows count compressed memory at full size"
+        // Like Activity Monitor's Memory column (footprints): Memory Used counts the compressor's
+        // RAM instead, so the rows can sum to more than it.
+        case .memory: return "Rows count compressed memory at full size, so they can add up to more than Memory Used"
         case .energy: return "App power counts CPU only"
         }
     }
@@ -168,19 +172,50 @@ struct BreakdownView: View {
                     if metric == .cpu { oneCoreLine(app.cpuPercent) }
                 }
             }
-            .tooltip(info.detail)
+            .tooltip(rowTooltip(app, info))
     }
 
     /// Activity Monitor's scale (100 % = one core), for comparing with it.
-    private func oneCoreLine(_ cpuPercent: Double) -> some View {
-        Button("\(Int((cpuPercent * Double(Self.cores)).rounded()))% of one core") {}.disabled(true)
+    private func oneCore(_ cpuPercent: Double) -> String {
+        "\(Int((cpuPercent * Double(Self.cores)).rounded()))% of one core"
     }
 
-    private func processRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
+    private func oneCoreLine(_ cpuPercent: Double) -> some View {
+        Button(oneCore(cpuPercent)) {}.disabled(true)
+    }
+
+    /// A group row's explanation; on CPU rows also Activity Monitor's figure (100 % = one core).
+    private func rowTooltip(_ app: AppUsage, _ info: AppInfoCache.Info) -> String? {
+        guard metric == .cpu else { return info.detail }
+        return [info.detail, oneCore(app.cpuPercent)].compactMap { $0 }.joined(separator: "\n")
+    }
+
+    @ViewBuilder private func processRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
+        if process.pid == BreakdownGroup.exitedProcesses {
+            exitedRow(process)
+        } else {
+            liveProcessRow(process, in: app)
+        }
+    }
+
+    /// The app's CPU credited for processes that exited between scans: no process to act on.
+    private func exitedRow(_ process: ProcessUsage) -> some View {
+        ProcessRow(process: process, name: "Exited processes", metric: metric, barScale: barScale,
+                   perCore: metric == .cpu ? oneCore(process.cpuPercent) : nil)
+            .transition(.opacity)
+            .contextMenu {
+                Button("Exited processes") {}.disabled(true)
+                if metric == .cpu { oneCoreLine(process.cpuPercent) }
+            }
+            .help("Work by this app's processes that ended since the last update")
+    }
+
+    private func liveProcessRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
         let isAppItself = app.isApp && process.pid == app.appPID
         let name = isAppItself ? apps.info(for: app.appPID).name
                                : apps.name(ofProcess: process.pid, startTime: process.startTime)
-        return ProcessRow(process: process, name: name, metric: metric, barScale: barScale)
+        return ProcessRow(process: process, name: name, metric: metric, barScale: barScale,
+                          perCore: metric == .cpu ? oneCore(process.cpuPercent) : nil)
             .transition(.opacity)
             .contextMenu {
                 Button("\(name) \u{2014} pid \(process.pid)") {}.disabled(true)
@@ -348,18 +383,29 @@ private struct ProcessRow: View {
     let name: String
     let metric: BreakdownMetric
     let barScale: Double
+    /// CPU only: Activity Monitor's figure for this process ("100% of one core"), under the name.
+    let perCore: String?
 
     @State private var hovering = false
 
     var body: some View {
         HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: perCore == nil ? 3 : 1) {
                 HStack(spacing: 4) {
                     Text(name).lineLimit(1).truncationMode(.middle)
-                    Text(verbatim: String(process.pid)).foregroundStyle(.tertiary).monospacedDigit()
+                    if process.pid > 0 {
+                        Text(verbatim: String(process.pid)).foregroundStyle(.tertiary).monospacedDigit()
+                    }
                 }
                 .font(.caption)
-                UsageBar(fraction: fraction, color: barColor(metric).opacity(0.7), height: 2)
+                HStack(spacing: 6) {
+                    UsageBar(fraction: fraction, color: barColor(metric).opacity(0.7), height: 2)
+                    if let perCore {
+                        Text(perCore)
+                            .font(.caption2).foregroundStyle(.tertiary).monospacedDigit()
+                            .fixedSize()
+                    }
+                }
             }
             Spacer(minLength: 8)
             Text(formattedValue(metric, cpu: process.cpuPercent, memory: process.memoryBytes,
@@ -420,14 +466,8 @@ final class AppInfoCache: ObservableObject {
         var detail: String? = nil
     }
 
-    /// The breakdown's metric: the System row stands for something different in each.
-    private let metric: BreakdownMetric
     private var cache: [Int32: Info] = [:]
     private var processNames: [Int32: (startTime: UInt64, name: String)] = [:]
-
-    init(metric: BreakdownMetric) {
-        self.metric = metric
-    }
 
     func info(for appPID: Int32) -> Info {
         if let hit = cache[appPID] { return hit }
@@ -436,11 +476,6 @@ final class AppInfoCache: ObservableObject {
         case BreakdownGroup.otherProcesses:
             info = Info(name: "Other processes", icon: nil, symbol: "gearshape.2",
                         detail: "Your background processes that no app is responsible for")
-        case BreakdownGroup.system where metric == .memory:
-            info = Info(name: "System & other", icon: nil, symbol: "apple.logo",
-                        detail: "The kernel and drivers (wired memory), macOS's own processes and other users. "
-                            + "Like the rows above it counts compressed memory at full size, so the rows "
-                            + "add up to more than Memory Used.")
         case BreakdownGroup.system:
             info = Info(name: "System", icon: nil, symbol: "apple.logo",
                         detail: "The kernel, WindowServer, other users' processes, commands run with sudo, "

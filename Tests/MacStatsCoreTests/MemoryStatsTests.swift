@@ -23,17 +23,32 @@ import Testing
                         internal: 3, purgeable: 8, pageSize: 1)
         #expect(memorySample(raw: raw, totalBytes: 100, pressureLevel: 1).usedBytes == 15)
     }
-    /// The Memory breakdown's rows count compressed memory at full size, so its "System &
-    /// other" remainder is taken from Memory Used with the compressor at full size too.
-    @Test func inUseAtFullSizeSwapsTheCompressorForWhatItHolds() {
+    /// The Memory breakdown shows Memory Used's parts, as Activity Monitor's Memory tab does.
+    @Test func partsAddUpToMemoryUsed() {
         let raw = VMRaw(free: 0, active: 0, inactive: 0, wired: 10, compressed: 5,
                         internal: 40, purgeable: 5, pageSize: 2, compressedOriginal: 12)
-        #expect(memoryInUseAtFullSize(raw) == (35 + 10 + 12) * 2)
-        // Unknown original size (0): falls back to Memory Used.
-        var unknown = raw
-        unknown.compressedOriginal = 0
-        #expect(memoryInUseAtFullSize(unknown) == memorySample(raw: unknown, totalBytes: 1, pressureLevel: 1).usedBytes)
+        let s = memorySample(raw: raw, totalBytes: 1_000, pressureLevel: 1)
+        #expect(s.appBytes == 70)
+        #expect(s.wiredBytes == 20)
+        #expect(s.compressedBytes == 10)
+        #expect(s.appBytes + s.wiredBytes + s.compressedBytes == s.usedBytes)
+        #expect(s.compressedDataBytes == 24)   // what the compressor holds, at full size
     }
+
+    @Test func roundedPartsAddUpToTheRoundedTotal() {
+        // 6.16 + 1.66 + 2.66 = 10.48: plain rounding gives 6.2 + 1.7 + 2.7 = 10.6 under "10.5".
+        let gib = 1_073_741_824.0
+        let parts = [6.16, 1.66, 2.66].map { UInt64($0 * gib) }
+        let shown = roundedParts(parts, unit: gib)
+        #expect(zip(shown, [6.2, 1.7, 2.6]).allSatisfy { abs($0 - $1) < 1e-9 })
+        #expect(abs(shown.reduce(0, +) - 10.5) < 1e-9)
+    }
+
+    @Test func roundedPartsKeepExactValues() {
+        let shown = roundedParts([3_000, 1_000, 0], unit: 1_000)
+        #expect(zip(shown, [3.0, 1.0, 0.0]).allSatisfy { abs($0 - $1) < 1e-9 })
+    }
+
     @Test func pressureComesFromKernelLevel() {
         let raw = VMRaw(free: 0, active: 95, inactive: 0, wired: 0, compressed: 0,
                         internal: 95, purgeable: 0, pageSize: 1)

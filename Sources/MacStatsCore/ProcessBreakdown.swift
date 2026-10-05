@@ -1,7 +1,7 @@
 import Foundation
 
 /// Which resource a breakdown ranks apps by.
-public enum BreakdownMetric: Equatable {
+public enum BreakdownMetric: Equatable, Sendable {
     case cpu
     case memory
     /// Watts of CPU energy per app (the Battery drill-in).
@@ -31,7 +31,7 @@ public struct RawProcess: Equatable {
 }
 
 /// A single process's usage, already attributed to its owning GUI app.
-public struct ProcessUsage: Equatable, Identifiable {
+public struct ProcessUsage: Equatable, Identifiable, Sendable {
     public let pid: Int32
     public let appPID: Int32       // owning GUI app's pid (the grouping key), or a `BreakdownGroup`
     /// Share of the whole machine (0...100, all cores together), the scale of the CPU card.
@@ -67,10 +67,14 @@ public enum BreakdownGroup {
     /// CPU the machine used outside the user's processes: the kernel, WindowServer and other
     /// users' daemons, which can't be read per process. No processes, no actions.
     public static let system: Int32 = -2
+    /// The pid of an app's synthetic "Exited processes" child row (a `ProcessUsage`, not an app
+    /// row): CPU credited to the app for processes that exited before a scan could read their
+    /// last stretch (see `exitWorkCredit`). No process to act on.
+    public static let exitedProcesses: Int32 = -3
 }
 
 /// One app's summed usage across all of its processes.
-public struct AppUsage: Equatable, Identifiable {
+public struct AppUsage: Equatable, Identifiable, Sendable {
     public let appPID: Int32
     /// The app's processes, ranked by the breakdown's metric (ties by pid).
     public let processes: [ProcessUsage]
@@ -158,21 +162,10 @@ public func addingSystemRow(to apps: [AppUsage], totalCPUPercent: Double) -> [Ap
     return sortedRows(apps + [system], by: .cpu)
 }
 
-/// Adds the Memory breakdown's "System & other" row (the `system` group key): what isn't
-/// charged to the user's processes — the kernel and drivers (wired), macOS's own processes and
-/// other users. `inUseBytes` must count compressed memory at full size like the rows do
-/// (`memoryInUseAtFullSize`). Clamped at 0. No processes, no actions.
-public func addingMemoryRemainderRow(to apps: [AppUsage], inUseBytes: UInt64) -> [AppUsage] {
-    let accounted = apps.reduce(UInt64(0)) { $0 + $1.memoryBytes }
-    let rest = AppUsage(appPID: BreakdownGroup.system, processes: [], cpuPercent: 0,
-                        memoryBytes: inUseBytes > accounted ? inUseBytes - accounted : 0)
-    return sortedRows(apps + [rest], by: .memory)
-}
-
 /// Descending by value. Ties (e.g. many idle apps at 0% CPU) break by pid, so equal rows keep
 /// a stable order between scans instead of shuffling; group rows (negative keys) go last.
-/// For memory the group rows always go last: "System & other" and "Other processes" (GBs of
-/// macOS agents) would otherwise sit above every app.
+/// For memory the group rows always go last: "Other processes" (GBs of macOS agents) would
+/// otherwise sit above every app.
 private func sortedRows(_ apps: [AppUsage], by metric: BreakdownMetric) -> [AppUsage] {
     apps.sorted {
         if metric == .memory, ($0.appPID < 0) != ($1.appPID < 0) { return $0.appPID > 0 }

@@ -384,6 +384,19 @@ import Testing
         #expect(abs(r.apps.reduce(0) { $0 + $1.cpuPercent } - 50) < 0.001)
     }
 
+    @Test func ticksThatDidNotMoveGiveNoHeaderInsteadOfZero() {
+        // A stale counter read (the kernel's rate limit) once showed a 0 % header over 25 % of rows.
+        let s = scanner()
+        let ticks = CPUTicks(user: 10, system: 0, idle: 90, nice: 0)
+        _ = s.scan([p(100, cpu: 0)], appPIDs: [100], metric: .cpu, time: 0, absTime: 10, cpuTicks: ticks)
+        let r = s.scan([p(100, cpu: 1_000_000_000)], appPIDs: [100], metric: .cpu, time: 1, absTime: 20,
+                       cpuTicks: ticks)
+        #expect(!r.measuring)
+        #expect(r.totalCPUPercent == nil)
+        #expect(!r.apps.contains { $0.appPID == BreakdownGroup.system })
+        #expect(abs((r.apps.first { $0.appPID == 100 }?.cpuPercent ?? 0) - 25) < 0.001)
+    }
+
     @Test func childCreditNeverPushesTheRowsPastTheHeader() {
         // A Terminal tab's root `login` (unreadable, never scanned) ran `yes` for minutes; when
         // the tab's surviving parent reaps it, its child time jumps by all of that, which
@@ -425,13 +438,6 @@ import Testing
         #expect(r.apps.map(\.memoryBytes) == [1_000, 500])
     }
 
-    @Test func memoryRemainderRowWhenTheTotalIsGiven() {
-        let r = scanner().scan([p(100, cpu: 0, mem: 1_000), p(900, cpu: 0, mem: 500)], appPIDs: [100],
-                               metric: .memory, time: 0, absTime: 10, cpuTicks: ticks0, memoryInUseBytes: 4_000)
-        #expect(r.apps.map(\.appPID) == [100, BreakdownGroup.system, BreakdownGroup.otherProcesses])
-        #expect(r.apps.map(\.memoryBytes) == [1_000, 2_500, 500])
-    }
-
     /// App 100 ← shell 101 ← `yes` 102 at one core of 4. Between the 2nd and 3rd scan, 102 is
     /// killed and reaped by launchd (its subshell exited): its last stretch can't be read.
     private func orphanRun(busyAtTheEnd: UInt32) -> BreakdownScanner.Result {
@@ -453,8 +459,27 @@ import Testing
         let app = r.apps.first { $0.appPID == 100 }!
         let system = r.apps.first { $0.appPID == BreakdownGroup.system }!
         #expect(abs(app.cpuPercent - 25) < 0.01)
-        #expect(app.processes.first?.pid == 101)   // on the shell that started it
+        // Its own child row, not on the (idle) shell that started it.
+        #expect(app.processes.first?.pid == BreakdownGroup.exitedProcesses)
+        #expect(abs((app.processes.first?.cpuPercent ?? 0) - 25) < 0.01)
+        #expect((app.processes.first { $0.pid == 101 }?.cpuPercent ?? 1) < 0.01)
         #expect(abs(system.cpuPercent - 1) < 0.01)
+    }
+
+    @Test func orphanWorkShowsAsExitedProcessesNotOnTheAppsMainProcess() {
+        // An orphaned `yes` (ppid 1) the app is responsible for, killed between scans. Credited
+        // to the app's main process, an idle VS Code read 79 % of one core.
+        let s = BreakdownScanner(cores: 4, responsible: { $0 == 102 ? 100 : nil }, allParents: { [:] })
+        _ = s.scan([p(100, cpu: 0), p(102, cpu: 0)], appPIDs: [100], metric: .cpu, time: 0, absTime: 10,
+                   cpuTicks: ticks0)
+        _ = s.scan([p(100, cpu: 0), p(102, cpu: 1_000_000_000)], appPIDs: [100], metric: .cpu, time: 1,
+                   absTime: 20, cpuTicks: CPUTicks(user: 26, system: 0, idle: 74, nice: 0))
+        let r = s.scan([p(100, cpu: 0)], appPIDs: [100], metric: .cpu, time: 2, absTime: 30,
+                       cpuTicks: CPUTicks(user: 52, system: 0, idle: 148, nice: 0))
+        let app = r.apps.first { $0.appPID == 100 }!
+        #expect(abs(app.cpuPercent - 25) < 0.01)
+        #expect(app.processes.map(\.pid) == [BreakdownGroup.exitedProcesses, 100])
+        #expect(app.processes[1].cpuPercent == 0)
     }
 
     @Test func exitedWorkIsOnlyCreditedOutOfARisenRemainder() {
@@ -512,21 +537,13 @@ import Testing
     }
 
     @Test func memoryGroupRowsGoLastWhateverTheirSize() {
-        // "Other processes" (GBs of macOS agents) and "System & other" used to top the list.
+        // "Other processes" (GBs of macOS agents) used to top the list.
         let procs = [
             ProcessUsage(pid: 5, appPID: BreakdownGroup.otherProcesses, cpuPercent: 0, memoryBytes: 2_000),
             ProcessUsage(pid: 7, appPID: 7, cpuPercent: 0, memoryBytes: 100),
             ProcessUsage(pid: 8, appPID: 8, cpuPercent: 0, memoryBytes: 300),
         ]
-        let rows = addingMemoryRemainderRow(to: aggregate(procs, by: .memory), inUseBytes: 10_000)
-        #expect(rows.map(\.appPID) == [8, 7, BreakdownGroup.system, BreakdownGroup.otherProcesses])
-        #expect(rows[2].memoryBytes == 7_600)
-        #expect(rows[2].processes.isEmpty)   // not expandable, no actions
-    }
-
-    @Test func memoryRemainderNeverNegative() {
-        let apps = [AppUsage(appPID: 1, processes: [], cpuPercent: 0, memoryBytes: 500)]
-        #expect(addingMemoryRemainderRow(to: apps, inUseBytes: 400).last?.memoryBytes == 0)
+        #expect(aggregate(procs, by: .memory).map(\.appPID) == [8, 7, BreakdownGroup.otherProcesses])
     }
 
     @Test func groupRowsSortAfterAppsOnTies() {
