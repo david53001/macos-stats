@@ -150,6 +150,7 @@ struct BreakdownView: View {
         let info = apps.info(for: app.appPID)
         let expandable = app.processes.count > 1
         return AppRow(app: app, info: info, metric: metric, barScale: barScale,
+                      perCore: metric == .cpu ? oneCore(app.cpuPercent) : nil,
                       disclosure: expandable ? (expanded == app.appPID) : nil)
             .onTapGesture {
                 guard expandable else { return }
@@ -326,6 +327,8 @@ private struct AppRow: View {
     let info: AppInfoCache.Info
     let metric: BreakdownMetric
     let barScale: Double
+    /// CPU only: Activity Monitor's figure for the app ("415% of one core"), beside the bar.
+    let perCore: String?
     /// nil = not expandable; else whether it is expanded.
     let disclosure: Bool?
 
@@ -345,9 +348,18 @@ private struct AppRow: View {
             .frame(width: 24, height: 24)
             .clipShape(RoundedRectangle(cornerRadius: 5.5, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: perCore == nil ? 4 : 1) {
                 Text(info.name).font(.callout).lineLimit(1)
-                UsageBar(fraction: fraction, color: barColor(metric), height: 4)
+                HStack(spacing: 6) {
+                    UsageBar(fraction: fraction, color: barColor(metric), height: 4)
+                    if let perCore {
+                        // A fixed column ("800% of one core" fits) keeps every row's bar the same length.
+                        Text(perCore)
+                            .font(.caption2).foregroundStyle(.tertiary).monospacedDigit()
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                            .frame(width: 88, alignment: .leading)
+                    }
+                }
             }
             Spacer(minLength: 8)
             Text(formattedValue(metric, cpu: app.cpuPercent, memory: app.memoryBytes, watts: app.watts))
