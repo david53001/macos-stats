@@ -105,12 +105,13 @@ public func minutesToTarget(currentMAh: Int, maxMAh: Int, chargeMA: Double, targ
 /// Optimized Charging's hold). Only that transition counts: a full Mac left on AC drifts to
 /// 95–99 % while still "charged" (pmset: AC 100 → 95 % on Sep 30), and plugging in above a limit
 /// holds wherever the charge happens to be; neither is a limit. Charging past it later means
-/// the limit is gone. Holds below 50 % are not taken as limits.
+/// the limit is gone. Holds below 50 % are not taken as limits, and neither is a stop at or below
+/// the `hold` powerd's file lists (Optimized Charging pausing; it learned 80 with an 85 % limit).
 public func learnedChargeLimit(previous: Int?, previousState: BatteryState?, state: BatteryState,
-                               percent: Int) -> Int? {
+                               percent: Int, hold: Int? = nil) -> Int? {
     switch state {
     case .notCharging, .charged:
-        guard previousState == .charging else { return previous }
+        guard previousState == .charging, hold.map({ percent > $0 }) ?? true else { return previous }
         return (50...99).contains(percent) ? percent : previous
     case .charging:
         if let previous, percent > previous { return nil }
@@ -219,20 +220,9 @@ public struct ChargeLimitResolver: Equatable {
         self.observed = observed
     }
 
-    /// The target at `percent`, plugged in for `pluggedInFor` seconds, with powerd saying
-    /// `powerd` and listing `hold`. A hold is the target until the charge has passed it
-    /// (then charging went on, so the hold wasn't used); only the end limit is remembered.
-    public mutating func resolve(powerd: ChargeLimitHint, hold: Int? = nil, percent: Int = 0,
-                                 pluggedInFor: TimeInterval, now: Date) -> ChargeTarget {
-        let target = resolveEnd(powerd: powerd, pluggedInFor: pluggedInFor, now: now)
-        if let hold, percent <= hold {
-            if case .limit(let end) = target, end <= hold { return target }
-            return .limit(hold)
-        }
-        return target
-    }
-
-    private mutating func resolveEnd(powerd: ChargeLimitHint, pluggedInFor: TimeInterval, now: Date) -> ChargeTarget {
+    /// Where charging ends, plugged in for `pluggedInFor` seconds with powerd saying `powerd`.
+    /// An Optimized Charging hold is not an end; `chargeStop` adds it.
+    public mutating func resolve(powerd: ChargeLimitHint, pluggedInFor: TimeInterval, now: Date) -> ChargeTarget {
         switch powerd {
         case .limit(let percent):
             remember(percent, now)
@@ -252,6 +242,46 @@ public struct ChargeLimitResolver: Equatable {
     private mutating func remember(_ percent: Int, _ now: Date) {
         remembered = percent
         rememberedAt = now
+    }
+}
+
+/// Where this reading's charge stops, as the Battery card shows it.
+public struct ChargeStop: Equatable {
+    /// The end-of-charge limit below 100 % (the user's charge limit); nil when charging goes to
+    /// 100 %, nothing is known, or a charge has already run past it.
+    public var limit: Int?
+    /// Optimized Charging's hold, when charging is heading for it or is held at it.
+    public var hold: Int?
+    /// Nothing is known about a limit: time to full goes to 100 % and says so ("to 100%").
+    public var assumed = false
+
+    public init(limit: Int? = nil, hold: Int? = nil, assumed: Bool = false) {
+        self.limit = limit; self.hold = hold; self.assumed = assumed
+    }
+
+    /// The percent this charge is heading for now (100 = full).
+    public var targetPercent: Int { hold ?? limit ?? 100 }
+}
+
+/// Decides, for one reading, where charging stops: the end target from `ChargeLimitResolver`
+/// (nil on battery) plus powerd's Optimized Charging `hold`.
+/// - Charging below the hold: heading for the hold. At or past it while charging, the hold has
+///   released (charging resumed at 80 % with the target still 80 showed "Almost done" for the
+///   ~10 minutes to 85 %), so the end limit, or 100 % with none, is the target. The minute
+///   between showing the hold's percent and stopping there is the one cost.
+/// - Charging past an end limit: it isn't one (time to full, not "Almost done").
+/// - Held (not charging / charged) at or below the hold: held by Optimized Charging; the end
+///   limit is reported alongside, so the card doesn't call the hold "Charge limit 80%".
+public func chargeStop(end: ChargeTarget?, hold: Int?, state: BatteryState, percent: Int) -> ChargeStop {
+    guard let end, state.isPluggedIn else { return ChargeStop() }
+    let endLimit: Int? = if case .limit(let percent) = end { percent } else { nil }
+    let holdApplies = hold.map { $0 < (endLimit ?? 100) && (state == .charging ? percent < $0 : percent <= $0) } ?? false
+    switch state {
+    case .charging:
+        return ChargeStop(limit: endLimit.flatMap { $0 >= percent ? $0 : nil },
+                          hold: holdApplies ? hold : nil, assumed: end == .unknown)
+    default:
+        return ChargeStop(limit: endLimit, hold: holdApplies ? hold : nil)
     }
 }
 

@@ -38,6 +38,8 @@ struct BatteryDetailsCard: View {
             rows.append((b.chargeTargetLabel, b.timeToFullMinutes.map(formatDuration)
                             ?? (b.atChargeLimit ? "Almost done" : b.percent >= 90 ? "Almost full" : "Calculating…")))
         case .charged, .notCharging:
+            // Optimized Charging's pause is not the user's limit: show both.
+            if let hold = b.chargeHoldPercent { rows.append(("Optimized Charging", "Held at \(hold)%")) }
             if let limit = b.chargeLimitPercent { rows.append(("Charge limit", "\(limit)%")) }
         }
 
@@ -80,10 +82,10 @@ extension BatterySample {
     var chargeTargetLabel: String { "Time to \(chargeTargetName)" }
 
     /// Charging, and already showing the percent it stops at (the last minute before it does).
-    var atChargeLimit: Bool { chargeLimitPercent.map { percent >= $0 } ?? false }
+    var atChargeLimit: Bool { chargeStopPercent.map { percent >= $0 } ?? false }
 
     private var chargeTargetName: String {
-        if let limit = chargeLimitPercent { return "\(limit)%" }
+        if let stop = chargeStopPercent { return "\(stop)%" }
         return chargeTargetAssumed ? "100%" : "full"
     }
 

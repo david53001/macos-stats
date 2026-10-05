@@ -248,7 +248,10 @@ final class AppModel: ObservableObject {
         }
 
         let target = chargeTarget(for: sample, previousState: previousState)
-        let limit: Int? = if case .limit(let percent)? = target { percent } else { nil }
+        let stop = chargeStop(end: target, hold: powerdPolicy.hold, state: state, percent: sample.percent)
+        sample.chargeLimitPercent = stop.limit
+        sample.chargeHoldPercent = stop.hold
+        sample.chargeTargetAssumed = stop.assumed   // labelled "to 100%", not "to full"
         switch state {
         case .discharging:
             if let wh = telemetry?.remainingWh {
@@ -256,22 +259,19 @@ final class AppModel: ObservableObject {
                                                                   macOSMinutes: sample.timeToEmptyMinutes)
             }
         case .charging:
-            // Still charging past it ⇒ not a limit. At it (shown 85 % at raw 84.0 %) charging
-            // stops within the minute: keep it, no estimate ("Almost done").
-            let limit = limit.flatMap { $0 >= sample.percent ? $0 : nil }
-            sample.chargeLimitPercent = limit
-            sample.chargeTargetAssumed = target == .unknown   // labelled "to 100%", not "to full"
+            // At the limit (shown 85 % at raw 84.0 %) charging stops within the minute: no
+            // estimate ("Almost done").
             if let raw = telemetry?.currentMAh, let max = telemetry?.rawMaxMAh, let mA = chargeCurrent.milliamps,
                let minutes = minutesToTarget(currentMAh: raw, maxMAh: max, chargeMA: mA,
-                                             targetPercent: limit ?? 100) {
+                                             targetPercent: stop.targetPercent) {
                 sample.timeToFullMinutes = minutes
-            } else if limit != nil || chargeCurrent.milliamps != nil {
+            } else if stop.targetPercent < 100 || chargeCurrent.milliamps != nil {
                 // macOS's figure is to 100 %, not to the limit; with a measured current, nil
                 // here means the last trickle ("Almost full" from 90 %) or too little current.
                 sample.timeToFullMinutes = nil
             }
         case .charged, .notCharging:
-            sample.chargeLimitPercent = limit
+            break
         }
         if let peak = nominalPeakMAh { telemetry?.nominalMAh = peak }
         store.setBattery(sample)
@@ -286,12 +286,6 @@ final class AppModel: ObservableObject {
     /// launches, as is where charging was last seen to stop (the fallback without the file).
     private func chargeTarget(for sample: BatterySample, previousState: BatteryState?) -> ChargeTarget? {
         let now = Date()
-        let observed = learnedChargeLimit(previous: chargeLimits.observed, previousState: previousState,
-                                          state: sample.state, percent: sample.percent)
-        if observed != chargeLimits.observed {
-            chargeLimits.observed = observed
-            UserDefaults.standard.set(observed, forKey: Keys.chargeLimit)
-        }
         guard sample.state.isPluggedIn else { return nil }
         if previousState == .discharging { pluggedInSince = now }
         let pluggedInFor = now.timeIntervalSince(pluggedInSince ?? .distantPast)
@@ -300,8 +294,14 @@ final class AppModel: ObservableObject {
             powerdPolicy = readPowerdChargePolicy()
             powerdLimitReadFor = sample
         }
-        let target = chargeLimits.resolve(powerd: powerdPolicy.limit, hold: powerdPolicy.hold, percent: sample.percent,
-                                          pluggedInFor: pluggedInFor, now: now)
+        // Learned only plugged in (on battery it never changes); a stop at powerd's hold isn't a limit.
+        let observed = learnedChargeLimit(previous: chargeLimits.observed, previousState: previousState,
+                                          state: sample.state, percent: sample.percent, hold: powerdPolicy.hold)
+        if observed != chargeLimits.observed {
+            chargeLimits.observed = observed
+            UserDefaults.standard.set(observed, forKey: Keys.chargeLimit)
+        }
+        let target = chargeLimits.resolve(powerd: powerdPolicy.limit, pluggedInFor: pluggedInFor, now: now)
         if let remembered = chargeLimits.remembered, let at = chargeLimits.rememberedAt,
            remembered != savedRememberedLimit || at.timeIntervalSince(savedRememberedAt) > 24 * 3600 {
             UserDefaults.standard.set(remembered, forKey: Keys.powerdChargeLimit)

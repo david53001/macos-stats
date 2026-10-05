@@ -323,6 +323,17 @@ import Foundation
         #expect(learnedChargeLimit(previous: nil, previousState: nil, state: .notCharging, percent: 90) == nil)
     }
 
+    @Test func aStopAtPowerdsHoldIsNotLearned() {
+        // Live: held at 80 % by Optimized Charging with an 85 % limit stored 80 as the limit.
+        #expect(learnedChargeLimit(previous: nil, previousState: .charging, state: .notCharging,
+                                   percent: 80, hold: 80) == nil)
+        #expect(learnedChargeLimit(previous: 85, previousState: .charging, state: .notCharging,
+                                   percent: 80, hold: 80) == 85)
+        // A stop above the hold is the limit.
+        #expect(learnedChargeLimit(previous: nil, previousState: .charging, state: .notCharging,
+                                   percent: 85, hold: 80) == 85)
+    }
+
     @Test func chargingPastTheLimitForgetsIt() {
         #expect(learnedChargeLimit(previous: 85, previousState: .charging, state: .charging, percent: 86) == nil)
         #expect(learnedChargeLimit(previous: 85, previousState: .charging, state: .charging, percent: 70) == 85)
@@ -425,23 +436,70 @@ import Foundation
         #expect(r.resolve(powerd: .unknown, pluggedInFor: 3600, now: now) == .limit(80))
     }
 
-    @Test func anOptimizedChargingHoldIsTheTargetUntilPassed() {
-        // Live 2026-10-05: limit 85 %, hold 80 %; charging stopped at 80 %.
+    @Test func anOptimizedChargingHoldIsNotAnEndLimit() {
+        // Live 2026-10-05: limit 85 %, hold 80 %. The resolver gives the end; `chargeStop` the hold.
         var r = ChargeLimitResolver()
-        #expect(r.resolve(powerd: .limit(85), hold: 80, percent: 56, pluggedInFor: 30, now: now) == .limit(80))
-        #expect(r.resolve(powerd: .limit(85), hold: 80, percent: 80, pluggedInFor: 60, now: now) == .limit(80))
-        // Earlier charges ran on past 80 %: then the limit is the target again.
-        #expect(r.resolve(powerd: .limit(85), hold: 80, percent: 81, pluggedInFor: 600, now: now) == .limit(85))
-        #expect(r.remembered == 85)   // only the end limit is remembered
-        // With no limit set, the hold still comes first.
-        var free = ChargeLimitResolver()
-        #expect(free.resolve(powerd: .noLimit, hold: 80, percent: 60, pluggedInFor: 600, now: now) == .limit(80))
-        #expect(free.resolve(powerd: .noLimit, hold: 80, percent: 81, pluggedInFor: 600, now: now) == .full)
+        #expect(r.resolve(powerd: .limit(85), pluggedInFor: 30, now: now) == .limit(85))
+        #expect(r.remembered == 85)
     }
 
     @Test func aLongUnconfirmedMemoryExpires() {
         var r = ChargeLimitResolver(remembered: 85, rememberedAt: now.addingTimeInterval(-31 * 86_400))
         #expect(r.resolve(powerd: .unknown, pluggedInFor: 3600, now: now) == .unknown)
         #expect(ChargeLimitResolver(remembered: 0, rememberedAt: now).remembered == nil)   // nonsense
+    }
+}
+
+@Suite struct ChargeStopTests {
+    @Test func chargingTowardTheHoldTargetsTheHold() {
+        let stop = chargeStop(end: .limit(85), hold: 80, state: .charging, percent: 56)
+        #expect(stop == ChargeStop(limit: 85, hold: 80))
+        #expect(stop.targetPercent == 80)
+    }
+
+    @Test func aReleasedHoldTargetsTheEndLimit() {
+        // Charging resumed at the shown 80 % after the hold: ~10 min to 85 % remain, not
+        // "Almost done" at 80.
+        let resumed = chargeStop(end: .limit(85), hold: 80, state: .charging, percent: 80)
+        #expect(resumed == ChargeStop(limit: 85, hold: nil))
+        #expect(resumed.targetPercent == 85)
+        #expect(chargeStop(end: .limit(85), hold: 80, state: .charging, percent: 82).targetPercent == 85)
+        // No end limit: on to 100 %.
+        #expect(chargeStop(end: .full, hold: 80, state: .charging, percent: 80) == ChargeStop())
+        #expect(chargeStop(end: .full, hold: 80, state: .charging, percent: 60).targetPercent == 80)
+    }
+
+    @Test func heldAtTheHoldReportsHoldAndLimitSeparately() {
+        // The drill-in said "Charge limit 80%" here; the limit is 85 %.
+        #expect(chargeStop(end: .limit(85), hold: 80, state: .notCharging, percent: 80)
+                == ChargeStop(limit: 85, hold: 80))
+        #expect(chargeStop(end: .full, hold: 80, state: .notCharging, percent: 80)
+                == ChargeStop(limit: nil, hold: 80))
+        // Held above the hold (plugged in at 90 % with an 85 % limit): just the limit.
+        #expect(chargeStop(end: .limit(85), hold: 80, state: .notCharging, percent: 90)
+                == ChargeStop(limit: 85, hold: nil))
+    }
+
+    @Test func endLimitWithoutAHold() {
+        #expect(chargeStop(end: .limit(85), hold: nil, state: .charging, percent: 70).targetPercent == 85)
+        // At the limit while charging: still the target (the last minute, "Almost done").
+        #expect(chargeStop(end: .limit(85), hold: nil, state: .charging, percent: 85).targetPercent == 85)
+        // Charging past it: not a limit.
+        #expect(chargeStop(end: .limit(85), hold: nil, state: .charging, percent: 86) == ChargeStop())
+        // A hold at or above the end limit is not a hold.
+        #expect(chargeStop(end: .limit(75), hold: 80, state: .charging, percent: 70) == ChargeStop(limit: 75))
+    }
+
+    @Test func noLimitOrNothingKnown() {
+        #expect(chargeStop(end: .full, hold: nil, state: .charging, percent: 50) == ChargeStop())
+        let unknown = chargeStop(end: .unknown, hold: nil, state: .charging, percent: 50)
+        #expect(unknown == ChargeStop(assumed: true))
+        #expect(unknown.targetPercent == 100)
+        #expect(chargeStop(end: .unknown, hold: nil, state: .notCharging, percent: 50) == ChargeStop())
+    }
+
+    @Test func onBatteryThereIsNoStop() {
+        #expect(chargeStop(end: nil, hold: 80, state: .discharging, percent: 60) == ChargeStop())
+        #expect(chargeStop(end: .limit(85), hold: 80, state: .discharging, percent: 60) == ChargeStop())
     }
 }
