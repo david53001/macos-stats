@@ -153,6 +153,16 @@ import IOKit.ps
         #expect(m.values == [4474, 4526, 4530])
     }
 
+    @Test func recentMaxSeededFromTheLastLaunchHoldsItsPeak() {
+        // Launch on 2026-10-05 21:40: the first reading was 4509 mAh (98 %) while the last
+        // launch had seen 4550 (99 %). Seeded with the saved readings, health stays 99 %.
+        var m = RecentMax(capacity: 3, values: [4550, 4531, 0, 4526, 4540])
+        #expect(m.values == [4531, 4526, 4540])   // the last 3 positive ones
+        #expect(m.peak == 4540)
+        #expect(m.add(4509) == 4540)
+        #expect(RecentMax(capacity: 3).peak == nil)
+    }
+
     @Test func averageWattsUsesRunningSums() {
         let a = BatteryTelemetry(updateTime: 1, systemLoadMW: 9000, accumulatedSystemLoad: 1_000_000, systemLoadCount: 100)
         let b = BatteryTelemetry(updateTime: 2, systemLoadMW: 9000, accumulatedSystemLoad: 1_500_000, systemLoadCount: 200)

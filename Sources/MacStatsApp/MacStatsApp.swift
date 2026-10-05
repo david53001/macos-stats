@@ -58,9 +58,12 @@ final class AppModel: ObservableObject {
     private var lastIntervalWatts: Double?
     /// The on-battery session began at an unplug MacStats saw (else at launch).
     private var sessionStartedAtUnplug = false
-    /// Health shows the peak full-charge capacity of the last ~10 gauge readings (it flickers).
-    private var nominalPeak = RecentMax(capacity: 10)
+    /// Health shows the peak full-charge capacity of the last ~10 gauge readings (it flickers),
+    /// carried over from the last launch so the first reading alone doesn't set it.
+    private var nominalPeak = RecentMax(
+        capacity: 10, values: UserDefaults.standard.array(forKey: Keys.nominalRecent) as? [Int] ?? [])
     private var nominalPeakMAh: Int?
+    private var savedNominalValues: [Int] = []
     private var lastBatteryState: BatteryState?
     private var lastEstimatorSave: Date?
     /// `typicalSeconds` as last written (or loaded), so unchanged values aren't rewritten.
@@ -71,6 +74,7 @@ final class AppModel: ObservableObject {
         static let typicalWatts = "batteryDrainTypicalWatts"
         static let typicalSeconds = "batteryDrainTypicalSeconds"
         static let chargeLimit = "batteryLearnedChargeLimit"
+        static let nominalRecent = "batteryNominalCapacityRecent"
         /// Before 2026-10-05: a "typical" learned from plugged-in and across-sleep readings
         /// (2.5 W on a Mac that drains 5.5 W). Dropped, not migrated.
         static let legacy = ["batteryTypicalWatts", "batteryTypicalSeconds"]
@@ -280,10 +284,15 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Writes the typical drain if it learned anything since the last write. Only a real write
-    /// starts the next save interval: the launch-time call used to start it with nothing to
-    /// save, so the first save came ~10 min in and a relaunch before that lost what was learned.
+    /// Writes the recent full-charge readings (health) when they changed, and the typical drain
+    /// if it learned anything since the last write. Only a real write of the drain starts the
+    /// next save interval: the launch-time call used to start it with nothing to save, so the
+    /// first save came ~10 min in and a relaunch before that lost what was learned.
     private func saveEstimator() {
+        if nominalPeak.values != savedNominalValues {
+            UserDefaults.standard.set(nominalPeak.values, forKey: Keys.nominalRecent)
+            savedNominalValues = nominalPeak.values
+        }
         guard let typical = estimator.typicalWatts, estimator.typicalSeconds != savedTypicalSeconds else { return }
         UserDefaults.standard.set(typical, forKey: Keys.typicalWatts)
         UserDefaults.standard.set(estimator.typicalSeconds, forKey: Keys.typicalSeconds)
