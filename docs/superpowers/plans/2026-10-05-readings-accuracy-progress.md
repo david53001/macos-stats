@@ -55,6 +55,8 @@
     on branches `review3/battery` and `review3/process` (the owner was asked to plug in at 55 %
     so the battery agent can log a live charge). Next: merge both, `./Scripts/bundle.sh release`,
     review round 3 with the same brief (report names `-review-round3-A.md` / `-B.md`).
+  - Round 3 fixes merged (`5a04426`, 244 tests, installed). Review round 3 running (Mac plugged
+    in, held at 80 % by Optimized Charging).
 
 ---
 
