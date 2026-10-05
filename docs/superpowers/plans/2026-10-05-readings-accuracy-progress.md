@@ -39,11 +39,12 @@
   a 9.5 W unplug spike then 1.8 W read −66 % at 10 min, now −20 %; −50 % at 30 min, now −4 %);
   the charge limit is learned only when charging stops (charging → held), not from a full Mac
   drifting to 95–99 % on AC; "Almost full" instead of "Calculating…" while charging at 100 %.
-  **Still open (needs the Mac plugged in):** time to full above 80 % divides by the smoothed
+  *(Superseded: time to full was rebuilt and checked on a live charge in review rounds 1 and 3,
+  see below. Original note:)* time to full above 80 % divides by the smoothed
   measured current, which keeps falling in the constant-voltage phase, so it likely reads short.
   Check: log `ioreg -rn AppleSmartBattery` `Amperage` + percent every 30 s from ~75 % to 100 %
   and compare with `minutesToTarget` in `Sources/MacStatsCore/BatteryCharging.swift`.
-- [ ] **Independent accuracy review** (user's bar: ≥ 8/10, aim for 9 if cheap; if below, fix and
+- [x] **Independent accuracy review** (user's bar: ≥ 8/10, aim for 9 if cheap; if below, fix and
   re-review). Two reviewers with the same brief write
   `docs/reviews/2026-10-05-readings-accuracy-review-A.md` and `-B.md`. The brief is
   `docs/reviews/2026-10-05-readings-accuracy/reviewer-brief.md` (fill in `{REPORT}` and a
@@ -55,8 +56,15 @@
     on branches `review3/battery` and `review3/process` (the owner was asked to plug in at 55 %
     so the battery agent can log a live charge). Next: merge both, `./Scripts/bundle.sh release`,
     review round 3 with the same brief (report names `-review-round3-A.md` / `-B.md`).
-  - Round 3 fixes merged (`5a04426`, 244 tests, installed). Review round 3 running (Mac plugged
-    in, held at 80 % by Optimized Charging).
+  - Round 3 fixes merged (`5a04426`, 244 tests, installed).
+  - **Round 3: A 8/10, B 8/10 → bar met** (`-review-round3-A.md`, `-round3-B.md`). Both scored
+    CPU 9, Memory 9, Overhead 9, Network 9; Battery 7 (A) / 8 (B). Battery is capped by two things
+    that are not cheap: (1) time left is ±~30 % per reading against the drain that actually
+    follows, because future load is unknowable; macOS's own figure is 60–96 % off on the same
+    history; (2) time to 100 % has never been checked against a real awake charge to 100 %
+    (needs one logged charge with the 85 % limit off). Cheap round-3 items were then fixed
+    ("Review fixes (round 3 polish)" below; 255 tests; installed). No round-4 review was run.
+  - Review reports under `docs/reviews/` are left uncommitted on purpose (reviewer-skill rule).
 
 ---
 
@@ -800,3 +808,16 @@ from 80 %, the row should read "Time to 85%" with minutes, not "Almost done".
 B-B1, Medium); remaining-energy model 1.5–4 % optimistic (B-B4); "Power, last min" falls back
 to one instant reading after a gauge pause (B-B5); health readings saved only on plug/unplug
 (B-B6); reaped-child CPU shown on the parent row (A-C1); accessory agents as app rows (A-C2).
+
+---
+
+## Where this leaves things (2026-10-05, end of session)
+- Branch `fix/readings-accuracy`, v1.1.0, **installed locally, not pushed, no GitHub release**.
+  To ship: merge to `main`, push, `./Scripts/package-release.sh`, then
+  `gh release create v1.1.0 dist/MacStats.app.zip --title "MacStats 1.1.0" --notes "..."`.
+- Open items worth doing next: log one awake charge to 100 % (limit off) and add it as a
+  calibration test for `minutesToTarget` above 85 %; some background agents (`universalaccessd`,
+  `loginwindow`, `ChatGPTHelper`) still appear as their own 0 % rows in the CPU breakdown
+  (filter to `activationPolicy == .regular` or group them under "Other processes"); the popover-open
+  CPU cost of MacStats itself was never measured on screen (needs a human to open it and watch
+  Activity Monitor).
