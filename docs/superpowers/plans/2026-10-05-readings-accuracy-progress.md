@@ -29,4 +29,8 @@
 
 ## Status
 - [x] Branch created, audit doc committed (`d3cb687`).
-- [ ] Workflow running. Results are appended below by the finalize step.
+- [ ] Workflow running (run ID `wf_cbc02384-581`, launched from the main Claude Code session).
+  Implementation agents work on branches `readings/process-memory` and `readings/battery`
+  (in temporary git worktrees), which get merged into `fix/readings-accuracy`. If the session
+  dies mid-run, check `git branch` for those branches and continue from whatever got merged.
+  The finalize step appends the results below.
