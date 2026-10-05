@@ -78,6 +78,7 @@ final class AppModel: ObservableObject {
         LoginItem.registerOnce()
         notifier.requestAuthorization()
         Keys.legacy.forEach(UserDefaults.standard.removeObject(forKey:))
+        store.pausePublishing()   // closed: record without re-rendering (see setVisibility)
         sample(at: Date())   // just stores the first baseline; history starts at the next sample
         readSlowSensors()    // so even the first open has battery + temperature on frame one
         observePowerSource()
@@ -92,8 +93,10 @@ final class AppModel: ObservableObject {
             stopIdleSampler()
             reliefTimer?.invalidate()
             reliefTimer = nil
-            // Force the slow tiers on this first tick, and run it synchronously so every value
-            // is real before the first frame (rates diff against the idle sampler's snapshots).
+            // Publish what the closed sampler recorded, then force the slow tiers on this first
+            // tick and run it synchronously, so every value is real before the first frame
+            // (rates diff against the idle sampler's snapshots).
+            store.resumePublishing()
             lastTempRead = nil
             lastBatteryRead = nil
             tick()
@@ -102,6 +105,9 @@ final class AppModel: ObservableObject {
             timer?.invalidate()
             timer = nil
             exitBreakdown()   // stop per-process scanning + clear nav state
+            // MenuBarExtra keeps the closed popover's views alive, so a published sample
+            // re-renders them (~0.7–1.3 % of a core): record without publishing until reopened.
+            store.pausePublishing()
             startIdleSampler()
             scheduleMemoryRelief()
         }
