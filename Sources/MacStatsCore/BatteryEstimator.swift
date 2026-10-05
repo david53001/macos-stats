@@ -6,24 +6,45 @@ import Foundation
 /// minute promises 13 h and a busy one 3 h. This blends averages of the whole-Mac draw (which
 /// already sums every app, the display and the GPU), fed **only** awake on-battery intervals
 /// (see `gaugeInterval`; the caller skips plugged-in time and intervals that span sleep):
-/// - **short**: the last few minutes (5-minute time constant), so a sustained load step shows;
-/// - **recent**: the last half hour or so of this session (30-minute time constant), pulled
-///   toward
-/// - **typical**: how this Mac usually drains on battery (3-hour time constant over awake
+/// - **short**: the last ten minutes or so (10-minute time constant), so a sustained load
+///   step shows;
+/// - **recent**: the last hour or so of this session (60-minute time constant), pulled toward
+/// - **typical**: how this Mac usually drains on battery (12-hour time constant over awake
 ///   on-battery seconds, persisted), which counts like `priorSeconds` of session evidence.
 ///
-/// Expected draw = 0.6 short + 0.4 (recent ⊕ typical). History (2026-10-05): an older version
-/// learned "typical" from every reading, plugged in or across sleep, which settled at 2.5 W on
-/// a Mac that really drains ~5.5 W awake on battery; with half the weight it showed 7–8 h where
-/// ~5 h 20 m was true. That value is not migrated (new persistence keys). Then the middle term
-/// was the mean since unplugging, which never forgets: an hour of idle (1.7 W) before real use
-/// (5.5 W) still read +28 % after 40 minutes of use and +13 % after two hours (now +8 % / +1 %).
+/// Expected draw = w·short + (1 − w)·(recent ⊕ typical). w is `shortWeightUp` when the short
+/// average is above the rest (the load rose: follow it, so time left never lags a real load on
+/// the optimistic side) and `shortWeightDown` when below (a quiet stretch: count it, but don't
+/// promise hours on one quiet minute). Going down, w is also phased in over the session's first
+/// `shortRampSeconds`, the minutes right after unplugging where one quiet reading moved the
+/// estimate 438 → 494 min.
+///
+/// Tuning (2026-10-05, round 3): replayed on 5 days of this Mac's own on-battery history
+/// (powerlog `PLBatteryAgent_EventBackward_Battery`, 14 sessions, 2 666 gauge readings, drain per
+/// interval from the coulomb counter `PassedCharge`) and scored against the drain that really
+/// followed (next 60 / 120 min, and the rest of the session). The previous constants (5 / 30 min,
+/// 3 h, 0.6 both ways) were off by a mean |log ratio| of 36 % and moved 22 % per 10 awake
+/// minutes on average (p90 52 %); these are off by 33 % and move 16 % (p90 38 %), on either half
+/// of the history alone too. Trusting the long-run average much more scores better on that
+/// history (31 %, 12 %) but read up to 45–57 % pessimistic for the first half hour of a light
+/// session after heavy use, so the search was limited to settings that stay within 25 % of a
+/// synthetic load change after 30 minutes in both directions (tests below pin these).
+///
+/// History (2026-10-05): an older version learned "typical" from every reading, plugged in or
+/// across sleep, which settled at 2.5 W on a Mac that really drains ~5.5 W awake on battery;
+/// with half the weight it showed 7–8 h where ~5 h 20 m was true. That value is not migrated
+/// (new persistence keys). Then the middle term was the mean since unplugging, which never
+/// forgets: an hour of idle (1.7 W) before real use (5.5 W) still read +28 % after 40 minutes
+/// of use.
 public struct BatteryEstimator: Equatable {
-    public static let shortTau: TimeInterval = 5 * 60
-    public static let recentTau: TimeInterval = 30 * 60
-    /// Weight of the short average in the expected draw (the rest goes to recent ⊕ typical).
-    public static let shortWeight = 0.6
-    public static let typicalTau: TimeInterval = 3 * 3600
+    public static let shortTau: TimeInterval = 10 * 60
+    public static let recentTau: TimeInterval = 60 * 60
+    /// Weight of the short average in the expected draw (the rest goes to recent ⊕ typical)
+    /// when it is above the rest, and when below (that one reached over `shortRampSeconds`).
+    public static let shortWeightUp = 0.8
+    public static let shortWeightDown = 0.6
+    public static let shortRampSeconds: TimeInterval = 10 * 60
+    public static let typicalTau: TimeInterval = 12 * 3600
     /// How much session time the typical average is worth as a prior.
     public static let priorSeconds: TimeInterval = 20 * 60
     /// Until the session has this much data, the typical drain (or, with none yet, macOS's own
@@ -84,7 +105,9 @@ public struct BatteryEstimator: Equatable {
     public var expectedWatts: Double? {
         guard let base = baseWatts else { return shortWatts }
         guard let short = shortWatts else { return base }
-        return Self.shortWeight * short + (1 - Self.shortWeight) * base
+        let weight = short >= base ? Self.shortWeightUp
+            : Self.shortWeightDown * min(1, sessionSeconds / Self.shortRampSeconds)
+        return weight * short + (1 - weight) * base
     }
 
     /// Minutes until empty for `remainingWh` of charge. Right after unplugging (under
