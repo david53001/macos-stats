@@ -48,24 +48,38 @@ public func readVMRaw() -> VMRaw {
     )
 }
 
-/// Sums byte counters across all non-loopback link-layer interfaces via getifaddrs.
+/// Sums byte counters across all non-loopback interfaces.
+///
+/// Uses the `IFMIB_IFALLDATA` sysctl (`net.link.generic`), one call for every interface's
+/// 64-bit `if_data64`. `getifaddrs`' `if_data` counters are 32-bit and wrap every 4 GiB per
+/// interface (a dropped sample each time, or a blip to 0 on a fast download), and the
+/// `NET_RT_IFLIST2` dump hands unentitled apps the same values truncated to 32 bits and rounded
+/// to 4 KiB (measured on macOS 26: en0 7 708 354 392 B in `netstat` vs 3 413 385 216 there).
+/// This read matched `netstat -ib` to the byte and costs ~7 µs (getifaddrs: ~13 µs).
+/// Note: VPN tunnels (`utun*`) are summed too, so traffic through a VPN may count twice (once
+/// on the tunnel, once on Wi-Fi). Not verified (no VPN was active when checked); unchanged.
 public func readNetCounters() -> NetCounters {
+    var mib: [Int32] = [CTL_NET, PF_LINK, NETLINK_GENERIC, IFMIB_IFALLDATA, 0, IFDATA_GENERAL]
+    var size = 0
+    guard sysctl(&mib, u_int(mib.count), nil, &size, nil, 0) == 0, size > 0 else {
+        return NetCounters(rxBytes: 0, txBytes: 0)
+    }
+    let stride = MemoryLayout<ifmibdata>.stride
+    var interfaces = [ifmibdata](repeating: ifmibdata(), count: size / stride + 2)   // + room for a new one
+    size = interfaces.count * stride
+    guard sysctl(&mib, u_int(mib.count), &interfaces, &size, nil, 0) == 0 else {
+        return NetCounters(rxBytes: 0, txBytes: 0)
+    }
+    return sumInterfaceCounters(interfaces.prefix(size / stride))
+}
+
+/// Sums the 64-bit byte counters of `interfaces`, skipping loopback.
+func sumInterfaceCounters<C: Collection>(_ interfaces: C) -> NetCounters where C.Element == ifmibdata {
     var rx: UInt64 = 0
     var tx: UInt64 = 0
-    var ifap: UnsafeMutablePointer<ifaddrs>?
-    guard getifaddrs(&ifap) == 0 else { return NetCounters(rxBytes: 0, txBytes: 0) }
-    defer { freeifaddrs(ifap) }
-    var ptr = ifap
-    while let cur = ptr {
-        if let addr = cur.pointee.ifa_addr, Int32(addr.pointee.sa_family) == AF_LINK {
-            let name = String(cString: cur.pointee.ifa_name)
-            if !name.hasPrefix("lo"), let raw = cur.pointee.ifa_data {
-                let data = raw.assumingMemoryBound(to: if_data.self)
-                rx += UInt64(data.pointee.ifi_ibytes)
-                tx += UInt64(data.pointee.ifi_obytes)
-            }
-        }
-        ptr = cur.pointee.ifa_next
+    for interface in interfaces where interface.ifmd_flags & UInt32(IFF_LOOPBACK) == 0 {
+        rx &+= interface.ifmd_data.ifi_ibytes
+        tx &+= interface.ifmd_data.ifi_obytes
     }
     return NetCounters(rxBytes: rx, txBytes: tx)
 }

@@ -10,6 +10,8 @@ public struct BatteryTelemetry: Equatable {
     /// Battery current, mA; negative while discharging.
     public var amperageMA: Int?
     public var currentMAh: Int?
+    /// The full-charge capacity the shown percent is relative to (current / rawMax = %).
+    public var rawMaxMAh: Int?
     public var nominalMAh: Int?
     public var designMAh: Int?
     public var cycleCount: Int?
@@ -22,11 +24,11 @@ public struct BatteryTelemetry: Equatable {
     public var systemLoadCount: UInt64?
 
     public init(updateTime: Int, voltageMV: Int? = nil, amperageMA: Int? = nil, currentMAh: Int? = nil,
-                nominalMAh: Int? = nil, designMAh: Int? = nil, cycleCount: Int? = nil,
+                rawMaxMAh: Int? = nil, nominalMAh: Int? = nil, designMAh: Int? = nil, cycleCount: Int? = nil,
                 temperatureC: Double? = nil, adapterWatts: Int? = nil, systemLoadMW: Int? = nil,
                 accumulatedSystemLoad: UInt64? = nil, systemLoadCount: UInt64? = nil) {
         self.updateTime = updateTime; self.voltageMV = voltageMV; self.amperageMA = amperageMA
-        self.currentMAh = currentMAh; self.nominalMAh = nominalMAh; self.designMAh = designMAh
+        self.currentMAh = currentMAh; self.rawMaxMAh = rawMaxMAh; self.nominalMAh = nominalMAh; self.designMAh = designMAh
         self.cycleCount = cycleCount; self.temperatureC = temperatureC; self.adapterWatts = adapterWatts
         self.systemLoadMW = systemLoadMW; self.accumulatedSystemLoad = accumulatedSystemLoad
         self.systemLoadCount = systemLoadCount
@@ -38,17 +40,19 @@ public struct BatteryTelemetry: Equatable {
         return Double(mAh) * Double(mV) / 1_000_000
     }
 
-    /// Full-charge capacity vs. new, the "Maximum Capacity" figure in System Settings.
+    /// Full-charge capacity vs. new, the "Maximum Capacity" figure in System Settings, which
+    /// truncates (4542 / 4563 = 99.5 % shows as 99 %, matching `system_profiler`).
     public var healthPercent: Int? {
         guard let nominal = nominalMAh, let design = designMAh, design > 0, nominal > 0 else { return nil }
-        return min(100, Int((Double(nominal) / Double(design) * 100).rounded()))
+        return min(100, Int((Double(nominal) / Double(design) * 100).rounded(.down)))
     }
 
     /// Instantaneous whole-Mac draw in watts: the telemetry figure, else voltage × current
-    /// (Intel Macs have no telemetry; there it is the battery's own draw).
+    /// while discharging (Intel Macs have no telemetry; there it is the battery's own draw;
+    /// while charging V × A is the power going *into* the battery, not the Mac's load).
     public var instantWatts: Double? {
         if let mW = systemLoadMW, mW > 0 { return Double(mW) / 1000 }
-        guard let mV = voltageMV, let mA = amperageMA, mA != 0 else { return nil }
+        guard let mV = voltageMV, let mA = amperageMA, mA < 0 else { return nil }
         return abs(Double(mV) * Double(mA)) / 1_000_000
     }
 }
@@ -56,7 +60,7 @@ public struct BatteryTelemetry: Equatable {
 /// Registry keys `SmartBatteryReader` fetches (one property read each — far cheaper than
 /// copying the whole property table).
 let smartBatteryKeys = ["UpdateTime", "Voltage", "Amperage", "AppleRawCurrentCapacity",
-                        "NominalChargeCapacity", "DesignCapacity", "CycleCount", "Temperature",
+                        "AppleRawMaxCapacity", "NominalChargeCapacity", "DesignCapacity", "CycleCount", "Temperature",
                         "AdapterDetails", "PowerTelemetryData"]
 
 /// Builds `BatteryTelemetry` from `AppleSmartBattery` properties. Signed values (Amperage)
@@ -73,6 +77,7 @@ public func parseSmartBattery(_ d: [String: Any]) -> BatteryTelemetry? {
         voltageMV: int(d["Voltage"]),
         amperageMA: int(d["Amperage"]),
         currentMAh: int(d["AppleRawCurrentCapacity"]),
+        rawMaxMAh: int(d["AppleRawMaxCapacity"]),
         nominalMAh: int(d["NominalChargeCapacity"]),
         designMAh: int(d["DesignCapacity"]),
         cycleCount: int(d["CycleCount"]),
@@ -81,6 +86,26 @@ public func parseSmartBattery(_ d: [String: Any]) -> BatteryTelemetry? {
         systemLoadMW: int(telemetry?["SystemLoad"]),
         accumulatedSystemLoad: (telemetry?["AccumulatedSystemLoad"] as? NSNumber)?.uint64Value,
         systemLoadCount: (telemetry?["SystemLoadAccumulatorCount"] as? NSNumber)?.uint64Value)
+}
+
+/// Longest gap between two gauge updates that still counts as one awake interval. The gauge
+/// steps every ≤ ~85 s while the Mac is awake; across sleep the step is the whole sleep.
+public let maxGaugeInterval: TimeInterval = 180
+
+/// Seconds between two gauge updates when they bracket awake time only, else nil.
+///
+/// The gauge's running power sums keep ticking (≈ 1 count/s) through sleep, so an interval
+/// spanning a sleep averages the sleep (≈ 0.05 W) — feeding that to a time-left estimate
+/// promises ~13 h right after opening the lid. Such intervals (and stalled or reset gauges)
+/// are rejected here; the caller just rebases on the newer reading.
+public func gaugeInterval(from previous: BatteryTelemetry, to current: BatteryTelemetry) -> TimeInterval? {
+    let seconds = TimeInterval(current.updateTime - previous.updateTime)
+    guard seconds > 0, seconds <= maxGaugeInterval else { return nil }
+    if let pc = previous.systemLoadCount, let cc = current.systemLoadCount, cc >= pc,
+       Double(cc - pc) > maxGaugeInterval {
+        return nil
+    }
+    return seconds
 }
 
 /// Average whole-Mac draw (W) between two gauge updates, from the telemetry running sum;

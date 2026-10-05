@@ -18,8 +18,13 @@ public struct BatterySample: Equatable {
     /// Minutes until empty; nil while plugged in or when unknown. `parseBattery` fills in
     /// macOS's short-horizon figure; the app replaces it with `BatteryEstimator`'s.
     public var timeToEmptyMinutes: Int?
-    /// macOS's minutes-to-full while charging; nil otherwise or while it's still calculating.
+    /// Minutes to full (or to `chargeLimitPercent`) while charging; nil otherwise or while
+    /// still calculating. `parseBattery` fills in macOS's figure; the app replaces it with
+    /// a measured one (`minutesToTarget`).
     public var timeToFullMinutes: Int?
+    /// The percent charging stops at when below 100 (a charge limit or Optimized Charging's
+    /// hold); nil for a full charge or when unknown. Set by the app.
+    public var chargeLimitPercent: Int?
 
     public var isCharging: Bool { state == .charging }
 

@@ -15,8 +15,8 @@ public final class MetricsStore: ObservableObject {
     @Published public private(set) var battery: BatterySample?
     /// Gauge readings behind the Battery drill-in (power, health, temperature).
     @Published public private(set) var batteryTelemetry: BatteryTelemetry?
-    /// The draw the time-left estimate assumes (W); nil unless on battery with data.
-    @Published public private(set) var batteryExpectedWatts: Double?
+    /// Mean whole-Mac draw since unplugging (W); nil unless on battery with data.
+    @Published public private(set) var batteryAverageWatts: Double?
 
     @Published public private(set) var cpuHistory: [SamplePoint] = []      // percent 0...100
     @Published public private(set) var memHistory: [SamplePoint] = []      // used fraction 0...1
@@ -62,9 +62,9 @@ public final class MetricsStore: ObservableObject {
         if battery != self.battery { self.battery = battery }
     }
 
-    public func setBatteryTelemetry(_ telemetry: BatteryTelemetry?, expectedWatts: Double?) {
+    public func setBatteryTelemetry(_ telemetry: BatteryTelemetry?, averageWatts: Double?) {
         if telemetry != batteryTelemetry { batteryTelemetry = telemetry }
-        if expectedWatts != batteryExpectedWatts { batteryExpectedWatts = expectedWatts }
+        if averageWatts != batteryAverageWatts { batteryAverageWatts = averageWatts }
     }
 
     /// `nil` means "no usable CPU sensor" (the card falls back to a label).
