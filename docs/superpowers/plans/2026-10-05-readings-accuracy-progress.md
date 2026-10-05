@@ -43,6 +43,12 @@
   measured current, which keeps falling in the constant-voltage phase, so it likely reads short.
   Check: log `ioreg -rn AppleSmartBattery` `Amperage` + percent every 30 s from ~75 % to 100 %
   and compare with `minutesToTarget` in `Sources/MacStatsCore/BatteryCharging.swift`.
+- [ ] **Independent accuracy review** (user's bar: ≥ 8/10, aim for 9 if cheap; if below, fix and
+  re-review). Two reviewers with the same brief write
+  `docs/reviews/2026-10-05-readings-accuracy-review-A.md` and `-B.md`. The brief is
+  `docs/reviews/2026-10-05-readings-accuracy/reviewer-brief.md` (fill in `{REPORT}` and a
+  scratch dir). If the reports are missing after a session cut-off, launch fresh general-purpose
+  subagents with that brief.
 
 ---
 
