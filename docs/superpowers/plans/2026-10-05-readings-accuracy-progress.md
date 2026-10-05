@@ -49,6 +49,12 @@
   `docs/reviews/2026-10-05-readings-accuracy/reviewer-brief.md` (fill in `{REPORT}` and a
   scratch dir). If the reports are missing after a session cut-off, launch fresh general-purpose
   subagents with that brief.
+  - Round 1 (v1.1.0): A 8/10, B 7/10 (`-review-A.md`, `-review-B.md`) → fixes merged from
+    branches `review-fix/battery` + `review-fix/process` (merge `164ce01`, 221 tests).
+  - Round 2: A 8/10, B 7/10 (`-review-round2-A.md`, `-round2-B.md`) → round-3 fixes in progress
+    on branches `review3/battery` and `review3/process` (the owner was asked to plug in at 55 %
+    so the battery agent can log a live charge). Next: merge both, `./Scripts/bundle.sh release`,
+    review round 3 with the same brief (report names `-review-round3-A.md` / `-B.md`).
 
 ---
 
