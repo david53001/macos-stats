@@ -81,9 +81,12 @@ public final class ProcessAttributor {
 public struct ProcessDelta: Equatable {
     public var cpuNs: UInt64
     public var energyNj: UInt64
+    /// The part of `cpuNs` credited from reaped children (see `ProcessSampler`). Unlike a
+    /// process's own time it can't be checked per process, so `BreakdownScanner` caps it.
+    public var childCreditNs: UInt64
 
-    public init(cpuNs: UInt64, energyNj: UInt64) {
-        self.cpuNs = cpuNs; self.energyNj = energyNj
+    public init(cpuNs: UInt64, energyNj: UInt64, childCreditNs: UInt64 = 0) {
+        self.cpuNs = cpuNs; self.energyNj = energyNj; self.childCreditNs = childCreditNs
     }
 }
 
@@ -96,13 +99,24 @@ public struct ProcessDelta: Equatable {
 ///   kernel adds the child's total CPU time to the parent's child time, so the growth of a
 ///   surviving parent's child time, minus what earlier scans already counted for the
 ///   children that vanished, is credited to the parent. No extra system calls.
+/// - That debt expires after `debtScans` scans: a descendant reaped by someone else (handed to
+///   launchd when its own parent exited) never shows up in the ancestor's child time, and
+///   would otherwise swallow the ancestor's later, real credit.
 public final class ProcessSampler {
+    public static let debtScans = 3
+
+    private struct Debt {
+        var ns: UInt64
+        let scan: Int
+    }
+
     private var previous: [Int32: RawProcess] = [:]
     private var previousTime: TimeInterval?
     private var previousAbsTime: UInt64 = 0
     /// CPU (ns) already counted for vanished descendants whose reap hasn't shown up yet in
-    /// this parent's child time.
-    private var childDebt: [Int32: UInt64] = [:]
+    /// this parent's child time, oldest first, with the scan that added it.
+    private var childDebt: [Int32: [Debt]] = [:]
+    private var scanCount = 0
     /// Seconds between the last two scans (0 until there are two).
     public private(set) var elapsedSeconds: Double = 0
 
@@ -118,6 +132,7 @@ public final class ProcessSampler {
         previous = Dictionary(processes.map { ($0.pid, $0) }, uniquingKeysWith: { a, _ in a })
         previousTime = time
         previousAbsTime = absTime
+        scanCount += 1
         guard let lastTime, time > lastTime else {
             elapsedSeconds = 0
             childDebt = [:]
@@ -149,7 +164,7 @@ public final class ProcessSampler {
             var hops = 0
             while ancestor > 1, hops < 64 {
                 if survivors.contains(ancestor) {
-                    debt[ancestor, default: 0] += old.cpuTimeNs + old.childCPUTimeNs
+                    debt[ancestor, default: []].append(Debt(ns: old.cpuTimeNs + old.childCPUTimeNs, scan: scanCount))
                     break
                 }
                 guard let up = last[ancestor] else { break }
@@ -160,14 +175,19 @@ public final class ProcessSampler {
 
         for p in processes where survivors.contains(p.pid) {
             guard let old = last[p.pid], p.childCPUTimeNs > old.childCPUTimeNs || debt[p.pid] != nil else { continue }
-            let grown = p.childCPUTimeNs &- min(old.childCPUTimeNs, p.childCPUTimeNs)
-            let owed = debt[p.pid] ?? 0
-            if grown > owed {
-                deltas[p.pid]?.cpuNs += grown - owed
-                debt[p.pid] = nil
-            } else {
-                debt[p.pid] = owed - grown > 0 ? owed - grown : nil
+            var grown = p.childCPUTimeNs &- min(old.childCPUTimeNs, p.childCPUTimeNs)
+            var owed = (debt[p.pid] ?? []).filter { scanCount - $0.scan < Self.debtScans }
+            while grown > 0, !owed.isEmpty {   // pay the oldest debt first
+                let paid = min(grown, owed[0].ns)
+                grown -= paid
+                owed[0].ns -= paid
+                if owed[0].ns == 0 { owed.removeFirst() }
             }
+            if grown > 0 {
+                deltas[p.pid]?.cpuNs += grown
+                deltas[p.pid]?.childCreditNs += grown
+            }
+            debt[p.pid] = owed.isEmpty ? nil : owed
         }
         childDebt = debt
         return deltas
@@ -205,12 +225,32 @@ public final class BreakdownScanner {
         let total = lastTicks.map { cpuBusyPercent(previous: $0, current: cpuTicks) }
         lastTicks = cpuTicks
 
+        // Reaped-child credit is capped, all of it together, at the CPU the machine used beyond
+        // the processes' own time. When a root process we can't read (a Terminal tab's
+        // `login`, `sudo`, a setuid `top`) exits, its parent's child time jumps by that whole
+        // subtree's lifetime, which earlier scans already counted (live, or as System): one
+        // scan read 510 % of one core for a tab's shell under an 11 % header. Real credit
+        // (builds' short-lived compilers) fits in the budget: it is part of that remainder.
+        var creditScale = 1.0
+        if let deltas, let total, elapsed > 0 {
+            var credit = 0.0, own = 0.0
+            for d in deltas.values {
+                credit += Double(d.childCreditNs)
+                own += Double(d.cpuNs - d.childCreditNs)
+            }
+            if credit > 0 {
+                let machineNs = total / 100 * elapsed * cores * 1_000_000_000
+                creditScale = min(1, max(0, machineNs - own) / credit)
+            }
+        }
+
         var usages: [ProcessUsage] = []
         usages.reserveCapacity(processes.count)
         for p in processes {
             let d = deltas?[p.pid]
             let cpu = d.map {
-                processCPUPercent(previousCPUTimeNs: 0, currentCPUTimeNs: $0.cpuNs, elapsedSeconds: elapsed) / cores
+                let ns = $0.cpuNs - $0.childCreditNs + UInt64(Double($0.childCreditNs) * creditScale)
+                return processCPUPercent(previousCPUTimeNs: 0, currentCPUTimeNs: ns, elapsedSeconds: elapsed) / cores
             } ?? 0
             let watts = metric == .energy
                 ? d.map { processWatts(previousNj: 0, currentNj: $0.energyNj, elapsedSeconds: elapsed) } ?? 0

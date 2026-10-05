@@ -133,12 +133,12 @@ public func owningAppPID(for pid: Int32, ppid: [Int32: Int32], appPIDs: Set<Int3
 public func aggregate(_ processes: [ProcessUsage], by metric: BreakdownMetric) -> [AppUsage] {
     var byApp: [Int32: (procs: [ProcessUsage], cpu: Double, mem: UInt64, watts: Double)] = [:]
     for p in processes {
-        var entry = byApp[p.appPID] ?? (procs: [], cpu: 0, mem: 0, watts: 0)
-        entry.procs.append(p)
-        entry.cpu += p.cpuPercent
-        entry.mem += p.memoryBytes
-        entry.watts += p.watts
-        byApp[p.appPID] = entry
+        // Mutated in place: copying the entry out and back held two references to its array,
+        // so every append copied it (~52k copies a scan with ~320 "Other" processes).
+        byApp[p.appPID, default: (procs: [], cpu: 0, mem: 0, watts: 0)].procs.append(p)
+        byApp[p.appPID]!.cpu += p.cpuPercent
+        byApp[p.appPID]!.mem += p.memoryBytes
+        byApp[p.appPID]!.watts += p.watts
     }
     let apps = byApp.map { appPID, e in
         AppUsage(appPID: appPID, processes: e.procs.sorted { ranksBefore($0.value(for: metric), $0.pid,

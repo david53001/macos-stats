@@ -159,6 +159,27 @@ import Testing
         #expect(second?[10]?.cpuNs == 100)
     }
 
+    @Test func childCreditIsMarkedAsSuch() {
+        let s = ProcessSampler()
+        _ = s.ingest([p(10, cpu: 0)], time: 0, absTime: 100)
+        let d = s.ingest([p(10, cpu: 300, child: 500)], time: 1, absTime: 200)
+        #expect(d?[10] == ProcessDelta(cpuNs: 800, energyNj: 0, childCreditNs: 500))
+    }
+
+    @Test func debtThatIsNeverPaidExpires() {
+        // 10 ← 11 ← 12. 11 exits and 12, handed to launchd, exits too: launchd reaps 12, so
+        // 10's child time never includes 12's 400 ns. That debt must not swallow 10's later
+        // real credit for good.
+        let s = ProcessSampler()
+        _ = s.ingest([p(10, cpu: 0), p(11, ppid: 10, cpu: 100), p(12, ppid: 11, cpu: 400)],
+                     time: 0, absTime: 100)
+        _ = s.ingest([p(10, cpu: 0, child: 100)], time: 1, absTime: 200)   // reaped 11 only
+        _ = s.ingest([p(10, cpu: 0, child: 100)], time: 2, absTime: 300)
+        _ = s.ingest([p(10, cpu: 0, child: 100)], time: 3, absTime: 400)
+        let d = s.ingest([p(10, cpu: 0, child: 350)], time: 4, absTime: 500)   // a real 250 ns
+        #expect(d?[10]?.cpuNs == 250)
+    }
+
     @Test func newProcessIncludesChildrenItAlreadyReaped() {
         let s = ProcessSampler()
         _ = s.ingest([], time: 0, absTime: 100)
@@ -202,6 +223,39 @@ import Testing
         #expect(abs(r.apps.reduce(0) { $0 + $1.cpuPercent } - 50) < 0.001)
     }
 
+    @Test func childCreditNeverPushesTheRowsPastTheHeader() {
+        // A Terminal tab's root `login` (unreadable, never scanned) ran `yes` for minutes; when
+        // the tab's surviving parent reaps it, its child time jumps by all of that, which
+        // earlier scans already counted. Live this read 510 % of one core under an 11 % header.
+        let s = scanner()
+        _ = s.scan([p(100, cpu: 0), p(101, ppid: 100, cpu: 0)], appPIDs: [100],
+                   metric: .cpu, time: 0, absTime: 10, cpuTicks: ticks0)
+        let r = s.scan([p(100, cpu: 100_000_000),
+                        RawProcess(pid: 101, ppid: 100, cpuTimeNs: 0, memoryBytes: 0,
+                                   childCPUTimeNs: 300_000_000_000, startTime: 1)],
+                       appPIDs: [100], metric: .cpu, time: 1, absTime: 20,
+                       cpuTicks: CPUTicks(user: 20, system: 0, idle: 80, nice: 0))
+        #expect(r.totalCPUPercent == 20)
+        let app = r.apps.first { $0.appPID == 100 }!
+        // Own time: 0.1 s of a 4-core second = 2.5 %; the credit gets the other 17.5 % at most.
+        #expect(abs(app.cpuPercent - 20) < 0.001)
+        #expect(r.apps.reduce(0) { $0 + $1.cpuPercent } <= 20.001)
+    }
+
+    @Test func childCreditThatFitsTheBudgetIsKept() {
+        // A build's short-lived compilers: 1.5 cores of reaped work in a 50 %-busy second.
+        let s = scanner()
+        _ = s.scan([p(100, cpu: 0), p(101, ppid: 100, cpu: 0)], appPIDs: [100],
+                   metric: .cpu, time: 0, absTime: 10, cpuTicks: ticks0)
+        let r = s.scan([p(100, cpu: 0),
+                        RawProcess(pid: 101, ppid: 100, cpuTimeNs: 0, memoryBytes: 0,
+                                   childCPUTimeNs: 1_500_000_000, startTime: 1)],
+                       appPIDs: [100], metric: .cpu, time: 1, absTime: 20,
+                       cpuTicks: CPUTicks(user: 50, system: 0, idle: 50, nice: 0))
+        let app = r.apps.first { $0.appPID == 100 }!
+        #expect(abs(app.cpuPercent - 37.5) < 0.001)
+    }
+
     @Test func memoryIsImmediateAndHasNoSystemRow() {
         let r = scanner().scan([p(100, cpu: 0, mem: 1_000), p(900, cpu: 0, mem: 500)], appPIDs: [100],
                                metric: .memory, time: 0, absTime: 10, cpuTicks: ticks0)
@@ -217,6 +271,18 @@ import Testing
         #expect(addingSystemRow(to: apps, totalCPUPercent: 40).map(\.appPID) == [1, BreakdownGroup.system])
         #expect(addingSystemRow(to: apps, totalCPUPercent: 40).last?.cpuPercent == 10)
         #expect(addingSystemRow(to: apps, totalCPUPercent: 20).last?.cpuPercent == 0)
+    }
+
+    @Test func aggregateSumsEveryProcessOfAGroup() {
+        let procs = (1...300).map {
+            ProcessUsage(pid: Int32($0), appPID: $0 % 3 == 0 ? 7 : BreakdownGroup.otherProcesses,
+                         cpuPercent: 0.1, memoryBytes: 10)
+        }
+        let rows = aggregate(procs, by: .memory)
+        #expect(rows.map(\.appPID) == [BreakdownGroup.otherProcesses, 7])
+        #expect(rows.map(\.processes.count) == [200, 100])
+        #expect(rows.map(\.memoryBytes) == [2_000, 1_000])
+        #expect(abs(rows[1].cpuPercent - 10) < 1e-9)
     }
 
     @Test func groupRowsSortAfterAppsOnTies() {

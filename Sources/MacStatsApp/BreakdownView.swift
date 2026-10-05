@@ -422,7 +422,7 @@ final class AppInfoCache: ObservableObject {
                         detail: "Your background processes that no app is responsible for")
         case BreakdownGroup.system:
             info = Info(name: "System", icon: nil, symbol: "apple.logo",
-                        detail: "The kernel, WindowServer and other system processes")
+                        detail: "The kernel, WindowServer, other users' processes and commands run with sudo")
         default:
             let app = NSRunningApplication(processIdentifier: pid_t(appPID))
             info = Info(name: app?.localizedName ?? "PID \(appPID)",
