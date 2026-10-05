@@ -45,8 +45,9 @@ struct BatteryDetailsCard: View {
         if let power = store.batteryPowerWatts {
             rows.append(("Power, last min", formatWatts(power)))
         }
+        // Awake time only: intervals that span sleep are left out (see `gaugeInterval`).
         if let avg = store.batteryAverageWatts {
-            rows.append((store.batteryAverageSinceUnplug ? "Avg since unplugged" : "Avg since MacStats started",
+            rows.append((store.batteryAverageSinceUnplug ? "Avg awake since unplugged" : "Avg awake since MacStats started",
                          formatWatts(avg)))
         }
         if b.state.isPluggedIn, let adapter = t?.adapterWatts {
