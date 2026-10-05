@@ -30,7 +30,7 @@ import Foundation
 
     @Test func breakdownRescansQuicklyThenSettles() {
         #expect(breakdownFirstRescanDelay < breakdownScanInterval)
-        #expect(abs(breakdownFirstRescanDelay - 0.3) < 0.001)
+        #expect(abs(breakdownFirstRescanDelay - 0.5) < 0.001)
         #expect(abs(breakdownScanInterval - 1.0) < 0.001)
     }
 

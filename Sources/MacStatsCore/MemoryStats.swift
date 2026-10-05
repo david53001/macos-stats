@@ -4,12 +4,16 @@ public struct VMRaw: Equatable {
     public var active: UInt64
     public var inactive: UInt64
     public var wired: UInt64
-    public var compressed: UInt64
+    public var compressed: UInt64   // pages the compressor occupies (Activity Monitor's "Compressed")
+    public var `internal`: UInt64   // anonymous (non-file) pages, active or inactive
+    public var purgeable: UInt64    // anonymous pages apps marked as freeable on demand
     public var pageSize: UInt64
 
-    public init(free: UInt64, active: UInt64, inactive: UInt64, wired: UInt64, compressed: UInt64, pageSize: UInt64) {
+    public init(free: UInt64, active: UInt64, inactive: UInt64, wired: UInt64, compressed: UInt64,
+                internal: UInt64, purgeable: UInt64, pageSize: UInt64) {
         self.free = free; self.active = active; self.inactive = inactive
-        self.wired = wired; self.compressed = compressed; self.pageSize = pageSize
+        self.wired = wired; self.compressed = compressed
+        self.internal = `internal`; self.purgeable = purgeable; self.pageSize = pageSize
     }
 }
 
@@ -38,11 +42,14 @@ public func memoryPressure(fromLevel level: Int) -> MemoryPressure {
     }
 }
 
-/// Approximates Activity Monitor's "memory used" as (active + wired + compressed).
+/// Activity Monitor's "Memory Used": App Memory (anonymous pages minus purgeable) + Wired +
+/// Compressed. `active` isn't used: it includes file cache (which macOS frees instantly when
+/// needed) and misses inactive app memory, so (active + wired + compressed) was ±1 GB off.
 /// Pressure comes from the kernel's real pressure level (see `memoryPressure(fromLevel:)`),
 /// not a used-fraction heuristic.
 public func memorySample(raw: VMRaw, totalBytes: UInt64, pressureLevel: Int) -> MemorySample {
-    let used = (raw.active + raw.wired + raw.compressed) * raw.pageSize
+    let appPages = raw.internal > raw.purgeable ? raw.internal - raw.purgeable : 0
+    let used = (appPages + raw.wired + raw.compressed) * raw.pageSize
     return MemorySample(usedBytes: used, totalBytes: totalBytes,
                         pressure: memoryPressure(fromLevel: pressureLevel))
 }

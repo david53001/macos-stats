@@ -21,8 +21,8 @@ final class AppModel: ObservableObject {
     /// Dedicated per-process scan loop — exists only while a breakdown is open, so the
     /// expensive enumeration never runs otherwise. Kept separate from the sparkline `tick`.
     private var procTimer: Timer?
-    private var previousProcCPU: [Int32: UInt64] = [:]   // pid → last cumulative CPU ns
-    private var lastProcScan: Date?
+    /// Attribution caches + the previous scan, for the open breakdown only (nil otherwise).
+    private var scanner: BreakdownScanner?
 
     /// Cumulative-counter snapshots, oldest→newest, covering ~`rateWindowSeconds` (just the
     /// last two while idle). Rates diff against the snapshot ~1s back (see `rateBaselineIndex`)
@@ -53,7 +53,6 @@ final class AppModel: ObservableObject {
         static let typicalWatts = "batteryTypicalWatts"
         static let typicalSeconds = "batteryTypicalSeconds"
     }
-    private var procEnergy: [Int32: UInt64] = [:]        // pid → last cumulative energy nJ
     private let totalMemory = ProcessInfo.processInfo.physicalMemory
 
     private let alertMonitor = AlertMonitor()
@@ -202,9 +201,7 @@ final class AppModel: ObservableObject {
 
     func enterBreakdown(_ metric: MacStatsCore.BreakdownMetric) {
         store.beginBreakdown(metric: metric)
-        previousProcCPU = [:]
-        procEnergy = [:]
-        lastProcScan = nil
+        scanner = BreakdownScanner()
         procScanTick()   // first scan establishes the CPU baseline (CPU stays "measuring")
         // Second scan soon after, so CPU leaves "Measuring…" quickly; then the steady cadence.
         procTimer?.invalidate()
@@ -218,9 +215,7 @@ final class AppModel: ObservableObject {
     func exitBreakdown() {
         procTimer?.invalidate()
         procTimer = nil
-        previousProcCPU = [:]
-        procEnergy = [:]
-        lastProcScan = nil
+        scanner = nil
         store.clearBreakdown()
     }
 
@@ -323,45 +318,21 @@ final class AppModel: ObservableObject {
     }
 
     private func procScanTick() {
-        guard let metric = store.activeBreakdownMetric else { return }
-        let now = Date()
+        guard let metric = store.activeBreakdownMetric, let scanner else { return }
+        // Clocks first, then the processes, so the CPU header and the rows cover one interval.
+        let time = Date().timeIntervalSinceReferenceDate
+        let absTime = mach_absolute_time()
+        let ticks = readCPUTicks()
         let raw = readRawProcesses(includeEnergy: metric == .energy)
 
-        // GUI apps the user is running = our "user apps only" universe + the grouping anchors.
+        // GUI apps the user is running = the grouping anchors. Processes no app is responsible
+        // for land in "Other processes", so the rows cover all of the user's processes.
         let appPIDs = Set(NSWorkspace.shared.runningApplications.compactMap { app -> Int32? in
             app.processIdentifier > 0 ? Int32(app.processIdentifier) : nil
         })
-        let ppidMap = Dictionary(raw.map { ($0.pid, $0.ppid) }, uniquingKeysWith: { a, _ in a })
-        let cpuByPID = Dictionary(raw.map { ($0.pid, $0.cpuTimeNs) }, uniquingKeysWith: { a, _ in a })
-
-        let haveBaseline = lastProcScan != nil
-        let elapsed = lastProcScan.map { now.timeIntervalSince($0) } ?? 0
-
-        var usages: [ProcessUsage] = []
-        for p in raw {
-            guard let appPID = owningAppPID(for: p.pid, ppid: ppidMap, appPIDs: appPIDs) else { continue }
-            let cpu = haveBaseline
-                // A pid missing from the last scan started since then, so all of its CPU time
-                // falls in this interval (the last scan listed every one of our processes).
-                ? processCPUPercent(previousCPUTimeNs: previousProcCPU[p.pid] ?? 0,
-                                    currentCPUTimeNs: p.cpuTimeNs, elapsedSeconds: elapsed)
-                : 0
-            let watts = haveBaseline && metric == .energy
-                ? processWatts(previousNj: procEnergy[p.pid] ?? p.energyNj, currentNj: p.energyNj,
-                               elapsedSeconds: elapsed)
-                : 0
-            usages.append(ProcessUsage(pid: p.pid, appPID: appPID, cpuPercent: cpu,
-                                       memoryBytes: p.memoryBytes, watts: watts))
-        }
-
-        previousProcCPU = cpuByPID
-        if metric == .energy {
-            procEnergy = Dictionary(raw.map { ($0.pid, $0.energyNj) }, uniquingKeysWith: { a, _ in a })
-        }
-        lastProcScan = now
-
-        // CPU and energy have no real values until the second scan; show "Measuring…" until then.
-        let measuring = (metric != .memory && !haveBaseline)
-        store.setBreakdown(aggregate(usages, by: metric), measuring: measuring)
+        let result = scanner.scan(raw, appPIDs: appPIDs, metric: metric, time: time,
+                                  absTime: absTime, cpuTicks: ticks)
+        // CPU and energy have no real values until the second scan ("Measuring…" until then).
+        store.setBreakdown(result.apps, measuring: result.measuring, totalCPU: result.totalCPUPercent)
     }
 }

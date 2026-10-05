@@ -36,8 +36,10 @@ public let batteryInterval: TimeInterval = 10.0      // IOPowerSources dictionar
 public let prewarmMinInterval: TimeInterval = 1.0
 
 /// The CPU breakdown shows "Measuring…" until its second process scan (a delta needs two), so
-/// that scan comes quickly; later scans settle to `breakdownScanInterval`.
-public let breakdownFirstRescanDelay: TimeInterval = 0.3
+/// that scan comes quickly; later scans settle to `breakdownScanInterval`. Half a second, not
+/// less: 0.3 s windows read a bursty app (VS Code) anywhere from 8 % to 76 % of a core against
+/// a 15 % average, so the first numbers shown were noise that then "dropped".
+public let breakdownFirstRescanDelay: TimeInterval = 0.5
 public let breakdownScanInterval: TimeInterval = 1.0
 
 /// Whether a tiered read last done at `last` (nil = never) is due again at `now`.
