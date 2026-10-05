@@ -44,7 +44,8 @@ public func readVMRaw() -> VMRaw {
         compressed: UInt64(stats.compressor_page_count),
         internal: UInt64(stats.internal_page_count),
         purgeable: UInt64(stats.purgeable_count),
-        pageSize: UInt64(pageSize)
+        pageSize: UInt64(pageSize),
+        compressedOriginal: UInt64(stats.total_uncompressed_pages_in_compressor)
     )
 }
 
@@ -56,8 +57,8 @@ public func readVMRaw() -> VMRaw {
 /// `NET_RT_IFLIST2` dump hands unentitled apps the same values truncated to 32 bits and rounded
 /// to 4 KiB (measured on macOS 26: en0 7 708 354 392 B in `netstat` vs 3 413 385 216 there).
 /// This read matched `netstat -ib` to the byte and costs ~7 µs (getifaddrs: ~13 µs).
-/// Note: VPN tunnels (`utun*`) are summed too, so traffic through a VPN may count twice (once
-/// on the tunnel, once on Wi-Fi). Not verified (no VPN was active when checked); unchanged.
+/// Only physical links are summed (see `isCountedInterface`): VPN tunnels and bridges carry
+/// traffic that is counted again on the Wi-Fi/Ethernet interface underneath.
 public func readNetCounters() -> NetCounters {
     var mib: [Int32] = [CTL_NET, PF_LINK, NETLINK_GENERIC, IFMIB_IFALLDATA, 0, IFDATA_GENERAL]
     var size = 0
@@ -73,15 +74,30 @@ public func readNetCounters() -> NetCounters {
     return sumInterfaceCounters(interfaces.prefix(size / stride))
 }
 
-/// Sums the 64-bit byte counters of `interfaces`, skipping loopback.
+/// Sums the 64-bit byte counters of `interfaces` that `isCountedInterface` keeps.
 func sumInterfaceCounters<C: Collection>(_ interfaces: C) -> NetCounters where C.Element == ifmibdata {
     var rx: UInt64 = 0
     var tx: UInt64 = 0
-    for interface in interfaces where interface.ifmd_flags & UInt32(IFF_LOOPBACK) == 0 {
+    for interface in interfaces {
+        let name = withUnsafeBytes(of: interface.ifmd_name) { bytes in
+            String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
+        }
+        guard isCountedInterface(name: name, flags: interface.ifmd_flags) else { continue }
         rx &+= interface.ifmd_data.ifi_ibytes
         tx &+= interface.ifmd_data.ifi_obytes
     }
     return NetCounters(rxBytes: rx, txBytes: tx)
+}
+
+/// Whether an interface's bytes count toward the Mac's network speed. Loopback never leaves
+/// the Mac. VPN tunnels (`utun*`: WireGuard, Tailscale, most VPN apps and macOS's own
+/// tunnels; `ipsec*`: IKEv2/IPsec) carry traffic that also crosses Wi-Fi/Ethernet encrypted,
+/// so counting both doubled a VPN user's speed. Bridges (`bridge*`: Internet Sharing,
+/// Thunderbolt Bridge) forward traffic their member interfaces already count. Physical links
+/// (`en*`, AirDrop's `awdl*`, …) stay in.
+public func isCountedInterface(name: String, flags: UInt32) -> Bool {
+    guard flags & UInt32(IFF_LOOPBACK) == 0 else { return false }
+    return !["utun", "ipsec", "bridge"].contains { name.hasPrefix($0) }
 }
 
 /// Reads the kernel's current memory-pressure level via sysctl.

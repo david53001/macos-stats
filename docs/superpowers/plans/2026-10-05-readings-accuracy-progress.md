@@ -373,3 +373,125 @@ value saved, then exit 0. No new timers.
 - **Health −1 % in the first minutes after launch** (A-B7), **Intel health fallback** and
   **untested glue** (B-B8), **remaining-energy voltage model** not checked against a full
   discharge (B-B3), and the **stale prior** (B-B6, by design).
+
+## Review fixes (round 1): CPU/memory/network/overhead (2026-10-05)
+
+**Context.** Two independent reviewers scored v1.1.0's readings (reports
+`docs/reviews/2026-10-05-readings-accuracy-review-A.md` and `-B.md`; at the time of writing they
+were uncommitted files in the main checkout at
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/reviews/`). The target is
+≥ 9/10 on CPU, memory, overhead and network. This round fixed the process/CPU/memory/network/
+overhead findings on branch **`review-fix/process`** (from `fix/readings-accuracy` at `04650c7`).
+Battery findings were handled separately, on another branch. **Tests:** `./Scripts/test.sh` →
+**216 tests in 30 suites pass** (184 before). Open items 2, 7 (VPN) and the MCP-server and
+"Other processes on top" bullets of item 5 in the list above are resolved by this round.
+
+**How it was measured.** Harnesses in a scratch dir (not in the repo) compiled the real
+`Sources/MacStatsCore/*.swift` with `swiftc -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -O`
+and replicated `AppModel.procScanTick` (the per-app breakdown scan). Loads were at most 4 × `yes`
+or 2 loops of short-lived `dd` for ≤ 6 s, started from Claude Code in VS Code's terminal (so they
+belong to the **Code** row), and always cleaned up. Nothing was clicked, and the installed app was
+not restarted.
+
+| # | Finding (reviewer) | Result | Evidence (live, this Mac: M3, 8 cores, 16 GB) |
+|---|---|---|---|
+| 1 | Battery drill-in's per-app power misses short-lived processes (A-B1) | **Fixed** | 2 cores of sub-second `dd`: **0.18–0.44 W** before, **5.4–9.0 W per scan (mean 7.9 W; another run 6.5 W)** after. The same load in 2 long-lived `yes` reads 6.7–7.0 W. |
+| 2 | Disclaimed helpers shown as apps, e.g. "npm exec @modelcontextprot…" 178 MB (A-C1/M2, B-C4) | **Fixed** | Memory: Claude 860 MB + "npm exec…" 178 MB → **Claude 1037 MB**; every other row unchanged. |
+| 3 | Exited orphan processes inflate "System" for one scan (B-C1) | **Fixed** (credited back) + tooltip reworded | 4 × `yes` killed by a subshell that then exits: **System 380 % of a core** before; after, System stays at its 0.7 % level and the work (228 % of a core) shows under Code on the shell that started it. |
+| 4 | Memory breakdown has no remainder row (A-M1, B-M1) | **Fixed, with a different formula** (see below) | Memory Used 9.92 GB, Σ rows 9.49 GB, so "Used − Σ rows" = 0.43 GB. That is less than wired memory alone (1.62 GB), so it isn't meaningful. The new row reads **4.95 GB**. |
+| 5 | VPN double counting; KB/MB base (A-N1/N2, B network) | **Fixed** | Sum = `netstat -ib` over the kept interfaces, to the byte; still 7.4 µs per read. A's unexplained constant ~44 KB offset was `utun4`. |
+| 6 | Idle overhead after the popover has been opened once (B-O1) | **Fixed** | Harness: **259 ms → 1.44 ms of CPU per idle tick** (the reads alone: 1.41 ms). |
+| 6b | App stuck in 0.5 s "open" mode after close (open item 3 above) | **Not reproducible without clicks; unchanged** | See below. |
+| 7 | 32-bit CPU tick wrap (A-C3) | **Fixed** | Unit test. |
+| 7 | "% of one core" only on process rows (B-C5, A-C2) | **Fixed** | The app/group row context menus show it too. |
+| 7 | Memory group rows top the list (B-M3) | **Fixed** | For memory, "System & other" and "Other processes" sort after all apps. |
+
+**What changed, file by file**
+
+- `Sources/MacStatsCore/ProcessScan.swift`
+  - **Attribution (2).** `attributionAnchors` splits `NSWorkspace` running apps into
+    - real apps: they have a bundle id and aren't background-only (activation policy `.prohibited`);
+    - fallbacks: everything else.
+
+    `owningAppPID(…, fallbackAppPIDs:)` keeps walking past a fallback and uses it only when no
+    real app is above it. So Claude's MCP server goes to Claude, while a lone agent such as
+    `universalaccessd` keeps its own row. Terminal (through root `login`) and VS Code
+    attribution are unchanged (regression tests).
+  - **Energy of reaped children (1).** `rusage` has no child-energy field, so the energy is
+    estimated: credited child CPU time × the interval's energy per CPU-nanosecond. The ratio
+    comes from processes started this interval if they ran ≥ 20 ms (the reaped processes'
+    siblings: the next compiler, the next `dd`), else from all processes. The estimate is
+    capped together with the CPU credit, so a long-dead root `login` subtree can't read as
+    hundreds of watts. This is an approximation: each scan lands within about ±30 % of the
+    long-lived reference.
+  - **Exited work (3).** For each vanished process, `ProcessSampler` keeps an upper bound of
+    its unseen work: its last-interval rate × this interval. It lists the bound against the
+    nearest surviving ancestor (net of any reap credit), or for true orphans against the app
+    the process belonged to. `exitWorkCredit` hands that out of the CPU remainder, but only
+    the part above the System row's previous level, so System keeps its usual level and nothing
+    moves when the remainder didn't rise. Credited amounts become "debt", so a reap that arrives
+    a scan late isn't counted twice.
+- `Sources/MacStatsCore/MemoryStats.swift`, `ProcessBreakdown.swift`, `SystemReaders.swift`
+  - **Memory remainder (4).** Per-process footprints (Activity Monitor's Memory column) count
+    compressed memory at its full, uncompressed size, but Memory Used counts the compressor's
+    compressed size. On this Mac, 7.4 GB of data was compressed into 2.9 GB.
+  - The row is therefore `memoryInUseAtFullSize` (Memory Used with the compressor at the size
+    of what it holds, `vm_stat`'s "Pages stored in compressor") − Σ rows, clamped ≥ 0, shown as
+    **"System & other"**. It covers the kernel and drivers (wired), macOS's own processes, other
+    users and a ~1 GB part no process footprint carries. For comparison, `top` gave 2.17 GB for
+    other users' processes, plus 1.62 GB wired.
+  - Rows + this row = memory in use before compression (14.4 GB here), which is more than the
+    header's Memory Used (9.9 GB). The footnote now says "Rows count compressed memory at full
+    size", and the row's tooltip explains it. The per-app values were left alone: they match
+    Activity Monitor.
+- `Sources/MacStatsCore/SystemReaders.swift`, `NetworkThroughput.swift`
+  - **Network (5).** `isCountedInterface` skips loopback, `utun*` (WireGuard/Tailscale/most
+    VPNs, macOS tunnels), `ipsec*` and `bridge*` (Internet Sharing, Thunderbolt Bridge). Their
+    traffic is already counted on the physical link underneath.
+  - `formattedRate` uses 1000-based KB/MB, like Activity Monitor's network columns and Finder.
+    The old 1024-based labels read 2.3 % low at the KB scale and 4.6 % low at the MB scale.
+- `Sources/MacStatsCore/MetricsStore.swift`, `Sources/MacStatsApp/MacStatsApp.swift`
+  - **Idle overhead (6).** `pausePublishing()` (at launch and on close) records samples into a
+    bounded pending buffer without touching any `@Published` property. `resumePublishing()`
+    runs in `setVisibility(.popoverOpen)` before the synchronous first tick, so the first frame
+    still shows current values (the "instant open" behaviour of the 2026-09-29 polish pass).
+  - Measured with a harness: the real `OverviewView` in a never-activated, off-screen panel,
+    shown once and ordered out like a closed popover, doing the idle sampler's work every 2 s.
+    Publishing cost **259 ms of CPU per tick**. The cost grows with the gap (472 ms at 5 s), so
+    SwiftUI keeps animating the hidden view. Paused cost 1.44 ms; the reads alone cost 1.41 ms.
+  - For the real app, the expected idle cost after an open is the never-opened level (0.47 s of
+    CPU in 35 min ≈ 0.02 % of a core) instead of ~0.7–1.3 %. That still needs confirming by hand
+    (see below).
+- `Sources/MacStatsApp/MacStatsApp.swift` (scan glue): `NSRunningApplication.bundleIdentifier`
+  costs ~120 µs a scan. It is cached per pid for the breakdown's life. Back-to-back scan cost:
+  **0.41 ms before this round, 0.43 ms after** (0.55 ms without the cache). There are no new
+  timers, and the only new state is a few per-process dictionaries, alive only while a breakdown
+  is open.
+- `Sources/MacStatsCore/CPUUsage.swift` (7): wrap-safe per-field tick deltas.
+- `Sources/MacStatsApp/BreakdownView.swift`: CPU System tooltip now ends "…and processes that
+  exited before they could be traced to an app". The Memory group row is named "System & other".
+  "N% of one core" appears on app rows too.
+
+**Item 6b, the possible stuck "open" mode, not changed.** A harness showed that a plain
+`NSHostingView` panel fires `onAppear` once and never fires `onDisappear` on `orderOut` or
+`close`. So MacStats' open/close tracking (`RootView.onAppear`/`onDisappear` →
+`AppModel.setVisibility`) relies on MenuBarExtra's own appear/disappear calls. The only observed
+failure was after a synthetic Accessibility click. A window-visibility override can't be tested
+without clicking, and if `onAppear` were then skipped on reopen, the popover would show stale,
+paused values, which is worse than the bug.
+
+**Manual check (needs a person):** open and close the popover 5 times by clicking, and in
+between also with Esc and by clicking elsewhere. Then run `ps -o time= -p $(pgrep -x MacStats)`
+twice, 60 s apart. The CPU time should grow by ≤ 0.05 s. If it grows by ~9 s (15 % of a core),
+the app is stuck in open mode: add a check in `AppModel.tick()` that the popover's `NSWindow` is
+still `isVisible`, plus an occlusion observer that reopens. The same check confirms fix 6 in the
+real app.
+
+**Still open from the reviews (not in this round's scope or not cheap):**
+- Open-popover cost (~12–17 % of a core while open, reviewer B O2). The 0.5 s sparkline slide is
+  an approved design. Profile it on-screen first.
+- The System row still absorbs whatever can't be attributed (B-C2).
+- The first breakdown numbers cover only 0.5 s (A-C4).
+- Dead code: `owningAppPID(for:ppid:appPIDs:)` in `Sources/MacStatsCore/ProcessBreakdown.swift`
+  is only used by tests (superseded by the closure-based one in `ProcessScan.swift`).
+- Trash size uses 1024-based MB while Finder uses 1000 (outside these sections).

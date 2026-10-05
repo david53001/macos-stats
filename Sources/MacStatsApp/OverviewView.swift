@@ -62,10 +62,7 @@ struct OverviewView: View {
     private func gb(_ bytes: UInt64) -> String {
         String(format: "%.1f", Double(bytes) / 1_073_741_824)
     }
-    private func rate(_ bps: Double) -> String {
-        bps >= 1_048_576 ? String(format: "%.1f MB/s", bps / 1_048_576)
-                         : String(format: "%.0f KB/s", bps / 1024)
-    }
+    private func rate(_ bps: Double) -> String { formattedRate(bytesPerSecond: bps) }
 
     private var memoryValue: String {
         guard let m = store.memory else { return "—" }

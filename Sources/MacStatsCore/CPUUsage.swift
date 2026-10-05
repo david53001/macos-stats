@@ -14,9 +14,14 @@ public struct CPUTicks: Equatable {
 }
 
 /// Busy CPU percentage (0...100) between two cumulative tick snapshots.
+/// The kernel's counters are 32-bit and wrap: the idle count (~800 ticks/s on 8 cores) does so
+/// after ~60 days of uptime, so each field's delta uses wrapping subtraction.
 public func cpuBusyPercent(previous: CPUTicks, current: CPUTicks) -> Double {
-    let totalDelta = Double(current.total) - Double(previous.total)
+    let user = Double(current.user &- previous.user)
+    let system = Double(current.system &- previous.system)
+    let idle = Double(current.idle &- previous.idle)
+    let nice = Double(current.nice &- previous.nice)
+    let totalDelta = user + system + idle + nice
     guard totalDelta > 0 else { return 0 }
-    let busyDelta = Double(current.busy) - Double(previous.busy)
-    return max(0, min(100, busyDelta / totalDelta * 100))
+    return max(0, min(100, (user + system + nice) / totalDelta * 100))
 }

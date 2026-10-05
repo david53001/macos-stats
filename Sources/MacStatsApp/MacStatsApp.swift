@@ -23,6 +23,8 @@ final class AppModel: ObservableObject {
     private var procTimer: Timer?
     /// Attribution caches + the previous scan, for the open breakdown only (nil otherwise).
     private var scanner: BreakdownScanner?
+    /// Running app pid → whether it has a bundle id (see `procScanTick`); open breakdown only.
+    private var appHasBundleID: [Int32: Bool] = [:]
 
     /// Cumulative-counter snapshots, oldest→newest, covering ~`rateWindowSeconds` (just the
     /// last two while idle). Rates diff against the snapshot ~1s back (see `rateBaselineIndex`)
@@ -86,6 +88,7 @@ final class AppModel: ObservableObject {
         LoginItem.registerOnce()
         notifier.requestAuthorization()
         Keys.legacy.forEach(UserDefaults.standard.removeObject(forKey:))
+        store.pausePublishing()   // closed: record without re-rendering (see setVisibility)
         sample(at: Date())   // just stores the first baseline; history starts at the next sample
         readSlowSensors()    // so even the first open has battery + temperature on frame one
         observePowerSource()
@@ -101,8 +104,10 @@ final class AppModel: ObservableObject {
             stopIdleSampler()
             reliefTimer?.invalidate()
             reliefTimer = nil
-            // Force the slow tiers on this first tick, and run it synchronously so every value
-            // is real before the first frame (rates diff against the idle sampler's snapshots).
+            // Publish what the closed sampler recorded, then force the slow tiers on this first
+            // tick and run it synchronously, so every value is real before the first frame
+            // (rates diff against the idle sampler's snapshots).
+            store.resumePublishing()
             lastTempRead = nil
             lastBatteryRead = nil
             tick()
@@ -111,6 +116,9 @@ final class AppModel: ObservableObject {
             timer?.invalidate()
             timer = nil
             exitBreakdown()   // stop per-process scanning + clear nav state
+            // MenuBarExtra keeps the closed popover's views alive, so a published sample
+            // re-renders them (~0.7–1.3 % of a core): record without publishing until reopened.
+            store.pausePublishing()
             startIdleSampler()
             scheduleMemoryRelief()
         }
@@ -331,6 +339,7 @@ final class AppModel: ObservableObject {
         procTimer?.invalidate()
         procTimer = nil
         scanner = nil
+        appHasBundleID = [:]
         store.clearBreakdown()
     }
 
@@ -442,11 +451,20 @@ final class AppModel: ObservableObject {
 
         // GUI apps the user is running = the grouping anchors. Processes no app is responsible
         // for land in "Other processes", so the rows cover all of the user's processes.
-        let appPIDs = Set(NSWorkspace.shared.runningApplications.compactMap { app -> Int32? in
-            app.processIdentifier > 0 ? Int32(app.processIdentifier) : nil
+        // `bundleIdentifier` costs ~2 µs per app per call (120 µs a scan here), so whether an
+        // app has one is kept per pid for the breakdown's life (pruned to running apps).
+        var hasBundleID: [Int32: Bool] = [:]
+        let anchors = attributionAnchors(NSWorkspace.shared.runningApplications.map { app in
+            let pid = Int32(app.processIdentifier)
+            let hasID = appHasBundleID[pid] ?? (app.bundleIdentifier != nil)
+            hasBundleID[pid] = hasID
+            return RunningAppInfo(pid: pid, hasBundleIdentifier: hasID,
+                                  isBackgroundOnly: app.activationPolicy == .prohibited)
         })
-        let result = scanner.scan(raw, appPIDs: appPIDs, metric: metric, time: time,
-                                  absTime: absTime, cpuTicks: ticks)
+        appHasBundleID = hasBundleID
+        let result = scanner.scan(raw, appPIDs: anchors.apps, fallbackAppPIDs: anchors.fallbacks,
+                                  metric: metric, time: time, absTime: absTime, cpuTicks: ticks,
+                                  memoryInUseBytes: metric == .memory ? memoryInUseAtFullSize(readVMRaw()) : nil)
         // CPU and energy have no real values until the second scan ("Measuring…" until then).
         store.setBreakdown(result.apps, measuring: result.measuring, totalCPU: result.totalCPUPercent)
     }
