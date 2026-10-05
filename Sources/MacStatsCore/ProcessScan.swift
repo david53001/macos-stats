@@ -350,7 +350,9 @@ public final class BreakdownScanner {
         let owners = attributor.owners(for: processes, appPIDs: appPIDs, fallbackAppPIDs: fallbackAppPIDs)
         let deltas = sampler.ingest(processes, time: time, absTime: absTime)
         let elapsed = sampler.elapsedSeconds
-        let total = lastTicks.map { cpuBusyPercent(previous: $0, current: cpuTicks) }
+        // Ticks that didn't move (a failed or stale read) span no time: that read 0 % over
+        // 25 % of rows. No header for that scan rather than a wrong one.
+        let total = lastTicks.flatMap { $0 == cpuTicks ? nil : cpuBusyPercent(previous: $0, current: cpuTicks) }
         lastTicks = cpuTicks
         let previousOwners = lastOwners
         lastOwners = owners

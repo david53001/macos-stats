@@ -384,6 +384,19 @@ import Testing
         #expect(abs(r.apps.reduce(0) { $0 + $1.cpuPercent } - 50) < 0.001)
     }
 
+    @Test func ticksThatDidNotMoveGiveNoHeaderInsteadOfZero() {
+        // A stale counter read (the kernel's rate limit) once showed a 0 % header over 25 % of rows.
+        let s = scanner()
+        let ticks = CPUTicks(user: 10, system: 0, idle: 90, nice: 0)
+        _ = s.scan([p(100, cpu: 0)], appPIDs: [100], metric: .cpu, time: 0, absTime: 10, cpuTicks: ticks)
+        let r = s.scan([p(100, cpu: 1_000_000_000)], appPIDs: [100], metric: .cpu, time: 1, absTime: 20,
+                       cpuTicks: ticks)
+        #expect(!r.measuring)
+        #expect(r.totalCPUPercent == nil)
+        #expect(!r.apps.contains { $0.appPID == BreakdownGroup.system })
+        #expect(abs((r.apps.first { $0.appPID == 100 }?.cpuPercent ?? 0) - 25) < 0.001)
+    }
+
     @Test func childCreditNeverPushesTheRowsPastTheHeader() {
         // A Terminal tab's root `login` (unreadable, never scanned) ran `yes` for minutes; when
         // the tab's surviving parent reaps it, its child time jumps by all of that, which

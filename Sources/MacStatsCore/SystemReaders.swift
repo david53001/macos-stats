@@ -2,8 +2,47 @@ import Foundation
 import Darwin
 import IOKit.ps
 
-/// Reads cumulative aggregate CPU ticks via host_statistics(HOST_CPU_LOAD_INFO).
+/// Reads cumulative aggregate CPU ticks: the per-CPU counters of
+/// `host_processor_info(PROCESSOR_CPU_LOAD_INFO)`, summed.
+///
+/// Not `host_statistics(HOST_CPU_LOAD_INFO)`, which returns the same sums (checked equal, tick
+/// for tick) but is rate-limited for apps that aren't part of macOS: past a random budget of
+/// 2–10 calls per second it silently returns the previous reading. With a breakdown open the
+/// 0.5 s tick and the 1 s scan read ~3×/s, so 1–2 of 40 reads came back stale: one scan's
+/// header read 0 % over 25 % of rows, and the card spiked to 100 % for a tick. The per-CPU
+/// read had no stale value in 40 reads at 50/s. It costs ~90 µs against ~23 µs (at ≤ 3 reads/s,
+/// 0.02 % of one core); host_statistics remains the fallback.
 public func readCPUTicks() -> CPUTicks {
+    var cpuCount: natural_t = 0
+    var info: processor_info_array_t?
+    var infoCount: mach_msg_type_number_t = 0
+    guard host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &cpuCount, &info,
+                              &infoCount) == KERN_SUCCESS, let info else { return readHostCPUTicks() }
+    defer {
+        vm_deallocate(mach_task_self_, vm_address_t(bitPattern: info),
+                      vm_size_t(infoCount) * vm_size_t(MemoryLayout<integer_t>.stride))
+    }
+    return sumCPULoad(UnsafeBufferPointer(start: info, count: Int(infoCount)), cpuCount: Int(cpuCount))
+}
+
+/// Adds up per-CPU tick counters laid out as `PROCESSOR_CPU_LOAD_INFO` returns them
+/// (`CPU_STATE_MAX` values per CPU: user, system, idle, nice). Each counter is 32-bit and
+/// wraps, so the sums wrap too: `cpuBusyPercent`'s wrapping deltas stay exact.
+public func sumCPULoad<C: RandomAccessCollection>(_ counters: C, cpuCount: Int) -> CPUTicks
+    where C.Element == integer_t, C.Index == Int {
+    let stride = Int(CPU_STATE_MAX)
+    var ticks = CPUTicks(user: 0, system: 0, idle: 0, nice: 0)
+    for cpu in 0..<min(cpuCount, counters.count / stride) {
+        let base = counters.startIndex + cpu * stride
+        ticks.user &+= UInt32(bitPattern: counters[base + Int(CPU_STATE_USER)])
+        ticks.system &+= UInt32(bitPattern: counters[base + Int(CPU_STATE_SYSTEM)])
+        ticks.idle &+= UInt32(bitPattern: counters[base + Int(CPU_STATE_IDLE)])
+        ticks.nice &+= UInt32(bitPattern: counters[base + Int(CPU_STATE_NICE)])
+    }
+    return ticks
+}
+
+private func readHostCPUTicks() -> CPUTicks {
     var info = host_cpu_load_info()
     var count = mach_msg_type_number_t(MemoryLayout<host_cpu_load_info_data_t>.size / MemoryLayout<integer_t>.size)
     let kr = withUnsafeMutablePointer(to: &info) {

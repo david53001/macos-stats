@@ -1,9 +1,21 @@
 import Testing
+import Foundation
 @testable import MacStatsCore
 
 @Suite struct SystemReadersSmokeTests {
     @Test func cpuTicksAccumulate() {
         #expect(readCPUTicks().total > 0)
+    }
+
+    /// host_statistics returned the previous reading for 1–2 of 40 reads at 3/s (rate limit).
+    @Test func cpuTicksAreFreshAtAHighReadRate() {
+        var last = readCPUTicks()
+        for _ in 0..<20 {
+            usleep(20_000)   // 50 reads/s; 8 cores × 100 Hz = 16 ticks per gap
+            let now = readCPUTicks()
+            #expect(now.total > last.total)
+            last = now
+        }
     }
 
     @Test func vmHasPageSizeAndTotal() {
