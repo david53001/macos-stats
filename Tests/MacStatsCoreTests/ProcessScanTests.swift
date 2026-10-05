@@ -249,6 +249,104 @@ import Testing
         let d = s.ingest([p(20, cpu: 100, child: 300, start: 150)], time: 1, absTime: 200)
         #expect(d?[20]?.cpuNs == 400)
     }
+
+    // MARK: Energy of reaped children (estimated: rusage has no child-energy field)
+
+    @Test func reapedChildEnergyUsesTheIntervalsEnergyPerCPUTime() {
+        // 11 ran 1 ms for 3 mJ (3 nJ per ns). Parent 10 reaped 0.5 ms of short-lived children.
+        let s = ProcessSampler()
+        _ = s.ingest([p(10, cpu: 0), p(11, cpu: 0)], time: 0, absTime: 100)
+        let d = s.ingest([p(10, cpu: 0, child: 500_000), p(11, cpu: 1_000_000, energy: 3_000_000)],
+                         time: 1, absTime: 200)
+        #expect(d?[10] == ProcessDelta(cpuNs: 500_000, energyNj: 1_500_000, childCreditNs: 500_000,
+                                       childCreditEnergyNj: 1_500_000))
+        #expect(d?[11]?.energyNj == 3_000_000)   // a process's own energy is untouched
+    }
+
+    @Test func processesStartedThisIntervalSetTheRatioWhenTheyRanEnough() {
+        // A build: the next compiler (12, new, 4 nJ/ns on a performance core) says more about
+        // the reaped compilers than an idle agent on an efficiency core (11, 1 nJ/ns).
+        let s = ProcessSampler()
+        _ = s.ingest([p(10, cpu: 0), p(11, cpu: 0)], time: 0, absTime: 100)
+        let d = s.ingest([p(10, cpu: 0, child: 10_000_000), p(11, cpu: 100_000_000, energy: 100_000_000),
+                          p(12, ppid: 10, cpu: 50_000_000, energy: 200_000_000, start: 150)],
+                         time: 1, absTime: 200)
+        #expect(d?[10]?.energyNj == 40_000_000)
+    }
+
+    @Test func newProcessReapedChildrenGetEnergyToo() {
+        let s = ProcessSampler()
+        _ = s.ingest([p(11, cpu: 0)], time: 0, absTime: 100)
+        let d = s.ingest([p(11, cpu: 1_000, energy: 2_000), p(20, cpu: 0, child: 300, start: 150)],
+                         time: 1, absTime: 200)
+        #expect(d?[20]?.energyNj == 600)
+        #expect(d?[20]?.childCreditEnergyNj == 0)   // not part of the capped credit, like its CPU
+    }
+
+    // MARK: Work by exited processes that no reap explains
+
+    /// 10 ← 11, 11 busy at one core; 11 exits between the 3rd and 4th scan.
+    private func busyChild(reapedBy10: Bool) -> ProcessSampler {
+        let s = ProcessSampler()
+        _ = s.ingest([p(10, cpu: 0), p(11, ppid: 10, cpu: 0)], time: 0, absTime: 100)
+        _ = s.ingest([p(10, cpu: 0), p(11, ppid: 10, cpu: 1_000_000_000)], time: 1, absTime: 200)
+        _ = s.ingest([p(10, cpu: 0), p(11, ppid: 10, cpu: 2_000_000_000)], time: 2, absTime: 300)
+        _ = s.ingest([p(10, cpu: 0, child: reapedBy10 ? 3_000_000_000 : 0)], time: 3, absTime: 400)
+        return s
+    }
+
+    @Test func exitWithoutAReapIsReportedAtTheLastRate() {
+        #expect(busyChild(reapedBy10: false).unexplainedExitNs == [10: 1_000_000_000])
+    }
+
+    @Test func reapedExitIsNotReportedAgain() {
+        #expect(busyChild(reapedBy10: true).unexplainedExitNs.isEmpty)
+    }
+
+    @Test func exitOfAProcessWithoutAncestorIsAnOrphan() {
+        let s = ProcessSampler()
+        _ = s.ingest([p(11, cpu: 0)], time: 0, absTime: 100)
+        _ = s.ingest([p(11, cpu: 500_000_000)], time: 1, absTime: 200)
+        _ = s.ingest([], time: 3, absTime: 300)   // a 2 s interval: twice the last rate
+        #expect(s.orphanExitNs == [11: 1_000_000_000])
+        #expect(s.unexplainedExitNs.isEmpty)
+    }
+
+    @Test func creditedExitWorkIsNotCountedAgainWhenTheReapComesLate() {
+        let s = busyChild(reapedBy10: false)
+        s.addDebt(1_000_000_000, to: 10)   // what BreakdownScanner credited for it
+        // Next scan: 10 finally reaps 11 (3 s of CPU in all: 2 s seen live + 1 s credited).
+        let d = s.ingest([p(10, cpu: 0, child: 3_000_000_000)], time: 4, absTime: 500)
+        #expect(d?[10]?.cpuNs == 0)
+    }
+}
+
+@Suite struct ExitWorkCreditTests {
+    @Test func creditIsCappedByTheBudgetInProportion() {
+        let c = exitWorkCredit(unexplained: [10: 3_000, 20: 1_000], orphans: [:], previousOwners: [:],
+                               alive: { _ in true }, budgetNs: 2_000)
+        #expect(c == [10: 1_500, 20: 500])
+    }
+
+    @Test func fullCreditWhenTheBudgetCoversIt() {
+        let c = exitWorkCredit(unexplained: [10: 1_000], orphans: [:], previousOwners: [:],
+                               alive: { _ in true }, budgetNs: 5_000)
+        #expect(c == [10: 1_000])
+    }
+
+    @Test func noCreditWithoutBudget() {
+        #expect(exitWorkCredit(unexplained: [10: 1_000], orphans: [:], previousOwners: [:],
+                               alive: { _ in true }, budgetNs: 0).isEmpty)
+        #expect(exitWorkCredit(unexplained: [10: 1_000], orphans: [:], previousOwners: [:],
+                               alive: { _ in true }, budgetNs: -5).isEmpty)
+    }
+
+    @Test func orphansGoToTheirAppsMainProcessIfStillRunning() {
+        let c = exitWorkCredit(unexplained: [:], orphans: [11: 1_000, 12: 500, 13: 700],
+                               previousOwners: [11: 100, 12: 200, 13: BreakdownGroup.otherProcesses],
+                               alive: { $0 == 100 }, budgetNs: 10_000)
+        #expect(c == [100: 1_000])
+    }
 }
 
 @Suite struct BreakdownScannerTests {
@@ -326,6 +424,71 @@ import Testing
         #expect(r.apps.map(\.appPID) == [100, BreakdownGroup.otherProcesses])
         #expect(r.apps.map(\.memoryBytes) == [1_000, 500])
     }
+
+    @Test func memoryRemainderRowWhenTheTotalIsGiven() {
+        let r = scanner().scan([p(100, cpu: 0, mem: 1_000), p(900, cpu: 0, mem: 500)], appPIDs: [100],
+                               metric: .memory, time: 0, absTime: 10, cpuTicks: ticks0, memoryInUseBytes: 4_000)
+        #expect(r.apps.map(\.appPID) == [100, BreakdownGroup.system, BreakdownGroup.otherProcesses])
+        #expect(r.apps.map(\.memoryBytes) == [1_000, 2_500, 500])
+    }
+
+    /// App 100 ← shell 101 ← `yes` 102 at one core of 4. Between the 2nd and 3rd scan, 102 is
+    /// killed and reaped by launchd (its subshell exited): its last stretch can't be read.
+    private func orphanRun(busyAtTheEnd: UInt32) -> BreakdownScanner.Result {
+        let s = scanner()
+        _ = s.scan([p(100, cpu: 0), p(101, ppid: 100, cpu: 0), p(102, ppid: 101, cpu: 0)], appPIDs: [100],
+                   metric: .cpu, time: 0, absTime: 10, cpuTicks: ticks0)
+        // 26 % busy: 102's core (25 %) + 1 % the kernel.
+        _ = s.scan([p(100, cpu: 0), p(101, ppid: 100, cpu: 0), p(102, ppid: 101, cpu: 1_000_000_000)],
+                   appPIDs: [100], metric: .cpu, time: 1, absTime: 20,
+                   cpuTicks: CPUTicks(user: 26, system: 0, idle: 74, nice: 0))
+        return s.scan([p(100, cpu: 0), p(101, ppid: 100, cpu: 0)], appPIDs: [100], metric: .cpu,
+                      time: 2, absTime: 30,
+                      cpuTicks: CPUTicks(user: 26 + busyAtTheEnd, system: 0, idle: 74 + 100 - busyAtTheEnd, nice: 0))
+    }
+
+    @Test func exitedWorkNoReapExplainsGoesBackToItsAppNotSystem() {
+        // Live before the fix: 380 % of one core of the user's `yes` showed as System.
+        let r = orphanRun(busyAtTheEnd: 26)
+        let app = r.apps.first { $0.appPID == 100 }!
+        let system = r.apps.first { $0.appPID == BreakdownGroup.system }!
+        #expect(abs(app.cpuPercent - 25) < 0.01)
+        #expect(app.processes.first?.pid == 101)   // on the shell that started it
+        #expect(abs(system.cpuPercent - 1) < 0.01)
+    }
+
+    @Test func exitedWorkIsOnlyCreditedOutOfARisenRemainder() {
+        // 102 was killed right after the last scan: the machine stayed at 1 % (System's level).
+        let r = orphanRun(busyAtTheEnd: 1)
+        #expect((r.apps.first { $0.appPID == 100 }?.cpuPercent ?? 1) < 0.01)
+        #expect(abs((r.apps.first { $0.appPID == BreakdownGroup.system }?.cpuPercent ?? 0) - 1) < 0.01)
+    }
+
+    @Test func exitedWorkIsCappedAtWhatTheMachineDidUnseen() {
+        // Killed about halfway: only what the machine did beyond System's usual 1 % is
+        // credited (13 %), not 102's last rate (25 %).
+        let r = orphanRun(busyAtTheEnd: 14)
+        let app = r.apps.first { $0.appPID == 100 }!
+        #expect(abs(app.cpuPercent - 13) < 0.01)
+        #expect(abs(r.apps.reduce(0) { $0 + $1.cpuPercent } - 14) < 0.01)
+    }
+
+    @Test func reapedChildPowerIsCappedWithItsCPU() {
+        // The reap of a long-dead root `login` subtree (see childCreditNeverPushesTheRowsPastTheHeader)
+        // mustn't read as watts either.
+        let s = scanner()
+        _ = s.scan([p(100, cpu: 0), p(101, ppid: 100, cpu: 0)], appPIDs: [100],
+                   metric: .energy, time: 0, absTime: 10, cpuTicks: ticks0)
+        let r = s.scan([RawProcess(pid: 100, ppid: 1, cpuTimeNs: 100_000_000, memoryBytes: 0,
+                                   energyNj: 100_000_000, startTime: 1),
+                        RawProcess(pid: 101, ppid: 100, cpuTimeNs: 0, memoryBytes: 0,
+                                   childCPUTimeNs: 300_000_000_000, startTime: 1)],
+                       appPIDs: [100], metric: .energy, time: 1, absTime: 20,
+                       cpuTicks: CPUTicks(user: 20, system: 0, idle: 80, nice: 0))
+        // 1 nJ per ns: own 0.1 W; the credit is capped to 0.7 s of CPU, so 0.7 W, not 300 W.
+        let app = r.apps.first { $0.appPID == 100 }!
+        #expect(abs(app.watts - 0.8) < 0.001)
+    }
 }
 
 @Suite struct BreakdownRowsTests {
@@ -341,11 +504,29 @@ import Testing
             ProcessUsage(pid: Int32($0), appPID: $0 % 3 == 0 ? 7 : BreakdownGroup.otherProcesses,
                          cpuPercent: 0.1, memoryBytes: 10)
         }
-        let rows = aggregate(procs, by: .memory)
+        let rows = aggregate(procs, by: .cpu)
         #expect(rows.map(\.appPID) == [BreakdownGroup.otherProcesses, 7])
         #expect(rows.map(\.processes.count) == [200, 100])
         #expect(rows.map(\.memoryBytes) == [2_000, 1_000])
         #expect(abs(rows[1].cpuPercent - 10) < 1e-9)
+    }
+
+    @Test func memoryGroupRowsGoLastWhateverTheirSize() {
+        // "Other processes" (GBs of macOS agents) and "System & other" used to top the list.
+        let procs = [
+            ProcessUsage(pid: 5, appPID: BreakdownGroup.otherProcesses, cpuPercent: 0, memoryBytes: 2_000),
+            ProcessUsage(pid: 7, appPID: 7, cpuPercent: 0, memoryBytes: 100),
+            ProcessUsage(pid: 8, appPID: 8, cpuPercent: 0, memoryBytes: 300),
+        ]
+        let rows = addingMemoryRemainderRow(to: aggregate(procs, by: .memory), inUseBytes: 10_000)
+        #expect(rows.map(\.appPID) == [8, 7, BreakdownGroup.system, BreakdownGroup.otherProcesses])
+        #expect(rows[2].memoryBytes == 7_600)
+        #expect(rows[2].processes.isEmpty)   // not expandable, no actions
+    }
+
+    @Test func memoryRemainderNeverNegative() {
+        let apps = [AppUsage(appPID: 1, processes: [], cpuPercent: 0, memoryBytes: 500)]
+        #expect(addingMemoryRemainderRow(to: apps, inUseBytes: 400).last?.memoryBytes == 0)
     }
 
     @Test func groupRowsSortAfterAppsOnTies() {

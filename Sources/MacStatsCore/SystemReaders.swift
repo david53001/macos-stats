@@ -44,7 +44,8 @@ public func readVMRaw() -> VMRaw {
         compressed: UInt64(stats.compressor_page_count),
         internal: UInt64(stats.internal_page_count),
         purgeable: UInt64(stats.purgeable_count),
-        pageSize: UInt64(pageSize)
+        pageSize: UInt64(pageSize),
+        compressedOriginal: UInt64(stats.total_uncompressed_pages_in_compressor)
     )
 }
 
