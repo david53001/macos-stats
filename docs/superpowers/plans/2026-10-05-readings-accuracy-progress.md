@@ -763,3 +763,40 @@ The next-hour drain of real use is largely unpredictable (error floor ~30 %).
 **To verify by hand (needs a person):** plug in with the Battery drill-in open and check the row
 reads "Time to 80%" (or "85%") within ~20 s; on a later plug-in where charging runs past 80 %,
 check it switches to "Time to 85%".
+
+## Review fixes (round 3 polish) (2026-10-05, branch `fix/readings-accuracy`)
+
+**Context.** Two independent reviews of MacStats' readings (round 3) scored them 8/10:
+`docs/reviews/2026-10-05-readings-accuracy-review-round3-A.md` ("A") and `…-round3-B.md` ("B").
+Finding IDs below are `<report>-<ID>` (e.g. A-B3 = report A, Battery issue 3). This pass fixed
+only the cheap labelling/edge items. Terms: **limit** = the user's manual charge limit (here
+85 %); **hold** = Optimized Battery Charging pausing the charge below it (here 80 %), both read
+from powerd's file `/Library/Preferences/com.apple.powerd.charging.plist`; **gauge interval** =
+the ~1 minute between two battery fuel-gauge updates.
+
+| # | Finding | Result | Where |
+|---|---|---|---|
+| 1 | Held at 80 % by Optimized Charging, the drill-in said "Charge limit 80%" (limit is 85 %) (A-B3, B-B2) | **Fixed.** Now two rows: "Optimized Charging — Held at 80%" and "Charge limit — 85%". | `BatterySample.chargeHoldPercent`, `BatteryDetailsCard.swift` |
+| 1b | The fallback limit learner stored the hold as a limit (`batteryLearnedChargeLimit = 80`) (A-B4) | **Fixed.** A stop at or below powerd's listed hold isn't learned. The value already stored on the owner's Mac was left alone: it is used only if powerd's file is never readable, and is forgotten the next time a charge runs past 80 %. | `learnedChargeLimit(…, hold:)` |
+| 2 | Hold releases, charging resumes at 80 %: "Almost done" while ~10 min to 85 % remain (B-B3) | **Fixed.** While charging at or above the hold, the target is the end limit, or 100 % with none. Cost: in the one minute between showing 80 % and stopping at a hold, it shows time to 85 % instead of "Almost done". | `chargeStop()` |
+| 2b | Hold-vs-limit-vs-percent decision lived untested in the app (B-B7) | **Fixed.** Pure `chargeStop(end:hold:state:percent:) -> ChargeStop` in `Sources/MacStatsCore/BatteryCharging.swift`, tested in `ChargeStopTests` (hold, hold released, held, limit, past the limit, no limit, unknown, on battery). `ChargeLimitResolver.resolve` now returns only the end of charge. | |
+| 3 | Time left shown to the minute ("15h 55m") though ~30 % uncertain (A-B1) | **Fixed.** `formatTimeLeft`: exact under 15 min, 5-min steps under 2 h, 15-min steps under 6 h, then "about N h". Time to full (`formatTimeToFull`): exact under 1 h, 5-min steps above. Used by the Battery card line and drill-in; the menu-bar item is a static icon. "2h 0m" now reads "2h". | `Sources/MacStatsCore/DurationFormat.swift`, `DurationFormatTests` |
+| 4 | First-ever launch on battery: one gauge interval read "66h 51m" (A-B5) | **Fixed.** With no learned typical drain (or one under 20 min of history) and no macOS figure, time left is "Calculating…" until the session has 2 min of data (about two gauge intervals). | `BatteryEstimator.minutesLeft`, test `aFirstEverLaunchWaitsForTwoMinutesOfData` |
+| 5 | Memory footnote said rows "can add up to more than Memory Used"; they can also add up to less (A-M1, B-M1) | **Fixed.** "Rows are each app's footprint (as in Activity Monitor); they don't add up to Memory Used" (2 lines, fits). | `BreakdownView.swift` footnote |
+| 6 | CPU app rows showed only the whole-Mac share (52 %) vs Activity Monitor's 415 % (B-C2) | **Fixed.** "418% of one core" beside each CPU app row's bar, caption2 tertiary, in a fixed 88 pt column so all bars stay the same length. | `BreakdownView.swift` `AppRow` |
+
+**How it was checked.** `swift build` (SDK 26.5) and `./Scripts/test.sh`: **255 tests pass**
+(244 before). The UI changes were rendered off-screen (SwiftUI `ImageRenderer`, never shown on
+screen; a scratch copy of `Sources/MacStatsApp` with the list made non-lazy so it renders) at
+320 × 404: the CPU list with a 52 % / "418% of one core" row fits with no truncation (rows
+~38 pt, was ~36); the held Battery drill-in shows both rows; the Memory footnote fits in two
+lines. Nothing was clicked and the installed app was not rebuilt or restarted. No new timers.
+
+**To verify by hand (needs a person):** with Optimized Charging holding at 80 %, open Battery →
+it should read "Optimized Charging  Held at 80%" and "Charge limit  85%"; when charging resumes
+from 80 %, the row should read "Time to 85%" with minutes, not "Almost done".
+
+**Still open from round 3 (not in this pass):** time to 100 % unvalidated above raw 85 % (A-B2,
+B-B1, Medium); remaining-energy model 1.5–4 % optimistic (B-B4); "Power, last min" falls back
+to one instant reading after a gauge pause (B-B5); health readings saved only on plug/unplug
+(B-B6); reaped-child CPU shown on the parent row (A-C1); accessory agents as app rows (A-C2).
