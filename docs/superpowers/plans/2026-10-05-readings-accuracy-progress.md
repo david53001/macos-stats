@@ -34,3 +34,12 @@
   (in temporary git worktrees), which get merged into `fix/readings-accuracy`. If the session
   dies mid-run, check `git branch` for those branches and continue from whatever got merged.
   The finalize step appends the results below.
+- [x] Verify round 1 battery fixes (`fix-r2`): `BatteryEstimator` averages are now
+  bias-corrected EMAs (the first gauge interval no longer counts as a whole time constant:
+  a 9.5 W unplug spike then 1.8 W read −66 % at 10 min, now −20 %; −50 % at 30 min, now −4 %);
+  the charge limit is learned only when charging stops (charging → held), not from a full Mac
+  drifting to 95–99 % on AC; "Almost full" instead of "Calculating…" while charging at 100 %.
+  **Still open (needs the Mac plugged in):** time to full above 80 % divides by the smoothed
+  measured current, which keeps falling in the constant-voltage phase, so it likely reads short.
+  Check: log `ioreg -rn AppleSmartBattery` `Amperage` + percent every 30 s from ~75 % to 100 %
+  and compare with `minutesToTarget` in `Sources/MacStatsCore/BatteryCharging.swift`.

@@ -35,7 +35,8 @@ struct BatteryDetailsCard: View {
         case .discharging:
             rows.append(("Time left", b.timeToEmptyMinutes.map(formatDuration) ?? "Calculating…"))
         case .charging:
-            rows.append((b.chargeTargetLabel, b.timeToFullMinutes.map(formatDuration) ?? "Calculating…"))
+            rows.append((b.chargeTargetLabel, b.timeToFullMinutes.map(formatDuration)
+                            ?? (b.percent >= 100 ? "Almost full" : "Calculating…")))
         case .charged, .notCharging:
             if let limit = b.chargeLimitPercent { rows.append(("Charge limit", "\(limit)%")) }
         }
@@ -80,7 +81,8 @@ extension BatterySample {
         switch state {
         case .charging:
             let target = chargeLimitPercent.map { "\($0)%" } ?? "full"
-            return timeToFullMinutes.map { "\(formatDuration($0)) to \(target)" } ?? "charging"
+            return timeToFullMinutes.map { "\(formatDuration($0)) to \(target)" }
+                ?? (percent >= 100 ? "almost full" : "charging")   // shows 100 % before charging ends
         case .charged: return "fully charged"
         case .notCharging: return "not charging"
         case .discharging: return timeToEmptyMinutes.map { "\(formatDuration($0)) left" } ?? "calculating…"

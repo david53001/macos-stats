@@ -48,11 +48,11 @@ public struct BatteryEstimator: Equatable {
     /// One awake on-battery interval: `seconds` long at an average of `watts`.
     public mutating func ingest(watts: Double, seconds: TimeInterval) {
         guard watts > 0, watts.isFinite, seconds > 0, seconds.isFinite else { return }
-        shortWatts = Self.blend(shortWatts, watts, step: seconds, tau: Self.shortTau)
-        recentWatts = Self.blend(recentWatts, watts, step: seconds, tau: Self.recentTau)
+        shortWatts = Self.blend(shortWatts, watts, step: seconds, prior: sessionSeconds, tau: Self.shortTau)
+        recentWatts = Self.blend(recentWatts, watts, step: seconds, prior: sessionSeconds, tau: Self.recentTau)
         sessionWh += watts * seconds / 3600
         sessionSeconds += seconds
-        typicalWatts = Self.blend(typicalWatts, watts, step: seconds, tau: Self.typicalTau)
+        typicalWatts = Self.blend(typicalWatts, watts, step: seconds, prior: typicalSeconds, tau: Self.typicalTau)
         typicalSeconds += seconds
     }
 
@@ -101,12 +101,17 @@ public struct BatteryEstimator: Equatable {
         return Int((remainingWh / watts * 60).rounded())
     }
 
-    /// Time-weighted exponential average: a reading `step` seconds long moves the average by
-    /// 1 − e^(−step/τ). The very first reading seeds it.
+    /// Time-weighted exponential average, bias-corrected: a reading `step` seconds long, after
+    /// `prior` seconds already in the average, moves it by (1 − e^(−step/τ)) / (1 − e^(−(prior+step)/τ)).
+    /// Long after the start that is the plain 1 − e^(−step/τ); early on it is close to a running
+    /// mean, so the first reading counts only for its own duration. (Seeding with the first
+    /// reading at full weight let one 9.5 W unplug spike, followed by 1.8 W, read −66 % after
+    /// 10 minutes and −50 % after 30; a 12 W build tail on first launch still held the persisted
+    /// typical at 7.3 W after 3 h at 4.6 W.)
     private static func blend(_ average: Double?, _ value: Double, step: TimeInterval,
-                              tau: TimeInterval) -> Double {
+                              prior: TimeInterval, tau: TimeInterval) -> Double {
         guard let average else { return value }
-        let alpha = 1 - exp(-step / tau)
+        let alpha = (1 - exp(-step / tau)) / (1 - exp(-(max(0, prior) + step) / tau))
         return average + alpha * (value - average)
     }
 }

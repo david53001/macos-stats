@@ -180,6 +180,7 @@ final class AppModel: ObservableObject {
             return
         }
         let state = sample.state
+        let previousState = lastBatteryState
         if state != lastBatteryState {
             // Plug/unplug: never measure across it; a new session (or charge) starts.
             lastTelemetry = nil
@@ -207,7 +208,7 @@ final class AppModel: ObservableObject {
             }
         }
 
-        let limit = chargeLimit(for: sample)
+        let limit = chargeLimit(for: sample, previousState: previousState)
         switch state {
         case .discharging:
             if let wh = telemetry?.remainingWh {
@@ -237,8 +238,9 @@ final class AppModel: ObservableObject {
     /// seen with an empty policy list while unplugged on a Mac that holds at 85 % on AC, and
     /// it isn't known to be filled in at plug-in, so otherwise the level where charging was
     /// last seen to stop is used (forgotten once charging goes past it).
-    private func chargeLimit(for sample: BatterySample) -> Int? {
-        let learned = learnedChargeLimit(previous: learnedLimit, state: sample.state, percent: sample.percent)
+    private func chargeLimit(for sample: BatterySample, previousState: BatteryState?) -> Int? {
+        let learned = learnedChargeLimit(previous: learnedLimit, previousState: previousState,
+                                         state: sample.state, percent: sample.percent)
         if learned != learnedLimit {
             learnedLimit = learned
             UserDefaults.standard.set(learned, forKey: Keys.chargeLimit)

@@ -80,9 +80,10 @@ import Foundation
         var e = BatteryEstimator(typicalWatts: 5, typicalSeconds: 3600)
         e.ingest(watts: 9.5, seconds: 60)
         let settling = e.minutesLeft(remainingWh: 40, macOSMinutes: 333)!
-        #expect(settling >= 475 && settling <= 480)   // 40 Wh / ~5 W (the spike barely moves typical)
+        // 40 Wh / ~5.09 W: the spike counts for its 1 minute of the hour typical rests on.
+        #expect(settling >= 468 && settling <= 476)
         e.ingest(watts: 5, seconds: 60)
-        #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: 333)! < 470)    // now its own blend
+        #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: 333)! < 460)    // now its own blend
     }
 
     @Test func macOSFigureCoversTheFirstTwoMinutesWithoutATypical() {
@@ -93,6 +94,36 @@ import Foundation
         #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: nil) == 480)
         e.ingest(watts: 5, seconds: 60)
         #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: 333) == 480)
+    }
+
+    @Test func aFirstIntervalSpikeCountsOnlyForItsOwnMinute() {
+        // The unplug spike (9.5 W) then a steady 1.8 W, no typical yet. Seeding each average
+        // with the first reading at full weight read −66 % after 10 min and −50 % after 30.
+        var e = BatteryEstimator()
+        e.ingest(watts: 9.5, seconds: 60)
+        feed(&e, watts: 1.8, minutes: 9)
+        let honest = 30 / 1.8 * 60
+        func error() -> Double { Double(e.minutesLeft(remainingWh: 30, macOSMinutes: nil)!) / honest - 1 }
+        #expect(error() > -0.25)   // the spike is 1 of 10 minutes of real drain
+        feed(&e, watts: 1.8, minutes: 20)
+        #expect(abs(error()) < 0.06)
+    }
+
+    @Test func aSmallFirstIntervalBumpFadesWithinTenMinutes() {
+        // Live: 4.9 W for the first gauge interval (a compile), then ~3.5 W.
+        var e = BatteryEstimator()
+        e.ingest(watts: 4.9, seconds: 60)
+        feed(&e, watts: 3.5, minutes: 9)
+        #expect(abs(e.expectedWatts! / 3.5 - 1) < 0.05)
+    }
+
+    @Test func persistedTypicalIsNotSeededByTheFirstReading() {
+        // First launch after a build: a 12 W tail, then 3 h at 4.6 W. The old seeding kept the
+        // persisted typical at 7.3 W, so the next session opened ~37 % short.
+        var e = BatteryEstimator()
+        e.ingest(watts: 12, seconds: 60)
+        feed(&e, watts: 4.6, minutes: 179)
+        #expect(abs(e.typicalWatts! / 4.6 - 1) < 0.05)
     }
 
     @Test func endSessionKeepsTypicalOnly() {
@@ -207,19 +238,33 @@ import Foundation
 
 @Suite struct ChargeLimitTests {
     @Test func learnsWhereChargingStops() {
-        #expect(learnedChargeLimit(previous: nil, state: .notCharging, percent: 85) == 85)
-        #expect(learnedChargeLimit(previous: nil, state: .charged, percent: 80) == 80)
+        #expect(learnedChargeLimit(previous: nil, previousState: .charging, state: .notCharging, percent: 85) == 85)
+        #expect(learnedChargeLimit(previous: nil, previousState: .charging, state: .charged, percent: 80) == 80)
+        // Still held on the next reading: kept.
+        #expect(learnedChargeLimit(previous: 85, previousState: .notCharging, state: .notCharging, percent: 85) == 85)
     }
 
     @Test func fullOrVeryLowHoldsAreNotLimits() {
-        #expect(learnedChargeLimit(previous: nil, state: .charged, percent: 100) == nil)
-        #expect(learnedChargeLimit(previous: nil, state: .notCharging, percent: 30) == nil)
+        #expect(learnedChargeLimit(previous: nil, previousState: .charging, state: .charged, percent: 100) == nil)
+        #expect(learnedChargeLimit(previous: nil, previousState: .charging, state: .notCharging, percent: 30) == nil)
+    }
+
+    @Test func aFullMacDriftingOnACIsNotALimit() {
+        // Full on AC, the charge drifts to 97 % while macOS still says charged.
+        #expect(learnedChargeLimit(previous: nil, previousState: .charged, state: .charged, percent: 97) == nil)
+        #expect(learnedChargeLimit(previous: nil, previousState: .charged, state: .notCharging, percent: 96) == nil)
+    }
+
+    @Test func pluggingInAboveALimitIsNotALimit() {
+        // Plugged in at 90 % with an 85 % limit: held at 90 without ever charging.
+        #expect(learnedChargeLimit(previous: 85, previousState: .discharging, state: .notCharging, percent: 90) == 85)
+        #expect(learnedChargeLimit(previous: nil, previousState: nil, state: .notCharging, percent: 90) == nil)
     }
 
     @Test func chargingPastTheLimitForgetsIt() {
-        #expect(learnedChargeLimit(previous: 85, state: .charging, percent: 86) == nil)
-        #expect(learnedChargeLimit(previous: 85, state: .charging, percent: 70) == 85)
-        #expect(learnedChargeLimit(previous: 85, state: .discharging, percent: 40) == 85)
+        #expect(learnedChargeLimit(previous: 85, previousState: .charging, state: .charging, percent: 86) == nil)
+        #expect(learnedChargeLimit(previous: 85, previousState: .charging, state: .charging, percent: 70) == 85)
+        #expect(learnedChargeLimit(previous: 85, previousState: .charging, state: .discharging, percent: 40) == 85)
     }
 
     /// powerd's policy file: an NSKeyedArchiver blob under "policies", as found on macOS 26.

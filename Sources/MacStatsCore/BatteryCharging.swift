@@ -59,12 +59,17 @@ public func minutesToTarget(percent: Int, maxMAh: Int, chargeMA: Double, targetP
                            targetPercent: targetPercent, knee: knee, taper: taper)
 }
 
-/// The charge level macOS will stop at, learned from where charging actually stops: plugged
-/// in, not charging, below 100 % (a manual charge limit or Optimized Charging's hold). Charging
-/// past it later means the limit is gone. Holds below 50 % are not taken as limits.
-public func learnedChargeLimit(previous: Int?, state: BatteryState, percent: Int) -> Int? {
+/// The charge level macOS will stop at, learned from where charging actually stops: the state
+/// goes from charging to held (not charging / charged) below 100 % (a manual charge limit or
+/// Optimized Charging's hold). Only that transition counts: a full Mac left on AC drifts to
+/// 95–99 % while still "charged" (pmset: AC 100 → 95 % on Sep 30), and plugging in above a limit
+/// holds wherever the charge happens to be; neither is a limit. Charging past it later means
+/// the limit is gone. Holds below 50 % are not taken as limits.
+public func learnedChargeLimit(previous: Int?, previousState: BatteryState?, state: BatteryState,
+                               percent: Int) -> Int? {
     switch state {
     case .notCharging, .charged:
+        guard previousState == .charging else { return previous }
         return (50...99).contains(percent) ? percent : previous
     case .charging:
         if let previous, percent > previous { return nil }
