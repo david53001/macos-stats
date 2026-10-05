@@ -113,12 +113,14 @@ public struct BatteryEstimator: Equatable {
     /// Minutes until empty for `remainingWh` of charge. Right after unplugging (under
     /// `settleSeconds` of data) one gauge reading can be a spike (9.5 W against a 1.8 W
     /// average), so the typical drain is used alone when it rests on at least `priorSeconds`
-    /// of earlier use; without that, macOS's own figure.
+    /// of earlier use; without that, macOS's own figure; without either, nil ("Calculating…"):
+    /// on a first-ever launch one 0.6 W interval read "66h 51m".
     public func minutesLeft(remainingWh: Double, macOSMinutes: Int?) -> Int? {
         var watts = expectedWatts
         if sessionSeconds < Self.settleSeconds {
             if let typical = typicalWatts, typicalSeconds - sessionSeconds >= Self.priorSeconds { watts = typical }
             else if let m = macOSMinutes, m > 0 { return m }
+            else { return nil }
         }
         guard let watts, watts > 0.1, remainingWh > 0 else { return nil }
         return Int((remainingWh / watts * 60).rounded())

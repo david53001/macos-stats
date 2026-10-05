@@ -90,10 +90,23 @@ import Foundation
         var e = BatteryEstimator()
         e.ingest(watts: 5, seconds: 60)
         #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: 333) == 333)
-        // Without a usable macOS figure it falls back to its own estimate.
-        #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: nil) == 480)
         e.ingest(watts: 5, seconds: 60)
         #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: 333) == 480)
+    }
+
+    @Test func aFirstEverLaunchWaitsForTwoMinutesOfData() {
+        // No typical yet and macOS still "calculating" (−1, parsed as nil): one quiet 0.6 W
+        // interval read "66h 51m". Calculating… until two gauge intervals are in.
+        var e = BatteryEstimator()
+        e.ingest(watts: 0.6, seconds: 60)
+        #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: nil) == nil)
+        #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: -1) == nil)
+        e.ingest(watts: 5, seconds: 60)
+        #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: nil) != nil)
+        // A typical with too little history behind it doesn't count as data either.
+        var thin = BatteryEstimator(typicalWatts: 0.6, typicalSeconds: 300)
+        thin.ingest(watts: 0.6, seconds: 60)
+        #expect(thin.minutesLeft(remainingWh: 40, macOSMinutes: nil) == nil)
     }
 
     @Test func aFirstIntervalSpikeCountsOnlyForItsOwnMinute() {
