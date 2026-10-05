@@ -65,7 +65,9 @@ swift build && ./Scripts/test.sh
 ./Scripts/bundle.sh release && open ~/Applications/MacStats.app
 ```
 
-`Scripts/*.sh` do **not** set this themselves yet (open item below).
+Since 2026-10-05 `Scripts/test.sh` and `Scripts/bundle.sh` (and therefore `install.sh` and
+`package-release.sh`) source `Scripts/sdk-env.sh`, which sets this `SDKROOT` automatically when
+the 26.5 SDK exists and `SDKROOT` is unset. Only a bare `swift build` needs the export.
 
 ### Terms
 - **Responsible app / responsible pid:** the app macOS charges a process's work to
@@ -252,10 +254,9 @@ Measured with `ps -o rss=,pcpu=,time= -p <pid>` every 2 s and `footprint -p <pid
      reading goes past it.
    - The charging display logic in `AppModel.refreshBattery` has no unit tests (only the pure
      functions do).
-6. **Build scripts:** pin `SDKROOT` in `Scripts/bundle.sh`, `install.sh`, `package-release.sh`
-   (or wait for a CLT update) before the next release.
+6. ~~**Build scripts:** pin `SDKROOT`~~ — done: `Scripts/sdk-env.sh`, sourced by `test.sh` and
+   `bundle.sh`.
 7. **Not checked:** VPN/`utun*` double counting in network speed; CPU temperature against
    `sudo powermetrics`.
-8. **Release:** not published. To ship: `export SDKROOT=…MacOSX26.5.sdk`,
-   `./Scripts/package-release.sh`, merge to `main` and push, then
+8. **Release:** not published. To ship: `./Scripts/package-release.sh`, merge to `main` and push, then
    `gh release create v1.1.0 dist/MacStats.app.zip --title "MacStats 1.1.0" --notes "..."`.

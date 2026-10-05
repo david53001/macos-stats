@@ -6,6 +6,7 @@
 # isn't on SPM's default search path, so we add it explicitly here. Use this
 # instead of a bare `swift test`. Extra args are forwarded (e.g. --filter Name).
 set -euo pipefail
+source "$(dirname "$0")/sdk-env.sh"
 FWPATH="$(xcode-select -p)/Library/Developer/Frameworks"
 exec swift test \
   -Xswiftc -F -Xswiftc "$FWPATH" \
