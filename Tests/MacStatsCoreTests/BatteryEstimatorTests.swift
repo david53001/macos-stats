@@ -367,16 +367,17 @@ import Foundation
         AAAAAAAAAEYAAAAAAAAAAAAAAAAAAAIHAAgADQAfACgATwAAAAAAAAIBAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAMG
         """)!
 
-    @Test func realPluggedInFileGivesTheManualLimitNotOptimizedCharging() {
-        // The old reading took the lowest policy, 80 %, so it would have said "Time to 80%".
-        #expect(parsePowerdChargeLimit(Self.pluggedInFile, bootSessionUUID: "C66DAC66-3BEA-4D97-9B97-0348C9378BAC")
-                == .limit(85))
-        #expect(parsePowerdChargeLimit(Self.pluggedInFile, bootSessionUUID: "OTHER-BOOT") == .unknown)
+    @Test func realPluggedInFileGivesTheLimitAndTheOptimizedChargingHold() {
+        // That charge stopped at 80 % (the hold), 40 minutes later.
+        let policy = parsePowerdChargePolicy(Self.pluggedInFile, bootSessionUUID: "C66DAC66-3BEA-4D97-9B97-0348C9378BAC")
+        #expect(policy == PowerdChargePolicy(limit: .limit(85), hold: 80))
+        #expect(parsePowerdChargePolicy(Self.pluggedInFile, bootSessionUUID: "OTHER-BOOT")
+                == PowerdChargePolicy(limit: .unknown))
     }
 
-    @Test func onlyAnOptimizedChargingHoldIsNoLimit() throws {
+    @Test func onlyAnOptimizedChargingHoldIsAHoldWithoutALimit() throws {
         let data = try powerdFile(policies: [["soclimit": 80, "terminated": false, "isEndOfCharge": false]])
-        #expect(parsePowerdChargeLimit(data, bootSessionUUID: "BOOT-1") == .noLimit)
+        #expect(parsePowerdChargePolicy(data, bootSessionUUID: "BOOT-1") == PowerdChargePolicy(limit: .noLimit, hold: 80))
     }
 
     @Test func staleOrUnreadableFileIsUnknown() throws {
@@ -422,6 +423,20 @@ import Foundation
         // Older macOS (no policy file): where charging was last seen to stop.
         var r = ChargeLimitResolver(observed: 80)
         #expect(r.resolve(powerd: .unknown, pluggedInFor: 3600, now: now) == .limit(80))
+    }
+
+    @Test func anOptimizedChargingHoldIsTheTargetUntilPassed() {
+        // Live 2026-10-05: limit 85 %, hold 80 %; charging stopped at 80 %.
+        var r = ChargeLimitResolver()
+        #expect(r.resolve(powerd: .limit(85), hold: 80, percent: 56, pluggedInFor: 30, now: now) == .limit(80))
+        #expect(r.resolve(powerd: .limit(85), hold: 80, percent: 80, pluggedInFor: 60, now: now) == .limit(80))
+        // Earlier charges ran on past 80 %: then the limit is the target again.
+        #expect(r.resolve(powerd: .limit(85), hold: 80, percent: 81, pluggedInFor: 600, now: now) == .limit(85))
+        #expect(r.remembered == 85)   // only the end limit is remembered
+        // With no limit set, the hold still comes first.
+        var free = ChargeLimitResolver()
+        #expect(free.resolve(powerd: .noLimit, hold: 80, percent: 60, pluggedInFor: 600, now: now) == .limit(80))
+        #expect(free.resolve(powerd: .noLimit, hold: 80, percent: 81, pluggedInFor: 600, now: now) == .full)
     }
 
     @Test func aLongUnconfirmedMemoryExpires() {

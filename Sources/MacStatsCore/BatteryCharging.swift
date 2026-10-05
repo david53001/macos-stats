@@ -130,6 +130,17 @@ public enum ChargeLimitHint: Equatable {
     case limit(Int)
 }
 
+/// powerd's charging policies: where charging ends (`limit`), and a pause before that, such as
+/// Optimized Charging holding at 80 % (`hold`, below the limit; nil if none).
+public struct PowerdChargePolicy: Equatable {
+    public var limit: ChargeLimitHint
+    public var hold: Int?
+
+    public init(limit: ChargeLimitHint, hold: Int? = nil) {
+        self.limit = limit; self.hold = hold
+    }
+}
+
 /// Parses `/Library/Preferences/com.apple.powerd.charging.plist` (macOS 26): a plist whose
 /// `policies` value is an NSKeyedArchiver blob of charge-control policies, each archived as a
 /// dictionary with `soclimit` (percent), `terminated`, `isEndOfCharge` and a `reason` (e.g. a
@@ -138,28 +149,36 @@ public enum ChargeLimitHint: Equatable {
 /// powerd fills the list within ~20 s of plugging in and empties it when unplugged (seen
 /// 2026-10-05: empty at 18:41 after unplugging; at a 22:02:43 plug-in it held
 /// `manualChargeLimit` 85 % with `isEndOfCharge` and `optimizedBatteryCharging` 80 % without).
-/// Only end-of-charge policies are limits: Optimized Charging's 80 % is listed on every
-/// plug-in but is a hold it may or may not use, and this Mac's charges ran past 80 % to the
-/// 85 % limit every time. Files without `isEndOfCharge` keys count every policy.
-public func parsePowerdChargeLimit(_ data: Data?, bootSessionUUID: String?) -> ChargeLimitHint {
+/// That charge stopped at 80 % (raw 79.0 %, 22:42, macOS's own time to full jumping to
+/// 1586 min): Optimized Charging's hold was in force. Earlier charges on this Mac ran on to
+/// the 85 % limit, so a hold is a likely stop, not a certain one: end-of-charge policies give
+/// `limit`, the others `hold`. Files without `isEndOfCharge` keys count every policy as a limit.
+public func parsePowerdChargePolicy(_ data: Data?, bootSessionUUID: String?) -> PowerdChargePolicy {
     guard let data,
           let outer = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
           let blob = outer["policies"] as? Data,
           let archive = try? PropertyListSerialization.propertyList(from: blob, format: nil) as? [String: Any],
           let objects = archive["$objects"] as? [Any] else {
-        return .unknown
+        return PowerdChargePolicy(limit: .unknown)
     }
     if let fileBoot = outer["bootSessionUUID"] as? String, let bootSessionUUID, fileBoot != bootSessionUUID {
-        return .unknown   // written before this boot: may describe a policy that no longer runs
+        return PowerdChargePolicy(limit: .unknown)   // written before this boot: may describe a policy that no longer runs
     }
     let active = objects.compactMap { object -> (limit: Int, endOfCharge: Bool?)? in
         guard let policy = object as? [String: Any],
-              let limit = (policy["soclimit"] as? NSNumber)?.intValue,
+              let limit = (policy["soclimit"] as? NSNumber)?.intValue, (1...99).contains(limit),
               (policy["terminated"] as? NSNumber)?.boolValue != true else { return nil }
         return (limit, (policy["isEndOfCharge"] as? NSNumber)?.boolValue)
     }
-    let final = active.contains { $0.endOfCharge != nil } ? active.filter { $0.endOfCharge == true } : active
-    return final.map(\.limit).filter { (1...99).contains($0) }.min().map(ChargeLimitHint.limit) ?? .noLimit
+    let marked = active.contains { $0.endOfCharge != nil }
+    let limit = active.filter { !marked || $0.endOfCharge == true }.map(\.limit).min()
+    let hold = active.filter { marked && $0.endOfCharge != true }.map(\.limit).filter { $0 < limit ?? 100 }.min()
+    return PowerdChargePolicy(limit: limit.map(ChargeLimitHint.limit) ?? .noLimit, hold: hold)
+}
+
+/// The end-of-charge part of `parsePowerdChargePolicy`.
+public func parsePowerdChargeLimit(_ data: Data?, bootSessionUUID: String?) -> ChargeLimitHint {
+    parsePowerdChargePolicy(data, bootSessionUUID: bootSessionUUID).limit
 }
 
 /// Where the current charge will stop, as far as MacStats can tell.
@@ -200,8 +219,20 @@ public struct ChargeLimitResolver: Equatable {
         self.observed = observed
     }
 
-    /// The target while plugged in for `pluggedInFor` seconds with powerd saying `powerd`.
-    public mutating func resolve(powerd: ChargeLimitHint, pluggedInFor: TimeInterval, now: Date) -> ChargeTarget {
+    /// The target at `percent`, plugged in for `pluggedInFor` seconds, with powerd saying
+    /// `powerd` and listing `hold`. A hold is the target until the charge has passed it
+    /// (then charging went on, so the hold wasn't used); only the end limit is remembered.
+    public mutating func resolve(powerd: ChargeLimitHint, hold: Int? = nil, percent: Int = 0,
+                                 pluggedInFor: TimeInterval, now: Date) -> ChargeTarget {
+        let target = resolveEnd(powerd: powerd, pluggedInFor: pluggedInFor, now: now)
+        if let hold, percent <= hold {
+            if case .limit(let end) = target, end <= hold { return target }
+            return .limit(hold)
+        }
+        return target
+    }
+
+    private mutating func resolveEnd(powerd: ChargeLimitHint, pluggedInFor: TimeInterval, now: Date) -> ChargeTarget {
         switch powerd {
         case .limit(let percent):
             remember(percent, now)
@@ -226,11 +257,11 @@ public struct ChargeLimitResolver: Equatable {
 
 /// Reads powerd's charging-policy file (a few hundred bytes, world-readable). Cheap enough to
 /// call when the battery percent or state changes.
-public func readPowerdChargeLimit() -> ChargeLimitHint {
+public func readPowerdChargePolicy() -> PowerdChargePolicy {
     let url = URL(fileURLWithPath: "/Library/Preferences/com.apple.powerd.charging.plist")
     var buffer = [CChar](repeating: 0, count: 64)
     var size = buffer.count
     let boot = sysctlbyname("kern.bootsessionuuid", &buffer, &size, nil, 0) == 0
         ? String(cString: buffer) : nil
-    return parsePowerdChargeLimit(try? Data(contentsOf: url), bootSessionUUID: boot)
+    return parsePowerdChargePolicy(try? Data(contentsOf: url), bootSessionUUID: boot)
 }

@@ -36,7 +36,7 @@ struct BatteryDetailsCard: View {
             rows.append(("Time left", b.timeToEmptyMinutes.map(formatDuration) ?? "Calculating…"))
         case .charging:
             rows.append((b.chargeTargetLabel, b.timeToFullMinutes.map(formatDuration)
-                            ?? (b.percent >= 90 ? "Almost full" : "Calculating…")))
+                            ?? (b.atChargeLimit ? "Almost done" : b.percent >= 90 ? "Almost full" : "Calculating…")))
         case .charged, .notCharging:
             if let limit = b.chargeLimitPercent { rows.append(("Charge limit", "\(limit)%")) }
         }
@@ -79,6 +79,9 @@ extension BatterySample {
     /// MacStats can't tell whether a limit will stop it sooner.
     var chargeTargetLabel: String { "Time to \(chargeTargetName)" }
 
+    /// Charging, and already showing the percent it stops at (the last minute before it does).
+    var atChargeLimit: Bool { chargeLimitPercent.map { percent >= $0 } ?? false }
+
     private var chargeTargetName: String {
         if let limit = chargeLimitPercent { return "\(limit)%" }
         return chargeTargetAssumed ? "100%" : "full"
@@ -89,7 +92,7 @@ extension BatterySample {
         switch state {
         case .charging:
             return timeToFullMinutes.map { "\(formatDuration($0)) to \(chargeTargetName)" }
-                ?? (percent >= 90 ? "almost full" : "charging")   // no estimate in the last trickle
+                ?? (atChargeLimit ? "almost done" : percent >= 90 ? "almost full" : "charging")   // no estimate in the last trickle
         case .charged: return "fully charged"
         case .notCharging: return "not charging"
         case .discharging: return timeToEmptyMinutes.map { "\(formatDuration($0)) left" } ?? "calculating…"
