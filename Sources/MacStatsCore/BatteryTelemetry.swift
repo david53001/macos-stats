@@ -10,7 +10,9 @@ public struct BatteryTelemetry: Equatable {
     /// Battery current, mA; negative while discharging.
     public var amperageMA: Int?
     public var currentMAh: Int?
-    /// The full-charge capacity the shown percent is relative to (current / rawMax = %).
+    /// The gauge's full-charge capacity (mAh). `currentMAh / rawMaxMAh` is the gauge's raw
+    /// state of charge, which runs a few points off the percent macOS shows (67.8 % raw at
+    /// 71 % shown on this M3), so percents shown to the user are sized against it, not equal to it.
     public var rawMaxMAh: Int?
     public var nominalMAh: Int?
     public var designMAh: Int?
@@ -34,10 +36,17 @@ public struct BatteryTelemetry: Equatable {
         self.systemLoadCount = systemLoadCount
     }
 
-    /// Energy left in the battery, watt-hours.
+    /// Energy the battery can still deliver, watt-hours: the charge left times the average
+    /// voltage over the rest of the discharge, taken midway between now and a 3.5 V-per-cell
+    /// end. The pack's voltage sags as it empties (12.1 V at 68 % on a 3-cell pack), so the
+    /// present voltage alone overstated it, and the time left, by ~6 %.
     public var remainingWh: Double? {
         guard let mAh = currentMAh, let mV = voltageMV, mAh > 0, mV > 0 else { return nil }
-        return Double(mAh) * Double(mV) / 1_000_000
+        let volts = Double(mV) / 1000
+        // Li-ion cells sit at ≤ 4.45 V, so this is the series cell count (2 or 3 in Macs).
+        let endVolts = 3.5 * (volts / 4.45).rounded(.up)
+        let averageVolts = volts > endVolts ? (volts + endVolts) / 2 : volts
+        return Double(mAh) * averageVolts / 1000
     }
 
     /// Full-charge capacity vs. new, the "Maximum Capacity" figure in System Settings, which
@@ -54,6 +63,23 @@ public struct BatteryTelemetry: Equatable {
         if let mW = systemLoadMW, mW > 0 { return Double(mW) / 1000 }
         guard let mV = voltageMV, let mA = amperageMA, mA < 0 else { return nil }
         return abs(Double(mV) * Double(mA)) / 1_000_000
+    }
+}
+
+/// The largest of the last few values. The gauge's `NominalChargeCapacity` swings ~2 %
+/// between updates (4474 → 4558 mAh within minutes), which made health flicker 98/99 % while
+/// System Settings held 99 %; health is taken from the peak of the recent readings.
+public struct RecentMax: Equatable {
+    public let capacity: Int
+    public private(set) var values: [Int] = []
+
+    public init(capacity: Int) { self.capacity = max(1, capacity) }
+
+    /// Adds a reading and returns the largest of the last `capacity`.
+    public mutating func add(_ value: Int) -> Int {
+        values.append(value)
+        if values.count > capacity { values.removeFirst(values.count - capacity) }
+        return values.max() ?? value
     }
 }
 

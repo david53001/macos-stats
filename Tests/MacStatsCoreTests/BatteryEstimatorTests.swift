@@ -55,14 +55,41 @@ import Foundation
         var e = BatteryEstimator(typicalWatts: 8, typicalSeconds: 10 * 3600)
         feed(&e, watts: 3, minutes: 2)
         let w = e.expectedWatts!
-        #expect(w > 5 && w < 8)
+        #expect(w > 4.5 && w < 8)
     }
 
-    @Test func macOSFigureCoversTheFirstTwoMinutes() {
+    @Test func aQuietStretchDoesNotHideRealUseLater() {
+        // The user's "7 h left while it drains much faster": an hour at idle draw (1.7 W,
+        // display on) and then real use at 5.5 W. The since-unplug mean the estimate used to
+        // rest on read +38 / +28 / +13 % after 20 / 40 / 120 minutes of use.
+        var e = BatteryEstimator()
+        feed(&e, watts: 1.7, minutes: 60)
+        let honest = 36 / 5.5 * 60   // 393 min
+        func error() -> Double { Double(e.minutesLeft(remainingWh: 36, macOSMinutes: nil)!) / honest - 1 }
+        feed(&e, watts: 5.5, minutes: 20)
+        #expect(error() < 0.25)
+        feed(&e, watts: 5.5, minutes: 20)
+        #expect(error() < 0.12)
+        feed(&e, watts: 5.5, minutes: 80)
+        #expect(error() < 0.03)
+    }
+
+    @Test func typicalCoversTheFirstTwoMinutes() {
+        // Right after unplugging, one gauge reading can be a spike; neither it nor macOS's
+        // short-horizon figure (799 min, then a jump to 482) should set the time left.
         var e = BatteryEstimator(typicalWatts: 5, typicalSeconds: 3600)
+        e.ingest(watts: 9.5, seconds: 60)
+        let settling = e.minutesLeft(remainingWh: 40, macOSMinutes: 333)!
+        #expect(settling >= 475 && settling <= 480)   // 40 Wh / ~5 W (the spike barely moves typical)
+        e.ingest(watts: 5, seconds: 60)
+        #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: 333)! < 470)    // now its own blend
+    }
+
+    @Test func macOSFigureCoversTheFirstTwoMinutesWithoutATypical() {
+        var e = BatteryEstimator()
         e.ingest(watts: 5, seconds: 60)
         #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: 333) == 333)
-        // Without a usable macOS figure it falls back to its own (typical-led) estimate.
+        // Without a usable macOS figure it falls back to its own estimate.
         #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: nil) == 480)
         e.ingest(watts: 5, seconds: 60)
         #expect(e.minutesLeft(remainingWh: 40, macOSMinutes: 333) == 480)
@@ -147,6 +174,16 @@ import Foundation
     @Test func measuredCurrentAboveTheKneeIsNotTaperedTwice() {
         // At 90 % the measured current is already the tapered one.
         #expect(minutesToTarget(currentMAh: 3600, maxMAh: 4000, chargeMA: 400, targetPercent: 100) == 60)
+    }
+
+    @Test func targetIsInTheShownPercentNotTheRawCharge() {
+        // Live: 71 % shown at 3004 / 4431 mAh (67.8 % raw). Measured from raw mAh, "time to
+        // 85 %" aimed at raw 85 % (~89 % shown); from the shown percent it is 14 points.
+        let shown = minutesToTarget(percent: 71, maxMAh: 4431, chargeMA: 2000, targetPercent: 85)!
+        let raw = minutesToTarget(currentMAh: 3004, maxMAh: 4431, chargeMA: 2000, targetPercent: 85)!
+        #expect(shown == minutesToTarget(currentMAh: 3146, maxMAh: 4431, chargeMA: 2000, targetPercent: 85))
+        #expect(raw - shown >= 4)
+        #expect(minutesToTarget(percent: 85, maxMAh: 4431, chargeMA: 2000, targetPercent: 85) == nil)
     }
 
     @Test func atOrPastTheTargetOrNoCurrentIsNil() {

@@ -92,7 +92,8 @@ import IOKit.ps
         #expect(t.adapterWatts == 30)
         #expect(t.healthPercent == 99)    // 4541 / 4563 = 99.5 %; System Settings truncates
         #expect(t.rawMaxMAh == 4422)
-        #expect(abs(t.remainingWh! - 38.226) < 0.01)
+        // 3155 mAh × (12.116 V now + 10.5 V for 3 cells at 3.5 V) / 2: not 38.2 Wh at 12.1 V.
+        #expect(abs(t.remainingWh! - 35.677) < 0.01)
         #expect(t.instantWatts == 3.153)
     }
 
@@ -116,6 +117,25 @@ import IOKit.ps
         #expect(BatteryTelemetry(updateTime: 1, nominalMAh: 4542, designMAh: 4563).healthPercent == 99)
         #expect(BatteryTelemetry(updateTime: 1, nominalMAh: 4527, designMAh: 4563).healthPercent == 99)
         #expect(BatteryTelemetry(updateTime: 1, nominalMAh: 4600, designMAh: 4563).healthPercent == 100)
+    }
+
+    @Test func remainingEnergyAllowsForTheVoltageSag() {
+        // A 2-cell pack (Intel MacBook Air): end at 7.0 V.
+        let t = BatteryTelemetry(updateTime: 1, voltageMV: 8_000, currentMAh: 2_000)
+        #expect(abs(t.remainingWh! - 15.0) < 1e-9)
+        // Already at the end voltage: no further sag assumed.
+        let low = BatteryTelemetry(updateTime: 1, voltageMV: 10_400, currentMAh: 100)
+        #expect(abs(low.remainingWh! - 1.04) < 1e-9)
+    }
+
+    @Test func recentMaxHoldsThePeakOfTheLastReadings() {
+        // Live: NominalChargeCapacity 4558, 4474, 4526 within minutes (health 99, 98, 99 %).
+        var m = RecentMax(capacity: 3)
+        #expect(m.add(4558) == 4558)
+        #expect(m.add(4474) == 4558)
+        #expect(m.add(4526) == 4558)
+        #expect(m.add(4530) == 4530)   // 4558 has aged out
+        #expect(m.values == [4474, 4526, 4530])
     }
 
     @Test func averageWattsUsesRunningSums() {

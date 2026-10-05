@@ -47,6 +47,18 @@ public func minutesToTarget(currentMAh: Int, maxMAh: Int, chargeMA: Double, targ
     return max(1, Int(((constant + tapered) * 60).rounded()))
 }
 
+/// `minutesToTarget` from the percent macOS shows. The charge limit is in that percent, which
+/// runs a few points off the gauge's raw charge (71 % shown at 3004 / 4431 mAh = 67.8 % raw):
+/// aiming at raw 85 % would overshoot an 85 % limit by ~4 points (~+12 min). So the charge is
+/// placed at `percent` of `maxMAh`; the remaining distance and the knee are in the same terms.
+public func minutesToTarget(percent: Int, maxMAh: Int, chargeMA: Double, targetPercent: Int,
+                            knee: Double = 0.8, taper: Double = 0.45) -> Int? {
+    guard percent < targetPercent else { return nil }
+    let currentMAh = Int((Double(min(100, max(0, percent))) / 100 * Double(maxMAh)).rounded())
+    return minutesToTarget(currentMAh: currentMAh, maxMAh: maxMAh, chargeMA: chargeMA,
+                           targetPercent: targetPercent, knee: knee, taper: taper)
+}
+
 /// The charge level macOS will stop at, learned from where charging actually stops: plugged
 /// in, not charging, below 100 % (a manual charge limit or Optimized Charging's hold). Charging
 /// past it later means the limit is gone. Holds below 50 % are not taken as limits.

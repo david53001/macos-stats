@@ -52,6 +52,9 @@ final class AppModel: ObservableObject {
     private var powerdLimit = ChargeLimitHint.unknown
     private var powerdLimitReadFor: BatterySample?      // the reading it was last read for
     private var lastTelemetry: BatteryTelemetry?
+    /// Health shows the peak full-charge capacity of the last ~10 gauge readings (it flickers).
+    private var nominalPeak = RecentMax(capacity: 10)
+    private var nominalPeakMAh: Int?
     private var lastBatteryState: BatteryState?
     private var lastEstimatorSave: Date?
     private var powerSourceObserver: CFRunLoopSource?
@@ -186,8 +189,9 @@ final class AppModel: ObservableObject {
             saveEstimator()
         }
 
-        let telemetry = smartBattery.read()
+        var telemetry = smartBattery.read()
         if let telemetry, telemetry.updateTime != lastTelemetry?.updateTime {
+            nominalPeakMAh = telemetry.nominalMAh.map { nominalPeak.add($0) }
             // Only awake intervals count: one that spans sleep would average the sleep.
             let seconds = lastTelemetry.flatMap { gaugeInterval(from: $0, to: telemetry) }
             if state == .discharging, let seconds, let watts = averageWatts(from: lastTelemetry, to: telemetry) {
@@ -213,8 +217,8 @@ final class AppModel: ObservableObject {
         case .charging:
             let limit = limit.flatMap { $0 > sample.percent ? $0 : nil }   // still charging past it ⇒ not a limit
             sample.chargeLimitPercent = limit
-            if let cur = telemetry?.currentMAh, let max = telemetry?.rawMaxMAh, let mA = chargeCurrent.milliamps,
-               let minutes = minutesToTarget(currentMAh: cur, maxMAh: max, chargeMA: mA,
+            if let max = telemetry?.rawMaxMAh, let mA = chargeCurrent.milliamps,
+               let minutes = minutesToTarget(percent: sample.percent, maxMAh: max, chargeMA: mA,
                                              targetPercent: limit ?? 100) {
                 sample.timeToFullMinutes = minutes
             } else if limit != nil {
@@ -223,13 +227,16 @@ final class AppModel: ObservableObject {
         case .charged, .notCharging:
             sample.chargeLimitPercent = limit
         }
+        if let peak = nominalPeakMAh { telemetry?.nominalMAh = peak }
         store.setBattery(sample)
         store.setBatteryTelemetry(telemetry, averageWatts: state == .discharging ? estimator.sessionAverageWatts : nil)
     }
 
     /// The percent charging stops at (below 100), or nil. powerd's policy file is re-read only
-    /// when the percent or state changes; when it can't be read, the level where charging was
-    /// last seen to stop is used.
+    /// when the percent or state changes. Only an active policy in it counts: the file was
+    /// seen with an empty policy list while unplugged on a Mac that holds at 85 % on AC, and
+    /// it isn't known to be filled in at plug-in, so otherwise the level where charging was
+    /// last seen to stop is used (forgotten once charging goes past it).
     private func chargeLimit(for sample: BatterySample) -> Int? {
         let learned = learnedChargeLimit(previous: learnedLimit, state: sample.state, percent: sample.percent)
         if learned != learnedLimit {
@@ -243,8 +250,7 @@ final class AppModel: ObservableObject {
         }
         switch powerdLimit {
         case .limit(let percent): return percent
-        case .noLimit: return nil
-        case .unknown: return learnedLimit
+        case .noLimit, .unknown: return learnedLimit
         }
     }
 
