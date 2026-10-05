@@ -172,12 +172,22 @@ struct BreakdownView: View {
                     if metric == .cpu { oneCoreLine(app.cpuPercent) }
                 }
             }
-            .tooltip(info.detail)
+            .tooltip(rowTooltip(app, info))
     }
 
     /// Activity Monitor's scale (100 % = one core), for comparing with it.
+    private func oneCore(_ cpuPercent: Double) -> String {
+        "\(Int((cpuPercent * Double(Self.cores)).rounded()))% of one core"
+    }
+
     private func oneCoreLine(_ cpuPercent: Double) -> some View {
-        Button("\(Int((cpuPercent * Double(Self.cores)).rounded()))% of one core") {}.disabled(true)
+        Button(oneCore(cpuPercent)) {}.disabled(true)
+    }
+
+    /// A group row's explanation; on CPU rows also Activity Monitor's figure (100 % = one core).
+    private func rowTooltip(_ app: AppUsage, _ info: AppInfoCache.Info) -> String? {
+        guard metric == .cpu else { return info.detail }
+        return [info.detail, oneCore(app.cpuPercent)].compactMap { $0 }.joined(separator: "\n")
     }
 
     @ViewBuilder private func processRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
@@ -190,7 +200,8 @@ struct BreakdownView: View {
 
     /// The app's CPU credited for processes that exited between scans: no process to act on.
     private func exitedRow(_ process: ProcessUsage) -> some View {
-        ProcessRow(process: process, name: "Exited processes", metric: metric, barScale: barScale)
+        ProcessRow(process: process, name: "Exited processes", metric: metric, barScale: barScale,
+                   perCore: metric == .cpu ? oneCore(process.cpuPercent) : nil)
             .transition(.opacity)
             .contextMenu {
                 Button("Exited processes") {}.disabled(true)
@@ -203,7 +214,8 @@ struct BreakdownView: View {
         let isAppItself = app.isApp && process.pid == app.appPID
         let name = isAppItself ? apps.info(for: app.appPID).name
                                : apps.name(ofProcess: process.pid, startTime: process.startTime)
-        return ProcessRow(process: process, name: name, metric: metric, barScale: barScale)
+        return ProcessRow(process: process, name: name, metric: metric, barScale: barScale,
+                          perCore: metric == .cpu ? oneCore(process.cpuPercent) : nil)
             .transition(.opacity)
             .contextMenu {
                 Button("\(name) \u{2014} pid \(process.pid)") {}.disabled(true)
@@ -371,12 +383,14 @@ private struct ProcessRow: View {
     let name: String
     let metric: BreakdownMetric
     let barScale: Double
+    /// CPU only: Activity Monitor's figure for this process ("100% of one core"), under the name.
+    let perCore: String?
 
     @State private var hovering = false
 
     var body: some View {
         HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: perCore == nil ? 3 : 1) {
                 HStack(spacing: 4) {
                     Text(name).lineLimit(1).truncationMode(.middle)
                     if process.pid > 0 {
@@ -384,7 +398,14 @@ private struct ProcessRow: View {
                     }
                 }
                 .font(.caption)
-                UsageBar(fraction: fraction, color: barColor(metric).opacity(0.7), height: 2)
+                HStack(spacing: 6) {
+                    UsageBar(fraction: fraction, color: barColor(metric).opacity(0.7), height: 2)
+                    if let perCore {
+                        Text(perCore)
+                            .font(.caption2).foregroundStyle(.tertiary).monospacedDigit()
+                            .fixedSize()
+                    }
+                }
             }
             Spacer(minLength: 8)
             Text(formattedValue(metric, cpu: process.cpuPercent, memory: process.memoryBytes,
