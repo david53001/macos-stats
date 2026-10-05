@@ -24,7 +24,7 @@ struct BreakdownView: View {
         _store = ObservedObject(wrappedValue: store)
         self.metric = metric
         self.onBack = onBack
-        _apps = StateObject(wrappedValue: AppInfoCache(metric: metric))
+        _apps = StateObject(wrappedValue: AppInfoCache())
     }
 
     private var title: String {
@@ -45,7 +45,7 @@ struct BreakdownView: View {
             return "\(Int(cpuTotal.rounded()))% used"
         case .memory:
             guard let m = store.memory else { return "—" }
-            return "\(gb(m.usedBytes)) / \(gb(m.totalBytes)) GB"
+            return "\(gb(m.usedBytes)) / \(gb(m.totalBytes)) GB used"
         case .energy:
             guard let b = store.battery else { return "—" }
             return "\(b.percent)%"
@@ -90,6 +90,7 @@ struct BreakdownView: View {
             }
 
             if metric == .energy { BatteryDetailsCard(store: store) }
+            if metric == .memory { MemoryPartsCard(store: store) }
 
             list
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -99,7 +100,8 @@ struct BreakdownView: View {
             PanelFooter {
                 Text(footnote)
                     .font(.caption2).foregroundStyle(.tertiary)
-                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .multilineTextAlignment(.trailing)
+                    .lineLimit(metric == .memory ? 2 : 1).minimumScaleFactor(0.8)
             }
         }
         .padding([.horizontal, .bottom], Design.panelInset)
@@ -110,7 +112,9 @@ struct BreakdownView: View {
     private var footnote: String {
         switch metric {
         case .cpu: return "Share of the whole Mac (all \(Self.cores) cores)"
-        case .memory: return "Rows count compressed memory at full size"
+        // Like Activity Monitor's Memory column (footprints): Memory Used counts the compressor's
+        // RAM instead, so the rows can sum to more than it.
+        case .memory: return "Rows count compressed memory at full size, so they can add up to more than Memory Used"
         case .energy: return "App power counts CPU only"
         }
     }
@@ -441,14 +445,8 @@ final class AppInfoCache: ObservableObject {
         var detail: String? = nil
     }
 
-    /// The breakdown's metric: the System row stands for something different in each.
-    private let metric: BreakdownMetric
     private var cache: [Int32: Info] = [:]
     private var processNames: [Int32: (startTime: UInt64, name: String)] = [:]
-
-    init(metric: BreakdownMetric) {
-        self.metric = metric
-    }
 
     func info(for appPID: Int32) -> Info {
         if let hit = cache[appPID] { return hit }
@@ -457,11 +455,6 @@ final class AppInfoCache: ObservableObject {
         case BreakdownGroup.otherProcesses:
             info = Info(name: "Other processes", icon: nil, symbol: "gearshape.2",
                         detail: "Your background processes that no app is responsible for")
-        case BreakdownGroup.system where metric == .memory:
-            info = Info(name: "System & other", icon: nil, symbol: "apple.logo",
-                        detail: "The kernel and drivers (wired memory), macOS's own processes and other users. "
-                            + "Like the rows above it counts compressed memory at full size, so the rows "
-                            + "add up to more than Memory Used.")
         case BreakdownGroup.system:
             info = Info(name: "System", icon: nil, symbol: "apple.logo",
                         detail: "The kernel, WindowServer, other users' processes, commands run with sudo, "

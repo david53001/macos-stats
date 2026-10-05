@@ -438,13 +438,6 @@ import Testing
         #expect(r.apps.map(\.memoryBytes) == [1_000, 500])
     }
 
-    @Test func memoryRemainderRowWhenTheTotalIsGiven() {
-        let r = scanner().scan([p(100, cpu: 0, mem: 1_000), p(900, cpu: 0, mem: 500)], appPIDs: [100],
-                               metric: .memory, time: 0, absTime: 10, cpuTicks: ticks0, memoryInUseBytes: 4_000)
-        #expect(r.apps.map(\.appPID) == [100, BreakdownGroup.system, BreakdownGroup.otherProcesses])
-        #expect(r.apps.map(\.memoryBytes) == [1_000, 2_500, 500])
-    }
-
     /// App 100 ← shell 101 ← `yes` 102 at one core of 4. Between the 2nd and 3rd scan, 102 is
     /// killed and reaped by launchd (its subshell exited): its last stretch can't be read.
     private func orphanRun(busyAtTheEnd: UInt32) -> BreakdownScanner.Result {
@@ -544,21 +537,13 @@ import Testing
     }
 
     @Test func memoryGroupRowsGoLastWhateverTheirSize() {
-        // "Other processes" (GBs of macOS agents) and "System & other" used to top the list.
+        // "Other processes" (GBs of macOS agents) used to top the list.
         let procs = [
             ProcessUsage(pid: 5, appPID: BreakdownGroup.otherProcesses, cpuPercent: 0, memoryBytes: 2_000),
             ProcessUsage(pid: 7, appPID: 7, cpuPercent: 0, memoryBytes: 100),
             ProcessUsage(pid: 8, appPID: 8, cpuPercent: 0, memoryBytes: 300),
         ]
-        let rows = addingMemoryRemainderRow(to: aggregate(procs, by: .memory), inUseBytes: 10_000)
-        #expect(rows.map(\.appPID) == [8, 7, BreakdownGroup.system, BreakdownGroup.otherProcesses])
-        #expect(rows[2].memoryBytes == 7_600)
-        #expect(rows[2].processes.isEmpty)   // not expandable, no actions
-    }
-
-    @Test func memoryRemainderNeverNegative() {
-        let apps = [AppUsage(appPID: 1, processes: [], cpuPercent: 0, memoryBytes: 500)]
-        #expect(addingMemoryRemainderRow(to: apps, inUseBytes: 400).last?.memoryBytes == 0)
+        #expect(aggregate(procs, by: .memory).map(\.appPID) == [8, 7, BreakdownGroup.otherProcesses])
     }
 
     @Test func groupRowsSortAfterAppsOnTies() {

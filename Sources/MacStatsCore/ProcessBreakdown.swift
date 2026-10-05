@@ -162,21 +162,10 @@ public func addingSystemRow(to apps: [AppUsage], totalCPUPercent: Double) -> [Ap
     return sortedRows(apps + [system], by: .cpu)
 }
 
-/// Adds the Memory breakdown's "System & other" row (the `system` group key): what isn't
-/// charged to the user's processes — the kernel and drivers (wired), macOS's own processes and
-/// other users. `inUseBytes` must count compressed memory at full size like the rows do
-/// (`memoryInUseAtFullSize`). Clamped at 0. No processes, no actions.
-public func addingMemoryRemainderRow(to apps: [AppUsage], inUseBytes: UInt64) -> [AppUsage] {
-    let accounted = apps.reduce(UInt64(0)) { $0 + $1.memoryBytes }
-    let rest = AppUsage(appPID: BreakdownGroup.system, processes: [], cpuPercent: 0,
-                        memoryBytes: inUseBytes > accounted ? inUseBytes - accounted : 0)
-    return sortedRows(apps + [rest], by: .memory)
-}
-
 /// Descending by value. Ties (e.g. many idle apps at 0% CPU) break by pid, so equal rows keep
 /// a stable order between scans instead of shuffling; group rows (negative keys) go last.
-/// For memory the group rows always go last: "System & other" and "Other processes" (GBs of
-/// macOS agents) would otherwise sit above every app.
+/// For memory the group rows always go last: "Other processes" (GBs of macOS agents) would
+/// otherwise sit above every app.
 private func sortedRows(_ apps: [AppUsage], by metric: BreakdownMetric) -> [AppUsage] {
     apps.sorted {
         if metric == .memory, ($0.appPID < 0) != ($1.appPID < 0) { return $0.appPID > 0 }

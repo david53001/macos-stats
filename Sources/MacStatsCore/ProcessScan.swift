@@ -342,11 +342,9 @@ public final class BreakdownScanner {
         self.attributor = ProcessAttributor(responsible: responsible, allParents: allParents)
     }
 
-    /// `memoryInUseBytes`: for a memory breakdown, the Mac's memory in use counted the way the
-    /// rows are (`memoryInUseAtFullSize`); adds the "System & other" row.
     public func scan(_ processes: [RawProcess], appPIDs: Set<Int32>, fallbackAppPIDs: Set<Int32> = [],
                      metric: BreakdownMetric, time: TimeInterval, absTime: UInt64,
-                     cpuTicks: CPUTicks, memoryInUseBytes: UInt64? = nil) -> Result {
+                     cpuTicks: CPUTicks) -> Result {
         let owners = attributor.owners(for: processes, appPIDs: appPIDs, fallbackAppPIDs: fallbackAppPIDs)
         let deltas = sampler.ingest(processes, time: time, absTime: absTime)
         let elapsed = sampler.elapsedSeconds
@@ -423,9 +421,6 @@ public final class BreakdownScanner {
         if metric == .cpu, !measuring, let total {
             apps = addingSystemRow(to: apps, totalCPUPercent: total)
             lastSystemPercent = apps.first { $0.appPID == BreakdownGroup.system }?.cpuPercent
-        }
-        if metric == .memory, let memoryInUseBytes {
-            apps = addingMemoryRemainderRow(to: apps, inUseBytes: memoryInUseBytes)
         }
         return Result(apps: apps, totalCPUPercent: measuring ? nil : total, measuring: measuring)
     }
