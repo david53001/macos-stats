@@ -13,12 +13,19 @@ struct BreakdownView: View {
     let onBack: () -> Void
 
     /// Names + small icons, resolved once per app/process and freed when the breakdown closes.
-    @StateObject private var apps = AppInfoCache()
+    @StateObject private var apps: AppInfoCache
     /// The expanded app row (accordion: one at a time) and how many of its processes show.
     @State private var expanded: Int32?
     @State private var visibleChildren = BreakdownList.initialChildren
 
     private static let cores = ProcessInfo.processInfo.activeProcessorCount
+
+    init(store: MetricsStore, metric: BreakdownMetric, onBack: @escaping () -> Void) {
+        _store = ObservedObject(wrappedValue: store)
+        self.metric = metric
+        self.onBack = onBack
+        _apps = StateObject(wrappedValue: AppInfoCache(metric: metric))
+    }
 
     private var title: String {
         switch metric {
@@ -103,7 +110,7 @@ struct BreakdownView: View {
     private var footnote: String {
         switch metric {
         case .cpu: return "Share of the whole Mac (all \(Self.cores) cores)"
-        case .memory: return "Total also counts macOS and the kernel"
+        case .memory: return "Rows count compressed memory at full size"
         case .energy: return "App power counts CPU only"
         }
     }
@@ -149,6 +156,7 @@ struct BreakdownView: View {
             .contextMenu {
                 if app.isApp {
                     Button(info.name) {}.disabled(true)   // faint header
+                    if metric == .cpu { oneCoreLine(app.cpuPercent) }
                     Divider()
                     Button("Quit") { ProcessActions.quit(appPID: app.appPID) }
                     Divider()
@@ -157,9 +165,15 @@ struct BreakdownView: View {
                     }
                 } else {
                     Button(info.detail ?? info.name) {}.disabled(true)
+                    if metric == .cpu { oneCoreLine(app.cpuPercent) }
                 }
             }
             .tooltip(info.detail)
+    }
+
+    /// Activity Monitor's scale (100 % = one core), for comparing with it.
+    private func oneCoreLine(_ cpuPercent: Double) -> some View {
+        Button("\(Int((cpuPercent * Double(Self.cores)).rounded()))% of one core") {}.disabled(true)
     }
 
     private func processRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
@@ -170,11 +184,7 @@ struct BreakdownView: View {
             .transition(.opacity)
             .contextMenu {
                 Button("\(name) \u{2014} pid \(process.pid)") {}.disabled(true)
-                if metric == .cpu {
-                    // Activity Monitor's scale, for comparing with it.
-                    Button("\(Int((process.cpuPercent * Double(Self.cores)).rounded()))% of one core") {}
-                        .disabled(true)
-                }
+                if metric == .cpu { oneCoreLine(process.cpuPercent) }
                 Divider()
                 Button("Quit") {
                     if isAppItself { ProcessActions.quit(appPID: app.appPID) }
@@ -410,8 +420,14 @@ final class AppInfoCache: ObservableObject {
         var detail: String? = nil
     }
 
+    /// The breakdown's metric: the System row stands for something different in each.
+    private let metric: BreakdownMetric
     private var cache: [Int32: Info] = [:]
     private var processNames: [Int32: (startTime: UInt64, name: String)] = [:]
+
+    init(metric: BreakdownMetric) {
+        self.metric = metric
+    }
 
     func info(for appPID: Int32) -> Info {
         if let hit = cache[appPID] { return hit }
@@ -420,9 +436,15 @@ final class AppInfoCache: ObservableObject {
         case BreakdownGroup.otherProcesses:
             info = Info(name: "Other processes", icon: nil, symbol: "gearshape.2",
                         detail: "Your background processes that no app is responsible for")
+        case BreakdownGroup.system where metric == .memory:
+            info = Info(name: "System & other", icon: nil, symbol: "apple.logo",
+                        detail: "The kernel and drivers (wired memory), macOS's own processes and other users. "
+                            + "Like the rows above it counts compressed memory at full size, so the rows "
+                            + "add up to more than Memory Used.")
         case BreakdownGroup.system:
             info = Info(name: "System", icon: nil, symbol: "apple.logo",
-                        detail: "The kernel, WindowServer, other users' processes and commands run with sudo")
+                        detail: "The kernel, WindowServer, other users' processes, commands run with sudo, "
+                            + "and processes that exited before they could be traced to an app")
         default:
             let app = NSRunningApplication(processIdentifier: pid_t(appPID))
             info = Info(name: app?.localizedName ?? "PID \(appPID)",

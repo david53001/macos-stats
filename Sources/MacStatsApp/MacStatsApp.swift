@@ -409,7 +409,8 @@ final class AppModel: ObservableObject {
                            isBackgroundOnly: $0.activationPolicy == .prohibited)
         })
         let result = scanner.scan(raw, appPIDs: anchors.apps, fallbackAppPIDs: anchors.fallbacks,
-                                  metric: metric, time: time, absTime: absTime, cpuTicks: ticks)
+                                  metric: metric, time: time, absTime: absTime, cpuTicks: ticks,
+                                  memoryInUseBytes: metric == .memory ? memoryInUseAtFullSize(readVMRaw()) : nil)
         // CPU and energy have no real values until the second scan ("Measuring…" until then).
         store.setBreakdown(result.apps, measuring: result.measuring, totalCPU: result.totalCPUPercent)
     }
