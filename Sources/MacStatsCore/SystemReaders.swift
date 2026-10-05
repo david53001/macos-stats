@@ -33,7 +33,8 @@ public func readVMRaw() -> VMRaw {
     var pageSize: vm_size_t = 0
     host_page_size(mach_host_self(), &pageSize)
     guard kr == KERN_SUCCESS else {
-        return VMRaw(free: 0, active: 0, inactive: 0, wired: 0, compressed: 0, pageSize: UInt64(pageSize))
+        return VMRaw(free: 0, active: 0, inactive: 0, wired: 0, compressed: 0,
+                     internal: 0, purgeable: 0, pageSize: UInt64(pageSize))
     }
     return VMRaw(
         free: UInt64(stats.free_count),
@@ -41,6 +42,8 @@ public func readVMRaw() -> VMRaw {
         inactive: UInt64(stats.inactive_count),
         wired: UInt64(stats.wire_count),
         compressed: UInt64(stats.compressor_page_count),
+        internal: UInt64(stats.internal_page_count),
+        purgeable: UInt64(stats.purgeable_count),
         pageSize: UInt64(pageSize)
     )
 }
