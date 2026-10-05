@@ -236,8 +236,9 @@ import Foundation
     }
 
     @Test func sensibleNearFull() {
-        // 99 % with the model's current (~75 mA, already under C/20 = 220 mA): finishing now.
-        #expect(minutes(at: 0.99, mA: modelMA(0.99)) == 1)
+        // 99 % with the model's current (~75 mA, already under C/20 = 220 mA): the last trickle,
+        // no figure (the app shows "Almost full", not a "1m" that could stick).
+        #expect(minutes(at: 0.99, mA: modelMA(0.99)) == nil)
         // 99 % but still taking 400 mA: a few minutes, not an hour.
         let late = minutes(at: 0.99, mA: 400)!
         #expect(late >= 2 && late <= 8)

@@ -234,8 +234,10 @@ final class AppModel: ObservableObject {
                let minutes = minutesToTarget(currentMAh: raw, maxMAh: max, chargeMA: mA,
                                              targetPercent: limit ?? 100) {
                 sample.timeToFullMinutes = minutes
-            } else if limit != nil {
-                sample.timeToFullMinutes = nil   // macOS's figure is to 100 %, not to the limit
+            } else if limit != nil || chargeCurrent.milliamps != nil {
+                // macOS's figure is to 100 %, not to the limit; with a measured current, nil
+                // here means the last trickle ("Almost full" from 90 %) or too little current.
+                sample.timeToFullMinutes = nil
             }
         case .charged, .notCharging:
             sample.chargeLimitPercent = limit

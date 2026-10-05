@@ -46,7 +46,8 @@ public let chargeTerminationHours = 20.0
 
 /// Minutes to charge from `currentMAh` of `maxMAh` (the gauge's raw charge,
 /// `AppleRawCurrentCapacity` / `AppleRawMaxCapacity`) to `targetPercent` shown, at a measured
-/// `chargeMA`; nil when there's no usable current or a limit target is already reached.
+/// `chargeMA`; nil when there's no usable current, a limit is already reached, or the current
+/// has already tapered to the end of the charge.
 ///
 /// Model, as a function of the raw charge level s (0…1): the current is
 /// I(s) = I₀ (1 − `decline`·s) up to `knee`, then falls linearly to 0 at s = 1 (the
@@ -79,11 +80,12 @@ public func minutesToTarget(currentMAh: Int, maxMAh: Int, chargeMA: Double, targ
     if targetPercent >= 100 {
         let terminationMA = full / chargeTerminationHours
         target = max(knee, 1 - (1 - knee) * terminationMA / kneeMA)
-        if s >= target { return 1 }                 // tapered to the end: finishing now
     } else {
         target = Double(max(1, targetPercent) - 1) / 100
-        guard s < target else { return nil }
     }
+    // Past a limit, or already tapered to the termination current: the charger finishes on
+    // its own schedule (the caller shows "Almost full" rather than a stuck "1m").
+    guard s < target else { return nil }
 
     var hours = 0.0
     if s < knee {                                   // ∫ ds / (I₀ (1 − d·s)) over [s, min(target, knee)]
