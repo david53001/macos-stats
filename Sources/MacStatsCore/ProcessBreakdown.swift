@@ -1,7 +1,7 @@
 import Foundation
 
 /// Which resource a breakdown ranks apps by.
-public enum BreakdownMetric: Equatable {
+public enum BreakdownMetric: Equatable, Sendable {
     case cpu
     case memory
     /// Watts of CPU energy per app (the Battery drill-in).
@@ -31,7 +31,7 @@ public struct RawProcess: Equatable {
 }
 
 /// A single process's usage, already attributed to its owning GUI app.
-public struct ProcessUsage: Equatable, Identifiable {
+public struct ProcessUsage: Equatable, Identifiable, Sendable {
     public let pid: Int32
     public let appPID: Int32       // owning GUI app's pid (the grouping key), or a `BreakdownGroup`
     /// Share of the whole machine (0...100, all cores together), the scale of the CPU card.
@@ -74,7 +74,7 @@ public enum BreakdownGroup {
 }
 
 /// One app's summed usage across all of its processes.
-public struct AppUsage: Equatable, Identifiable {
+public struct AppUsage: Equatable, Identifiable, Sendable {
     public let appPID: Int32
     /// The app's processes, ranked by the breakdown's metric (ties by pid).
     public let processes: [ProcessUsage]

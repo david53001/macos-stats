@@ -317,8 +317,10 @@ public final class ProcessSampler {
 
 /// One breakdown's scan pipeline: attribution + interval usage + the CPU header over the
 /// same interval. Lives only while a breakdown is open (a new one per drill-in).
-public final class BreakdownScanner {
-    public struct Result: Equatable {
+/// Not thread-safe: `@unchecked Sendable` so it can be handed to the app's serial scan queue,
+/// which is the only place it is used.
+public final class BreakdownScanner: @unchecked Sendable {
+    public struct Result: Equatable, Sendable {
         public let apps: [AppUsage]
         /// Whole-machine CPU % over exactly the interval the rows cover (nil until measured).
         public let totalCPUPercent: Double?

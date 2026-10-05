@@ -25,6 +25,12 @@ final class AppModel: ObservableObject {
     private var scanner: BreakdownScanner?
     /// Running app pid → whether it has a bundle id (see `procScanTick`); open breakdown only.
     private var appHasBundleID: [Int32: Bool] = [:]
+    /// Breakdown scans run here, one at a time, off the main thread (see `procScanTick`).
+    private let scanQueue = DispatchQueue(label: "MacStats.breakdownScan", qos: .userInitiated)
+    /// Counts drill-ins, so a scan that finishes after its breakdown closed is dropped.
+    private var scanGeneration = 0
+    /// The generation whose scan is running on `scanQueue`, so a slow scan is skipped, not queued.
+    private var scanInFlight: Int?
 
     /// Cumulative-counter snapshots, oldest→newest, covering ~`rateWindowSeconds` (just the
     /// last two while idle). Rates diff against the snapshot ~1s back (see `rateBaselineIndex`)
@@ -325,7 +331,8 @@ final class AppModel: ObservableObject {
     func enterBreakdown(_ metric: MacStatsCore.BreakdownMetric) {
         store.beginBreakdown(metric: metric)
         scanner = BreakdownScanner()
-        procScanTick()   // first scan establishes the CPU baseline (CPU stays "measuring")
+        scanGeneration &+= 1
+        procScanTick(waitForResult: true)   // first scan: the CPU baseline (CPU stays "measuring")
         // Second scan soon after, so CPU leaves "Measuring…" quickly; then the steady cadence.
         procTimer?.invalidate()
         procTimer = makeTimer(after: breakdownFirstRescanDelay, tolerance: 0.03) { model in
@@ -339,6 +346,7 @@ final class AppModel: ObservableObject {
         procTimer?.invalidate()
         procTimer = nil
         scanner = nil
+        scanGeneration &+= 1
         appHasBundleID = [:]
         store.clearBreakdown()
     }
@@ -441,13 +449,14 @@ final class AppModel: ObservableObject {
         for alert in alerts { notifier.post(alert) }
     }
 
-    private func procScanTick() {
+    /// One breakdown scan. The running-apps list is read here (it is main-thread state); the
+    /// process reads and the scan itself (~3 ms) run on `scanQueue`, and the result is
+    /// published back on the main thread. `waitForResult` waits for it (the scan still runs on
+    /// the queue), so the first frame of a drill-in already has its rows.
+    private func procScanTick(waitForResult: Bool = false) {
         guard let metric = store.activeBreakdownMetric, let scanner else { return }
-        // Clocks first, then the processes, so the CPU header and the rows cover one interval.
-        let time = Date().timeIntervalSinceReferenceDate
-        let absTime = mach_absolute_time()
-        let ticks = readCPUTicks()
-        let raw = readRawProcesses(includeEnergy: metric == .energy)
+        let id = scanGeneration
+        guard scanInFlight != id else { return }   // the previous scan is still running: skip
 
         // GUI apps the user is running = the grouping anchors. Processes no app is responsible
         // for land in "Other processes", so the rows cover all of the user's processes.
@@ -462,9 +471,40 @@ final class AppModel: ObservableObject {
                                   isBackgroundOnly: app.activationPolicy == .prohibited)
         })
         appHasBundleID = hasBundleID
-        let result = scanner.scan(raw, appPIDs: anchors.apps, fallbackAppPIDs: anchors.fallbacks,
-                                  metric: metric, time: time, absTime: absTime, cpuTicks: ticks)
+
+        if waitForResult {
+            let result = scanQueue.sync { Self.scan(scanner, metric: metric, anchors: anchors) }
+            store.setBreakdown(result.apps, measuring: result.measuring, totalCPU: result.totalCPUPercent)
+            return
+        }
+        scanInFlight = id
+        scanQueue.async { [weak self] in
+            let result = Self.scan(scanner, metric: metric, anchors: anchors)
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    if self.scanInFlight == id { self.scanInFlight = nil }
+                    // Dropped if the breakdown closed (or another one opened) meanwhile.
+                    guard self.scanGeneration == id, self.scanner != nil else { return }
+                    self.store.setBreakdown(result.apps, measuring: result.measuring,
+                                            totalCPU: result.totalCPUPercent)
+                }
+            }
+        }
+    }
+
+    /// The scan's system calls and arithmetic, off the main thread. Runs only on `scanQueue`
+    /// (serial), so a `BreakdownScanner` is never used by two threads at once.
+    private nonisolated static func scan(_ scanner: BreakdownScanner, metric: MacStatsCore.BreakdownMetric,
+                                         anchors: (apps: Set<Int32>, fallbacks: Set<Int32>))
+        -> BreakdownScanner.Result {
+        // Clocks first, then the processes, so the CPU header and the rows cover one interval.
+        let time = Date().timeIntervalSinceReferenceDate
+        let absTime = mach_absolute_time()
+        let ticks = readCPUTicks()
+        let raw = readRawProcesses(includeEnergy: metric == .energy)
         // CPU and energy have no real values until the second scan ("Measuring…" until then).
-        store.setBreakdown(result.apps, measuring: result.measuring, totalCPU: result.totalCPUPercent)
+        return scanner.scan(raw, appPIDs: anchors.apps, fallbackAppPIDs: anchors.fallbacks,
+                            metric: metric, time: time, absTime: absTime, cpuTicks: ticks)
     }
 }
