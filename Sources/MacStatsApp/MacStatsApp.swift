@@ -52,11 +52,18 @@ final class AppModel: ObservableObject {
     private var powerdLimit = ChargeLimitHint.unknown
     private var powerdLimitReadFor: BatterySample?      // the reading it was last read for
     private var lastTelemetry: BatteryTelemetry?
+    /// Whole-Mac draw over the last gauge interval (the drill-in's "Power"), W.
+    private var lastIntervalWatts: Double?
+    /// The on-battery session began at an unplug MacStats saw (else at launch).
+    private var sessionStartedAtUnplug = false
     /// Health shows the peak full-charge capacity of the last ~10 gauge readings (it flickers).
     private var nominalPeak = RecentMax(capacity: 10)
     private var nominalPeakMAh: Int?
     private var lastBatteryState: BatteryState?
     private var lastEstimatorSave: Date?
+    /// `typicalSeconds` as last written (or loaded), so unchanged values aren't rewritten.
+    private var savedTypicalSeconds = UserDefaults.standard.double(forKey: Keys.typicalSeconds)
+    private var terminationSource: DispatchSourceSignal?
     private var powerSourceObserver: CFRunLoopSource?
     private enum Keys {
         static let typicalWatts = "batteryDrainTypicalWatts"
@@ -66,7 +73,8 @@ final class AppModel: ObservableObject {
         /// (2.5 W on a Mac that drains 5.5 W). Dropped, not migrated.
         static let legacy = ["batteryTypicalWatts", "batteryTypicalSeconds"]
     }
-    /// The typical-drain average is saved at most this often (and on plug/unplug).
+    /// The typical-drain average is saved at its first on-battery gauge update (~1 min after
+    /// launch or unplug), then at most this often, and on plug/unplug and quit.
     private let estimatorSaveInterval: TimeInterval = 10 * 60
     private let totalMemory = ProcessInfo.processInfo.physicalMemory
 
@@ -81,6 +89,7 @@ final class AppModel: ObservableObject {
         sample(at: Date())   // just stores the first baseline; history starts at the next sample
         readSlowSensors()    // so even the first open has battery + temperature on frame one
         observePowerSource()
+        saveEstimatorOnQuit()
         startIdleSampler()
     }
 
@@ -176,7 +185,7 @@ final class AppModel: ObservableObject {
     private func refreshBattery() {
         guard var sample = readBattery() else {
             store.setBattery(nil)
-            store.setBatteryTelemetry(nil, averageWatts: nil)
+            store.setBatteryTelemetry(nil, powerWatts: nil, averageWatts: nil)
             return
         }
         let state = sample.state
@@ -184,6 +193,8 @@ final class AppModel: ObservableObject {
         if state != lastBatteryState {
             // Plug/unplug: never measure across it; a new session (or charge) starts.
             lastTelemetry = nil
+            lastIntervalWatts = nil
+            sessionStartedAtUnplug = previousState != nil   // else MacStats just launched
             lastBatteryState = state
             estimator.endSession()
             chargeCurrent.reset()
@@ -195,6 +206,7 @@ final class AppModel: ObservableObject {
             nominalPeakMAh = telemetry.nominalMAh.map { nominalPeak.add($0) }
             // Only awake intervals count: one that spans sleep would average the sleep.
             let seconds = lastTelemetry.flatMap { gaugeInterval(from: $0, to: telemetry) }
+            lastIntervalWatts = intervalWatts(from: lastTelemetry, to: telemetry)
             if state == .discharging, let seconds, let watts = averageWatts(from: lastTelemetry, to: telemetry) {
                 estimator.ingest(watts: watts, seconds: seconds)
             }
@@ -218,19 +230,23 @@ final class AppModel: ObservableObject {
         case .charging:
             let limit = limit.flatMap { $0 > sample.percent ? $0 : nil }   // still charging past it ⇒ not a limit
             sample.chargeLimitPercent = limit
-            if let max = telemetry?.rawMaxMAh, let mA = chargeCurrent.milliamps,
-               let minutes = minutesToTarget(percent: sample.percent, maxMAh: max, chargeMA: mA,
+            if let raw = telemetry?.currentMAh, let max = telemetry?.rawMaxMAh, let mA = chargeCurrent.milliamps,
+               let minutes = minutesToTarget(currentMAh: raw, maxMAh: max, chargeMA: mA,
                                              targetPercent: limit ?? 100) {
                 sample.timeToFullMinutes = minutes
-            } else if limit != nil {
-                sample.timeToFullMinutes = nil   // macOS's figure is to 100 %, not to the limit
+            } else if limit != nil || chargeCurrent.milliamps != nil {
+                // macOS's figure is to 100 %, not to the limit; with a measured current, nil
+                // here means the last trickle ("Almost full" from 90 %) or too little current.
+                sample.timeToFullMinutes = nil
             }
         case .charged, .notCharging:
             sample.chargeLimitPercent = limit
         }
         if let peak = nominalPeakMAh { telemetry?.nominalMAh = peak }
         store.setBattery(sample)
-        store.setBatteryTelemetry(telemetry, averageWatts: state == .discharging ? estimator.sessionAverageWatts : nil)
+        store.setBatteryTelemetry(telemetry, powerWatts: lastIntervalWatts,
+                                  averageWatts: state == .discharging ? estimator.sessionAverageWatts : nil,
+                                  averageSinceUnplug: sessionStartedAtUnplug)
     }
 
     /// The percent charging stops at (below 100), or nil. powerd's policy file is re-read only
@@ -256,11 +272,33 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Writes the typical drain if it learned anything since the last write. Only a real write
+    /// starts the next save interval: the launch-time call used to start it with nothing to
+    /// save, so the first save came ~10 min in and a relaunch before that lost what was learned.
     private func saveEstimator() {
-        lastEstimatorSave = Date()
-        guard let typical = estimator.typicalWatts else { return }
+        guard let typical = estimator.typicalWatts, estimator.typicalSeconds != savedTypicalSeconds else { return }
         UserDefaults.standard.set(typical, forKey: Keys.typicalWatts)
         UserDefaults.standard.set(estimator.typicalSeconds, forKey: Keys.typicalSeconds)
+        savedTypicalSeconds = estimator.typicalSeconds
+        lastEstimatorSave = Date()
+    }
+
+    /// Saves the learned drain when MacStats quits: the Quit button and logout post
+    /// `willTerminateNotification`; `pkill` (how `install.sh` and `bundle.sh` stop the running
+    /// copy for an update) sends SIGTERM, which would otherwise end the process without it.
+    private func saveEstimatorOnQuit() {
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification,
+                                               object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.saveEstimator() }
+        }
+        signal(SIGTERM, SIG_IGN)   // handled by the dispatch source instead of killing at once
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        source.setEventHandler { [weak self] in
+            MainActor.assumeIsolated { self?.saveEstimator() }
+            exit(0)
+        }
+        source.resume()
+        terminationSource = source
     }
 
     /// Re-reads the battery the moment macOS reports a power-source change (plug/unplug,

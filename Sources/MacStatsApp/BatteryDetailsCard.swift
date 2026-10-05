@@ -36,15 +36,18 @@ struct BatteryDetailsCard: View {
             rows.append(("Time left", b.timeToEmptyMinutes.map(formatDuration) ?? "Calculating…"))
         case .charging:
             rows.append((b.chargeTargetLabel, b.timeToFullMinutes.map(formatDuration)
-                            ?? (b.percent >= 100 ? "Almost full" : "Calculating…")))
+                            ?? (b.percent >= 90 ? "Almost full" : "Calculating…")))
         case .charged, .notCharging:
             if let limit = b.chargeLimitPercent { rows.append(("Charge limit", "\(limit)%")) }
         }
 
-        if let now = t?.instantWatts {
-            var power = formatWatts(now)
-            if let avg = store.batteryAverageWatts { power += " now · \(formatWatts(avg)) avg" }
-            rows.append(("Power", power))
+        // The gauge updates about once a minute; "Power" is that minute's average draw.
+        if let power = store.batteryPowerWatts {
+            rows.append(("Power, last min", formatWatts(power)))
+        }
+        if let avg = store.batteryAverageWatts {
+            rows.append((store.batteryAverageSinceUnplug ? "Avg since unplugged" : "Avg since MacStats started",
+                         formatWatts(avg)))
         }
         if b.state.isPluggedIn, let adapter = t?.adapterWatts {
             rows.append(("Adapter", "\(adapter) W"))
@@ -82,7 +85,7 @@ extension BatterySample {
         case .charging:
             let target = chargeLimitPercent.map { "\($0)%" } ?? "full"
             return timeToFullMinutes.map { "\(formatDuration($0)) to \(target)" }
-                ?? (percent >= 100 ? "almost full" : "charging")   // shows 100 % before charging ends
+                ?? (percent >= 90 ? "almost full" : "charging")   // no estimate in the last trickle
         case .charged: return "fully charged"
         case .notCharging: return "not charging"
         case .discharging: return timeToEmptyMinutes.map { "\(formatDuration($0)) left" } ?? "calculating…"

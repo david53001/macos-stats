@@ -146,6 +146,15 @@ public func averageWatts(from previous: BatteryTelemetry?, to current: BatteryTe
     return current.instantWatts
 }
 
+/// The draw to show as "Power": the average over the gauge interval that ends at `current`
+/// (~1 min), or the instantaneous reading when there's no awake interval to average (first
+/// reading, or one after sleep). One instant `SystemLoad` was up to 4.8× off its minute's
+/// average (13.2 W in a minute that averaged 3.2 W) and stayed on screen for that minute.
+public func intervalWatts(from previous: BatteryTelemetry?, to current: BatteryTelemetry) -> Double? {
+    guard let previous, gaugeInterval(from: previous, to: current) != nil else { return current.instantWatts }
+    return averageWatts(from: previous, to: current)
+}
+
 /// Reads `AppleSmartBattery`, caching the registry entry between reads (~20 µs a read).
 public final class SmartBatteryReader {
     private var entry: io_registry_entry_t = 0

@@ -112,6 +112,21 @@ import IOKit.ps
         #expect(t.instantWatts == nil)
     }
 
+    @Test func powerIsTheLastIntervalsAverageNotOneInstant() {
+        // Reviewer A's gauge log, 2026-10-05 20:47: a burst had ended; the instant SystemLoad
+        // still read 13.2 W while that minute averaged 3.19 W.
+        let a = BatteryTelemetry(updateTime: 1_791_222_366, systemLoadMW: 13_625,
+                                 accumulatedSystemLoad: 260_581_918, systemLoadCount: 264_365)
+        let b = BatteryTelemetry(updateTime: 1_791_222_426, systemLoadMW: 13_211,
+                                 accumulatedSystemLoad: 260_766_810, systemLoadCount: 264_423)
+        #expect(abs(intervalWatts(from: a, to: b)! - 3.188) < 0.001)
+        // No earlier reading, or one from before a sleep: the instant reading is all there is.
+        #expect(intervalWatts(from: nil, to: b) == 13.211)
+        var asleep = a
+        asleep.updateTime -= 3600
+        #expect(intervalWatts(from: asleep, to: b) == 13.211)
+    }
+
     @Test func healthMatchesSystemSettings() {
         // system_profiler "Maximum Capacity": 99 % for both (Apple truncates).
         #expect(BatteryTelemetry(updateTime: 1, nominalMAh: 4542, designMAh: 4563).healthPercent == 99)
