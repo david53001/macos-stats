@@ -66,4 +66,44 @@ import Foundation
         #expect(me != nil)
         #expect((me?.energyNj ?? 0) > 0)
     }
+
+    /// Reaped children's CPU time must come out in nanoseconds (the raw field is Mach ticks,
+    /// like `pti_total_*`): compare its growth with getrusage(RUSAGE_CHILDREN) around a
+    /// short CPU-bound child.
+    @Test func childCPUTimeIsInNanoseconds() throws {
+        func childrenNs() -> UInt64 {
+            var ru = rusage(); getrusage(RUSAGE_CHILDREN, &ru)
+            let us = (ru.ru_utime.tv_sec + ru.ru_stime.tv_sec) * 1_000_000
+                + Int(ru.ru_utime.tv_usec + ru.ru_stime.tv_usec)
+            return UInt64(us) * 1_000
+        }
+        func readNs() -> UInt64 { readRawProcesses().first { $0.pid == getpid() }?.childCPUTimeNs ?? 0 }
+        let (r0, c0) = (childrenNs(), readNs())
+        let child = Process()
+        child.executableURL = URL(fileURLWithPath: "/bin/sh")
+        child.arguments = ["-c", "i=0; while [ $i -lt 60000 ]; do i=$((i+1)); done"]
+        try child.run()
+        child.waitUntilExit()
+        let (r1, c1) = (childrenNs(), readNs())
+        #expect(r1 > r0)
+        let ratio = Double(c1 &- c0) / Double(r1 - r0)
+        #expect(ratio > 0.7 && ratio < 1.5)
+    }
+
+    @Test func startTimeIdentifiesOwnProcess() {
+        let me = readRawProcesses().first { $0.pid == getpid() }
+        #expect((me?.startTime ?? 0) > 0)
+        #expect(startTimeOfOwnProcess(getpid()) == me?.startTime)
+        #expect(startTimeOfOwnProcess(1) == nil)          // launchd isn't ours
+    }
+
+    @Test func fullParentTableIncludesRootProcesses() {
+        let parents = readAllParentPIDs()
+        #expect(parents[getpid()] == getppid())
+        #expect(parents[1] != nil)                        // launchd (root) is listed too
+    }
+
+    @Test func ownProcessHasAName() {
+        #expect(!(processName(getpid()) ?? "").isEmpty)
+    }
 }

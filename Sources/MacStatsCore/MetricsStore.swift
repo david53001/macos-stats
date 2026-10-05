@@ -29,6 +29,9 @@ public final class MetricsStore: ObservableObject {
     @Published public private(set) var breakdown: [AppUsage] = []
     @Published public private(set) var breakdownMeasuring: Bool = false
     @Published public private(set) var activeBreakdownMetric: BreakdownMetric?
+    /// Whole-machine CPU % over the same interval as the breakdown's rows (nil until the
+    /// second scan), so the CPU breakdown's header and rows add up.
+    @Published public private(set) var breakdownTotalCPU: Double?
 
     /// Seconds of history the sparklines span (newest point at the right edge).
     public let historyWindow: TimeInterval
@@ -89,12 +92,14 @@ public final class MetricsStore: ObservableObject {
         activeBreakdownMetric = metric
         breakdown = []
         breakdownMeasuring = (metric != .memory)
+        breakdownTotalCPU = nil
     }
 
     /// Publish a fresh scan's grouped result for the active breakdown.
-    public func setBreakdown(_ apps: [AppUsage], measuring: Bool) {
+    public func setBreakdown(_ apps: [AppUsage], measuring: Bool, totalCPU: Double? = nil) {
         breakdown = apps
         breakdownMeasuring = measuring
+        if totalCPU != breakdownTotalCPU { breakdownTotalCPU = totalCPU }
     }
 
     /// Leave the drill-in (back button or popover closed).
@@ -102,5 +107,6 @@ public final class MetricsStore: ObservableObject {
         activeBreakdownMetric = nil
         breakdown = []
         breakdownMeasuring = false
+        breakdownTotalCPU = nil
     }
 }

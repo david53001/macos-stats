@@ -64,14 +64,18 @@ import Testing
         #expect(store.breakdownMeasuring == true)        // CPU needs two samples
         #expect(store.breakdown.isEmpty)
 
-        store.setBreakdown([AppUsage(appPID: 1, pids: [1], cpuPercent: 12, memoryBytes: 0)], measuring: false)
+        let proc = ProcessUsage(pid: 1, appPID: 1, cpuPercent: 12, memoryBytes: 0)
+        store.setBreakdown([AppUsage(appPID: 1, processes: [proc], cpuPercent: 12, memoryBytes: 0)],
+                           measuring: false, totalCPU: 20)
         #expect(store.breakdown.count == 1)
         #expect(store.breakdownMeasuring == false)
+        #expect(store.breakdownTotalCPU == 20)
 
         store.clearBreakdown()
         #expect(store.activeBreakdownMetric == nil)
         #expect(store.breakdown.isEmpty)
         #expect(store.breakdownMeasuring == false)
+        #expect(store.breakdownTotalCPU == nil)
     }
 
     @Test func beginMemoryBreakdownIsNotMeasuring() {
