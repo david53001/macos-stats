@@ -112,9 +112,10 @@ struct BreakdownView: View {
     private var footnote: String {
         switch metric {
         case .cpu: return "Share of the whole Mac (all \(Self.cores) cores)"
-        // Like Activity Monitor's Memory column (footprints): Memory Used counts the compressor's
-        // RAM instead, so the rows can sum to more than it.
-        case .memory: return "Rows count compressed memory at full size, so they can add up to more than Memory Used"
+        // Like Activity Monitor's Memory column (footprints). They don't reconcile with Memory
+        // Used either way: compressed memory counts at full size (more), and macOS's own and
+        // other users' processes aren't listed (less).
+        case .memory: return "Rows are each app's footprint (as in Activity Monitor); they don't add up to Memory Used"
         case .energy: return "App power counts CPU only"
         }
     }
