@@ -41,10 +41,13 @@ struct BatteryDetailsCard: View {
             if let limit = b.chargeLimitPercent { rows.append(("Charge limit", "\(limit)%")) }
         }
 
-        if let now = t?.instantWatts {
-            var power = formatWatts(now)
-            if let avg = store.batteryAverageWatts { power += " now · \(formatWatts(avg)) avg" }
-            rows.append(("Power", power))
+        // The gauge updates about once a minute; "Power" is that minute's average draw.
+        if let power = store.batteryPowerWatts {
+            rows.append(("Power, last min", formatWatts(power)))
+        }
+        if let avg = store.batteryAverageWatts {
+            rows.append((store.batteryAverageSinceUnplug ? "Avg since unplugged" : "Avg since MacStats started",
+                         formatWatts(avg)))
         }
         if b.state.isPluggedIn, let adapter = t?.adapterWatts {
             rows.append(("Adapter", "\(adapter) W"))

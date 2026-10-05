@@ -52,6 +52,10 @@ final class AppModel: ObservableObject {
     private var powerdLimit = ChargeLimitHint.unknown
     private var powerdLimitReadFor: BatterySample?      // the reading it was last read for
     private var lastTelemetry: BatteryTelemetry?
+    /// Whole-Mac draw over the last gauge interval (the drill-in's "Power"), W.
+    private var lastIntervalWatts: Double?
+    /// The on-battery session began at an unplug MacStats saw (else at launch).
+    private var sessionStartedAtUnplug = false
     /// Health shows the peak full-charge capacity of the last ~10 gauge readings (it flickers).
     private var nominalPeak = RecentMax(capacity: 10)
     private var nominalPeakMAh: Int?
@@ -176,7 +180,7 @@ final class AppModel: ObservableObject {
     private func refreshBattery() {
         guard var sample = readBattery() else {
             store.setBattery(nil)
-            store.setBatteryTelemetry(nil, averageWatts: nil)
+            store.setBatteryTelemetry(nil, powerWatts: nil, averageWatts: nil)
             return
         }
         let state = sample.state
@@ -184,6 +188,8 @@ final class AppModel: ObservableObject {
         if state != lastBatteryState {
             // Plug/unplug: never measure across it; a new session (or charge) starts.
             lastTelemetry = nil
+            lastIntervalWatts = nil
+            sessionStartedAtUnplug = previousState != nil   // else MacStats just launched
             lastBatteryState = state
             estimator.endSession()
             chargeCurrent.reset()
@@ -195,6 +201,7 @@ final class AppModel: ObservableObject {
             nominalPeakMAh = telemetry.nominalMAh.map { nominalPeak.add($0) }
             // Only awake intervals count: one that spans sleep would average the sleep.
             let seconds = lastTelemetry.flatMap { gaugeInterval(from: $0, to: telemetry) }
+            lastIntervalWatts = intervalWatts(from: lastTelemetry, to: telemetry)
             if state == .discharging, let seconds, let watts = averageWatts(from: lastTelemetry, to: telemetry) {
                 estimator.ingest(watts: watts, seconds: seconds)
             }
@@ -230,7 +237,9 @@ final class AppModel: ObservableObject {
         }
         if let peak = nominalPeakMAh { telemetry?.nominalMAh = peak }
         store.setBattery(sample)
-        store.setBatteryTelemetry(telemetry, averageWatts: state == .discharging ? estimator.sessionAverageWatts : nil)
+        store.setBatteryTelemetry(telemetry, powerWatts: lastIntervalWatts,
+                                  averageWatts: state == .discharging ? estimator.sessionAverageWatts : nil,
+                                  averageSinceUnplug: sessionStartedAtUnplug)
     }
 
     /// The percent charging stops at (below 100), or nil. powerd's policy file is re-read only
