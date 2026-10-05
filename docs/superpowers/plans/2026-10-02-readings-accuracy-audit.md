@@ -1,8 +1,24 @@
 # Readings accuracy audit: what MacStats shows vs what the Mac is really doing (2026-10-02)
 
-**Status:** investigation only. Nothing is fixed yet. This file lists what is wrong, the
-evidence for it, and the proposed fixes, ordered by priority. It is written so a fresh session can
-start fixing from here.
+**Status (updated 2026-10-05, MacStats v1.1.0, branch `fix/readings-accuracy`):** most of this
+audit is **fixed**. Details, per-file changes and live verification numbers are in
+`docs/superpowers/plans/2026-10-05-readings-accuracy-progress.md` ("Results" section).
+- §1 Terminal work missing from every breakdown: **fixed** (attribution via the kernel's
+  "responsible process" plus a parent-chain walk that can cross root-owned `login`; leftovers go to
+  an "Other processes" row).
+- §2 mixed CPU scales / relative bars: **fixed** (everything is % of the whole Mac; bars are out of
+  100 %; a "System" row makes the rows add up to the header).
+- §3 short-lived processes: **fixed** (CPU of exited children is credited to the parent that reaps
+  them; orphans reaped by launchd are still uncounted).
+- §4 memory card formula: **fixed** (Activity Monitor's "Memory Used" formula).
+- §5 battery health rounding: **fixed**; per-app battery power grouping + first-interval 0 W:
+  **fixed**; network 32-bit counters: **fixed** (64-bit via `IFMIB_IFALLDATA`, not `NET_RT_IFLIST2`,
+  which turned out to be truncated too); VPN double counting: **still not measured**;
+  "apps that aren't apps": **mostly fixed** (helpers fold into their real app; Claude Desktop's
+  `npm exec …` MCP servers still show as their own rows).
+- CPU temperature: still not independently checked.
+
+The original text below is kept as the record of what was found on 2026-10-02.
 
 **Trigger:** a video render (`ffmpeg`, started from a Claude Code session in Terminal) was using
 about 6–8 of the 8 CPU cores. MacStats' CPU breakdown showed **JVoice** as the top app at
