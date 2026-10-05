@@ -212,6 +212,7 @@ final class AppModel: ObservableObject {
                                                                   macOSMinutes: sample.timeToEmptyMinutes)
             }
         case .charging:
+            let limit = limit.flatMap { $0 > sample.percent ? $0 : nil }   // still charging past it ⇒ not a limit
             sample.chargeLimitPercent = limit
             if let cur = telemetry?.currentMAh, let max = telemetry?.rawMaxMAh, let mA = chargeCurrent.milliamps,
                let minutes = minutesToTarget(currentMAh: cur, maxMAh: max, chargeMA: mA,
