@@ -28,7 +28,7 @@ import Foundation
 /// of the history alone too. Trusting the long-run average much more scores better on that
 /// history (31 %, 12 %) but read up to 45–57 % pessimistic for the first half hour of a light
 /// session after heavy use, so the search was limited to settings that stay within 25 % of a
-/// synthetic load change after 30 minutes in both directions (tests below pin these).
+/// synthetic load change after 30 minutes in both directions (pinned in `TimeLeftReplayTests`).
 ///
 /// History (2026-10-05): an older version learned "typical" from every reading, plugged in or
 /// across sleep, which settled at 2.5 W on a Mac that really drains ~5.5 W awake on battery;

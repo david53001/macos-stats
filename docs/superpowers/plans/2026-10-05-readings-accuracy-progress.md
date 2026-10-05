@@ -581,7 +581,7 @@ with the drain that actually followed (next 60 min, next 120 min, rest of the se
 
 New constants: short 10 min, recent 60 min, typical 12 h, prior 20 min (unchanged); short weight
 **0.8 when the load rose, 0.6 when it fell**, the latter phased in over the first 10 min of a
-session. The gain held on each half of the history (fit-free check: 0.364 → 0.333 and
+session. The gain shows on each half of the history separately (constants chosen on all of it; 0.364 → 0.333 and
 0.364 → 0.341 error; 0.22 → 0.17 swing). Trusting the long-run average much more scores better
 on this history (~31 % / 12 %) but read 45–57 % pessimistic for a light half hour after heavy
 use, so the search was restricted to settings within ±25 % of synthetic load changes after
