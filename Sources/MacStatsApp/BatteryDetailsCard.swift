@@ -35,14 +35,14 @@ struct BatteryDetailsCard: View {
         case .discharging:
             rows.append(("Time left", b.timeToEmptyMinutes.map(formatDuration) ?? "Calculating…"))
         case .charging:
-            rows.append(("Time to full", b.timeToFullMinutes.map(formatDuration) ?? "Calculating…"))
+            rows.append((b.chargeTargetLabel, b.timeToFullMinutes.map(formatDuration) ?? "Calculating…"))
         case .charged, .notCharging:
-            break
+            if let limit = b.chargeLimitPercent { rows.append(("Charge limit", "\(limit)%")) }
         }
 
         if let now = t?.instantWatts {
             var power = formatWatts(now)
-            if let avg = store.batteryExpectedWatts { power += " now · \(formatWatts(avg)) avg" }
+            if let avg = store.batteryAverageWatts { power += " now · \(formatWatts(avg)) avg" }
             rows.append(("Power", power))
         }
         if b.state.isPluggedIn, let adapter = t?.adapterWatts {
@@ -70,10 +70,17 @@ extension BatterySample {
         }
     }
 
+    /// "Time to full", or "Time to 85%" when charging stops at a limit.
+    var chargeTargetLabel: String {
+        chargeLimitPercent.map { "Time to \($0)%" } ?? "Time to full"
+    }
+
     /// The Battery card's short secondary line (the card's text column is ~120 pt).
     var cardMeta: String {
         switch state {
-        case .charging: return timeToFullMinutes.map { "\(formatDuration($0)) to full" } ?? "charging"
+        case .charging:
+            let target = chargeLimitPercent.map { "\($0)%" } ?? "full"
+            return timeToFullMinutes.map { "\(formatDuration($0)) to \(target)" } ?? "charging"
         case .charged: return "fully charged"
         case .notCharging: return "not charging"
         case .discharging: return timeToEmptyMinutes.map { "\(formatDuration($0)) left" } ?? "calculating…"
