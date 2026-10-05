@@ -7,7 +7,7 @@ part of §5, plus the user's "expandable app rows" request. Battery readings are
 branch (`readings/battery`).
 
 ## Build note (environment, not code)
-On 2026-10-04 the Command Line Tools update made `MacOSX.sdk` point to **MacOSX27.0.sdk**, whose
+On 2026-10-04 the Command Line Tools (CLT, Apple's compiler package without Xcode) update made `MacOSX.sdk` point to **MacOSX27.0.sdk**, whose
 SwiftUI needs a `SwiftUIMacros` compiler plugin that the CLT doesn't ship. Every `@State` then
 fails with *"plugin for module 'SwiftUIMacros' not found"*, even on unchanged code. Workaround:
 
@@ -20,6 +20,11 @@ SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk ./Scripts/test.s
 variable until the CLT ships the plugin.
 
 ## What changed
+
+Terms: the **responsible app** is the app macOS charges for a process's work (Terminal for
+everything in its tabs; an app for the XPC helper processes launchd starts for it). **rusage**
+is the kernel's per-process usage record (`proc_pid_rusage`). CPU times there are in **Mach
+ticks** (24 MHz on Apple Silicon), which get converted to nanoseconds.
 
 | Area | Change | Code |
 |---|---|---|
