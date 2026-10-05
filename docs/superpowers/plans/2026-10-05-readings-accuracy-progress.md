@@ -495,3 +495,148 @@ real app.
 - Dead code: `owningAppPID(for:ppid:appPIDs:)` in `Sources/MacStatsCore/ProcessBreakdown.swift`
   is only used by tests (superseded by the closure-based one in `ProcessScan.swift`).
 - Trash size uses 1024-based MB while Finder uses 1000 (outside these sections).
+
+## Review fixes (round 3): CPU/memory (2026-10-05, branch `review3/process`)
+
+**Context.** After the round-1 fixes, two more independent reviewers scored v1.1.0 at commit
+`164ce01` (reports `docs/reviews/2026-10-05-readings-accuracy-review-round2-A.md` and `-B.md`,
+evidence in `docs/reviews/2026-10-05-readings-accuracy/round2-A/` and `round2-B/`; at the time of
+writing these were uncommitted files in the main checkout at
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/`). CPU scored 8/10 from both,
+Memory 8 (A) and 7 (B). The goal of this round: CPU and Memory ≥ 9/10 with no overhead
+regression. Branch **`review3/process`** (from `fix/readings-accuracy` at `164ce01`); battery
+findings were fixed in parallel on another branch and are not covered here.
+**Tests:** `./Scripts/test.sh` → **227 tests in 31 suites pass** (221 before).
+
+**Terms used below.**
+- *Breakdown*: the drill-in screen you get by clicking the CPU, Memory or Battery card; it lists
+  apps (rows) and, when you click an app, its processes (child rows).
+- *Scan*: one pass of the breakdown's per-process reader (`AppModel.procScanTick` in
+  `Sources/MacStatsApp/MacStatsApp.swift`, logic in `BreakdownScanner`,
+  `Sources/MacStatsCore/ProcessScan.swift`). Runs every 1 s, only while a breakdown is open.
+- *Tick*: the 0.5 s refresh of the overview cards while the popover is open (`AppModel.tick`).
+- *CPU ticks*: the kernel's cumulative per-state CPU counters (user/system/idle/nice, 100 per
+  second per core). Two readings give the whole Mac's busy %.
+- *Footprint*: a process's physical footprint, the number in Activity Monitor's Memory column.
+  It counts the process's compressed memory at its full, uncompressed size.
+- *Memory Used*: Activity Monitor's figure = App Memory + Wired Memory + Compressed (the RAM the
+  compressor occupies, i.e. compressed size).
+- Finding IDs like *A-C1* mean report A (round 2), finding C1 in its tables (C = CPU, M = memory).
+- *Exit credit*: CPU that the scan estimates for processes that ended between two scans
+  (their last rate, capped by what the whole Mac did unseen); see `exitWorkCredit`.
+
+**How it was checked.** Harnesses in a scratch dir (not in the repo) compiled the real
+`Sources/MacStatsCore/*.swift` with the 26.5 SDK
+(`SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk swiftc -O …`) and mirrored the
+scan glue. A second harness compiled the real `Sources/MacStatsApp` views and rendered
+`BreakdownView` into an off-screen window (never shown) to check the layout at 320 × 404.
+Load: one orphaned `yes` for ~5 s, killed. Nothing was clicked; the installed app was not
+restarted.
+
+| # | Finding (reviewer) | Result | Evidence |
+|---|---|---|---|
+| 1 | Stale CPU ticks: the header sometimes covered the wrong interval, once 0 % over 25 % of rows (A-C1) | **Fixed** | `host_statistics(HOST_CPU_LOAD_INFO)` returned an unchanged reading 2 and 1 times in 40 reads at 3/s (rate limit). The new reader `host_processor_info(PROCESSOR_CPU_LOAD_INFO)` (per-CPU counters, summed) gave identical sums tick for tick and 0 stale reads in 40 at 20/s and 40 at 50/s. |
+| 2 | Exited/orphaned processes' CPU shown on the app's main process (A-C2) | **Fixed** | Orphaned `yes` (ppid 1, owned by Code) killed between scans: the expanded Code row now shows **"Exited processes 9.4 % of Mac = 75 % of one core"** and the Code main process stays idle; before, it read "Code 14106 — 79 % of one core". App total unchanged. |
+| 3 | Memory rows don't reconcile with the header; "System & other" remainder unverifiable (A-M1, B-M1) | **Fixed** (row removed, header composition added) | Card parts vs `vm_stat` read right after: MacStats used 9.127 GiB = App 5.055 + Wired 2.016 + Compressed 2.056; `vm_stat` 9.128 = 5.056 + 2.016 + 2.056. |
+| 4 | Rows on the whole-Mac scale: a process pegging a core reads "12%" (B-C1) | **Fixed** | Expanded CPU process rows show "100% of one core" under the name; CPU app rows have it in their tooltip and right-click menu. Rendered: fits 320 pt, no truncation. |
+| 5 | Per-app scan on the main thread (B-C3) | **Fixed** | The whole scan now runs on one serial queue. Most of it was the running-apps list (8.6 ms of a 12.8 ms scan on a busy machine). The app grouping read off the main thread matched a main-thread read in 12 of 12 scans. |
+| 6 | Other cheap Medium CPU/memory issues | **None left** | The only other Medium in the reports is battery (B1, other branch). Lows not changed: see below. |
+
+### What changed, file by file
+- `Sources/MacStatsCore/SystemReaders.swift`
+  - `readCPUTicks()` now sums the per-CPU counters from `host_processor_info`
+    (`sumCPULoad`, wrapping 32-bit sums so deltas stay exact). Why: macOS rate-limits
+    `host_statistics` for apps that aren't part of the OS. Past a random budget of 2–10 calls per
+    second it silently returns the previous reading. With a breakdown open, the tick and the scan
+    read about 3 times a second, so a scan's header (and the card) sometimes covered the wrong
+    interval. `host_statistics` is kept as the fallback if the per-CPU call fails.
+  - Cost: ~90 µs per read against ~23 µs (median). At ≤ 3 reads/s while open that is +0.2 ms of
+    CPU per second (0.02 % of one core); while closed (one read per 10 s) it's negligible.
+- `Sources/MacStatsCore/ProcessScan.swift` (`BreakdownScanner.scan`)
+  - If the ticks didn't move between two scans, the scan reports no header for that scan instead
+    of 0 % (the store then falls back to the card's value). A safety net; the new reader makes it
+    unlikely.
+  - Exit credit (CPU estimated for processes that ended between two scans, see `exitWorkCredit`)
+    no longer lands on a live process. It becomes a synthetic child row with pid
+    `BreakdownGroup.exitedProcesses` (−3) inside the same app, shown as **"Exited processes"**,
+    with no Quit/Force Quit. Reaped-child credit (measured exactly by the kernel for the parent)
+    stays on the parent, as before.
+  - The `memoryInUseBytes` parameter and the memory remainder row are gone.
+- `Sources/MacStatsCore/MemoryStats.swift`
+  - `MemorySample` now also carries `appBytes`, `wiredBytes`, `compressedBytes` (they add up to
+    `usedBytes` exactly) and `compressedDataBytes` (what the compressor holds at full size,
+    `vm_stat`'s "Pages stored in compressor").
+  - `roundedParts` rounds the parts to 0.1 GB so they add up to the rounded header (largest
+    remainder). Plain rounding can be 0.1–0.2 GB off: 6.16 + 1.66 + 2.66 = 10.48 would read
+    6.2 + 1.7 + 2.7 = 10.6 under "10.5".
+  - `memoryInUseAtFullSize` (only used by the removed row) is gone.
+- `Sources/MacStatsCore/ProcessBreakdown.swift`: `addingMemoryRemainderRow` removed;
+  `BreakdownGroup.exitedProcesses` added; `BreakdownMetric`, `ProcessUsage`, `AppUsage` are
+  `Sendable` (they cross to the scan queue).
+- `Sources/MacStatsApp/MemoryPartsCard.swift` (new): a one-row card under the Memory breakdown's
+  header: **App Memory · Wired · Compressed**, each in GB, with tooltips (Compressed's says how
+  much data the compressor holds and that the rows count it at full size). Same card style as
+  `BatteryDetailsCard` (`CardBackground`, `Design.cardPadding`).
+- `Sources/MacStatsApp/BreakdownView.swift`
+  - Memory header reads "10.3 / 16.0 GB used". Footnote (two lines, memory only): "Rows count
+    compressed memory at full size, so they can add up to more than Memory Used".
+  - "System & other" row and its tooltip removed (`AppInfoCache` no longer needs the metric).
+  - Process rows: the "Exited processes" row (no pid, no actions, tooltip); on CPU, a
+    "N% of one core" line next to the bar. App rows on CPU: per-core figure in the tooltip.
+- `Sources/MacStatsApp/MacStatsApp.swift`
+  - The scan runs on `scanQueue` (one serial `DispatchQueue`), inside a queue-confined
+    `BreakdownScanSession` that owns the `BreakdownScanner` and the bundle-id cache. Results are
+    published on the main thread. A scan still running when the timer fires is skipped (not
+    queued); a result is dropped if the breakdown closed or another opened meanwhile
+    (`scanGeneration`). The first scan of a drill-in waits for its result (`scanQueue.sync`), so
+    the first frame has rows.
+  - Why the running-apps list moved too: reading `NSRunningApplication` properties asks
+    LaunchServices again after each main run-loop turn, ~150 µs per app, the bulk of a scan.
+    Apple's headers (`NSRunningApplication.h`) document `runningApplications` and
+    `NSRunningApplication` as safe to read from background threads.
+
+### Why Memory Used's parts, not a remainder row
+Per-app memory must stay footprint, because that's what Activity Monitor's Memory column shows
+and users compare with it. Footprints count compressed memory at full size, Memory Used counts
+the compressor's RAM, so the rows can't add up to the header (Activity Monitor's don't either).
+The old "System & other" row tried to close the gap with a remainder. Reviewer B showed that
+~1.5 GB of its 5.3 GB was held by no process and no wired memory, so it was accounting slack
+presented as if it were a process. Activity Monitor instead lists Memory Used's parts at the
+bottom of its Memory tab. Those parts are exact kernel counters and add up to the header, so
+MacStats now does the same. No other reconciliation that could be checked from user space was
+found: other users' and root processes' footprints can't be read without root.
+
+### Overhead, before vs after
+- **Scan cost** (harness, ~430 processes, 60 running apps, medians of 12–16 scans at 1/s). The
+  machine was busy during these runs (Spotlight media analysis, XProtect), so absolute numbers
+  are high and noisy:
+
+  | Run | CPU breakdown before → after | Memory breakdown before → after |
+  |---|---|---|
+  | 1 | 11.2 → 12.2 ms | 12.8 → 11.2 ms |
+  | 2 | 10.5 → 12.0 ms | — |
+  | 3 | 10.6 → 11.1 ms | — |
+  | 4 | 9.6 → 10.6 ms | 11.4 → 8.6 ms |
+
+  The difference is within the run-to-run noise. On a quiet machine earlier the same harness read
+  3.0 ms (CPU) and 3.1 ms (memory) before the changes. The memory scan no longer reads the VM
+  counters; every tick read costs +~65 µs (see above).
+- **Main thread:** before, the whole scan ran on it (3–13 ms each second while drilled in). After,
+  only the dispatch and publishing the result do.
+- **Memory:** no new timers. New state: four `UInt64`s in `MemorySample`, at most one synthetic
+  row per app, and the scan session (which holds what `AppModel` held before). The bundle-id
+  cache is still pruned to the running apps every scan.
+
+### Not changed (Low, noted for later)
+- A-C3: the bundle-id cache is keyed by pid only. It is rebuilt from the running-apps list every
+  scan, so a stale entry needs an app to quit and another to get its pid within one second.
+- A-C4: a surviving child keeps pointing at its responsible app's pid after that app quits; if a
+  new app reuses the pid, a long-lived orphan could be attributed to it. Possible fix: ignore a
+  responsible pid whose start time is later than the child's (`ProcessAttributor`).
+- B-C2: exit credit could also be capped by the exited process's own last share of the header.
+- B-C5: `sudo` work and root helpers an app triggers land in System (Activity Monitor does the
+  same).
+- The UI changes were checked in an off-screen render, not in the running menu-bar app.
+  **Manual check:** after installing (`./Scripts/bundle.sh && open ~/Applications/MacStats.app`),
+  open the Memory breakdown and check the card's three values add up to the header; open the CPU
+  breakdown, expand an app and check the "% of one core" lines.
