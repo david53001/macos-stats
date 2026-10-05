@@ -40,6 +40,58 @@ import Testing
         #expect(owningAppPID(for: 800, parent: { _ in 1 }, responsible: { $0 }, appPIDs: [100]) == nil)
     }
 
+    /// Claude.app (100) ← disclaimer (110) ← `npm exec @modelcontextprotocol/…` (120, a
+    /// background-only "running app" with no bundle id, responsible for itself) ← node (130).
+    /// Live, before the fix, 120 was its own 178 MB row named "npm exec @modelcontextprot…".
+    @Test func disclaimedHelperRegisteredAsAnAppGoesToItsParentApp() {
+        let parents: [Int32: Int32] = [130: 120, 120: 110, 110: 100, 100: 1]
+        let responsible: (Int32) -> Int32? = { pid in
+            switch pid {
+            case 120, 130: return 120   // disclaimed: responsible for itself (and its children)
+            default: return 100
+            }
+        }
+        for pid: Int32 in [120, 130] {
+            #expect(owningAppPID(for: pid, parent: { parents[$0] }, responsible: responsible,
+                                 appPIDs: [100], fallbackAppPIDs: [120]) == 100)
+        }
+    }
+
+    @Test func fallbackAppKeepsItsOwnRowWhenNoRealAppIsAbove() {
+        // e.g. universalaccessd or a widget extension: launchd's child, listed as a running app.
+        #expect(owningAppPID(for: 900, parent: { _ in 1 }, responsible: { $0 }, appPIDs: [100],
+                             fallbackAppPIDs: [900]) == 900)
+        // …and a child of it goes there too.
+        let parents: [Int32: Int32] = [901: 900, 900: 1]
+        #expect(owningAppPID(for: 901, parent: { parents[$0] }, responsible: { _ in nil }, appPIDs: [100],
+                             fallbackAppPIDs: [900]) == 900)
+    }
+
+    @Test func realAppsAndTerminalStillWinWithFallbacksPresent() {
+        // A Terminal tab's chain through root `login`, and a VS Code terminal's MCP server whose
+        // responsible app is Code: unchanged by the fallback set.
+        let full: [Int32: Int32] = [400: 300, 300: 200, 200: 100, 100: 1]
+        #expect(owningAppPID(for: 400, parent: { full[$0] }, responsible: none, appPIDs: [100],
+                             fallbackAppPIDs: [300]) == 100)
+        #expect(owningAppPID(for: 500, parent: { _ in 1 }, responsible: { _ in 100 }, appPIDs: [100],
+                             fallbackAppPIDs: [500]) == 100)
+        #expect(owningAppPID(for: 100, parent: { _ in 1 }, responsible: { $0 }, appPIDs: [100],
+                             fallbackAppPIDs: [500]) == 100)
+    }
+
+    @Test func anchorsSplitRealAppsFromBackgroundProcesses() {
+        let anchors = attributionAnchors([
+            RunningAppInfo(pid: 100, hasBundleIdentifier: true, isBackgroundOnly: false),   // Claude
+            RunningAppInfo(pid: 110, hasBundleIdentifier: true, isBackgroundOnly: false),   // a menu-bar app
+            RunningAppInfo(pid: 120, hasBundleIdentifier: false, isBackgroundOnly: true),   // npm exec …
+            RunningAppInfo(pid: 130, hasBundleIdentifier: true, isBackgroundOnly: true),    // widget extension
+            RunningAppInfo(pid: 140, hasBundleIdentifier: false, isBackgroundOnly: false),  // bare helper
+            RunningAppInfo(pid: -1, hasBundleIdentifier: true, isBackgroundOnly: false),
+        ])
+        #expect(anchors.apps == [100, 110])
+        #expect(anchors.fallbacks == [120, 130, 140])
+    }
+
     @Test func cycleTerminates() {
         let parents: [Int32: Int32] = [10: 11, 11: 10]
         #expect(owningAppPID(for: 10, parent: { parents[$0] }, responsible: none, appPIDs: [99]) == nil)
@@ -81,6 +133,17 @@ import Testing
         // The app quit: nothing may still point at it.
         let owners = attributor.owners(for: [raw(300, 1, start: 2)], appPIDs: [])
         #expect(owners[300] == BreakdownGroup.otherProcesses)
+    }
+
+    @Test func attributorRelooksUpWhenFallbacksChange() {
+        let attributor = ProcessAttributor(responsible: { _ in nil }, allParents: { [:] })
+        let procs = [raw(100, 1), raw(120, 100), raw(130, 120)]
+        #expect(attributor.owners(for: procs, appPIDs: [100])[130] == 100)
+        // The same processes, but 120 is now a background "app": still under the real app 100.
+        #expect(attributor.owners(for: procs, appPIDs: [100], fallbackAppPIDs: [120])[130] == 100)
+        // The real app quit: the fallback takes over.
+        #expect(attributor.owners(for: [raw(120, 1), raw(130, 120)], appPIDs: [],
+                                  fallbackAppPIDs: [120])[130] == 120)
     }
 }
 

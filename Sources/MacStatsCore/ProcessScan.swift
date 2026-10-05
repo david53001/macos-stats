@@ -6,17 +6,51 @@ import Foundation
 /// helpers, which launchd starts → that app); else the process itself if it is an app; else
 /// its parent. `parent` should see past processes we can't read (a Terminal tab's root
 /// `login`). Returns nil when the chain reaches launchd without meeting an app.
+///
+/// `fallbackAppPIDs` are registered "apps" that aren't real ones (see `attributionAnchors`):
+/// Claude's MCP servers (`npm exec …`, background-only, no bundle id, responsible for
+/// themselves) used to end the walk as their own row. They only count when nothing further up
+/// is a real app, so the MCP server lands under Claude while a lone agent keeps its own row.
 public func owningAppPID(for pid: Int32, parent: (Int32) -> Int32?, responsible: (Int32) -> Int32?,
-                         appPIDs: Set<Int32>) -> Int32? {
+                         appPIDs: Set<Int32>, fallbackAppPIDs: Set<Int32> = []) -> Int32? {
     var current = pid
     var seen = Set<Int32>()
+    var fallback: Int32?
     while current > 1, seen.insert(current).inserted {
-        if let r = responsible(current), r > 0, appPIDs.contains(r) { return r }
+        if let r = responsible(current), r > 0 {
+            if appPIDs.contains(r) { return r }
+            if fallback == nil, fallbackAppPIDs.contains(r) { fallback = r }
+        }
         if appPIDs.contains(current) { return current }
-        guard let up = parent(current), up != current else { return nil }
+        if fallback == nil, fallbackAppPIDs.contains(current) { fallback = current }
+        guard let up = parent(current), up != current else { return fallback }
         current = up
     }
-    return nil
+    return fallback
+}
+
+/// What attribution needs to know about one `NSWorkspace` running application.
+public struct RunningAppInfo: Equatable {
+    public let pid: Int32
+    public let hasBundleIdentifier: Bool
+    /// `activationPolicy == .prohibited`: no Dock icon, no menu bar, no windows of its own.
+    public let isBackgroundOnly: Bool
+
+    public init(pid: Int32, hasBundleIdentifier: Bool, isBackgroundOnly: Bool) {
+        self.pid = pid; self.hasBundleIdentifier = hasBundleIdentifier; self.isBackgroundOnly = isBackgroundOnly
+    }
+}
+
+/// Splits the running applications into real apps (regular or accessory, with a bundle id),
+/// which always end an attribution walk, and the rest, which are only a fallback
+/// (`owningAppPID`'s `fallbackAppPIDs`). macOS lists background processes such as Claude's
+/// MCP servers (`npm exec …`, a disclaimed `node`) and widget extensions as running apps too.
+public func attributionAnchors(_ apps: [RunningAppInfo]) -> (apps: Set<Int32>, fallbacks: Set<Int32>) {
+    var real = Set<Int32>(), fallbacks = Set<Int32>()
+    for app in apps where app.pid > 0 {
+        if app.hasBundleIdentifier && !app.isBackgroundOnly { real.insert(app.pid) } else { fallbacks.insert(app.pid) }
+    }
+    return (real, fallbacks)
 }
 
 /// Attributes each scanned process to an app, or to `BreakdownGroup.otherProcesses`.
@@ -35,6 +69,7 @@ public final class ProcessAttributor {
     private let allParents: () -> [Int32: Int32]
     private var cache: [Int32: Entry] = [:]
     private var cachedAppPIDs: Set<Int32> = []
+    private var cachedFallbackPIDs: Set<Int32> = []
 
     public init(responsible: @escaping (Int32) -> Int32? = responsiblePID(for:),
                 allParents: @escaping () -> [Int32: Int32] = readAllParentPIDs) {
@@ -43,10 +78,12 @@ public final class ProcessAttributor {
     }
 
     /// pid → owning app pid (or `BreakdownGroup.otherProcesses`) for every process in `processes`.
-    public func owners(for processes: [RawProcess], appPIDs: Set<Int32>) -> [Int32: Int32] {
-        if appPIDs != cachedAppPIDs {
+    public func owners(for processes: [RawProcess], appPIDs: Set<Int32>,
+                       fallbackAppPIDs: Set<Int32> = []) -> [Int32: Int32] {
+        if appPIDs != cachedAppPIDs || fallbackAppPIDs != cachedFallbackPIDs {
             cache = [:]
             cachedAppPIDs = appPIDs
+            cachedFallbackPIDs = fallbackAppPIDs
         }
         var userParents: [Int32: Int32]?
         var fullParents: [Int32: Int32]?
@@ -68,7 +105,8 @@ public final class ProcessAttributor {
                 if let up = userParents?[pid] { return up }
                 if fullParents == nil { fullParents = self.allParents() }
                 return fullParents?[pid]
-            }, responsible: responsible, appPIDs: appPIDs) ?? BreakdownGroup.otherProcesses
+            }, responsible: responsible, appPIDs: appPIDs,
+               fallbackAppPIDs: fallbackAppPIDs) ?? BreakdownGroup.otherProcesses
             next[p.pid] = Entry(startTime: p.startTime, owner: owner)
             result[p.pid] = owner
         }
@@ -217,9 +255,10 @@ public final class BreakdownScanner {
         self.attributor = ProcessAttributor(responsible: responsible, allParents: allParents)
     }
 
-    public func scan(_ processes: [RawProcess], appPIDs: Set<Int32>, metric: BreakdownMetric,
-                     time: TimeInterval, absTime: UInt64, cpuTicks: CPUTicks) -> Result {
-        let owners = attributor.owners(for: processes, appPIDs: appPIDs)
+    public func scan(_ processes: [RawProcess], appPIDs: Set<Int32>, fallbackAppPIDs: Set<Int32> = [],
+                     metric: BreakdownMetric, time: TimeInterval, absTime: UInt64,
+                     cpuTicks: CPUTicks) -> Result {
+        let owners = attributor.owners(for: processes, appPIDs: appPIDs, fallbackAppPIDs: fallbackAppPIDs)
         let deltas = sampler.ingest(processes, time: time, absTime: absTime)
         let elapsed = sampler.elapsedSeconds
         let total = lastTicks.map { cpuBusyPercent(previous: $0, current: cpuTicks) }

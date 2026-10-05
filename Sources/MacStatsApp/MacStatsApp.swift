@@ -404,11 +404,12 @@ final class AppModel: ObservableObject {
 
         // GUI apps the user is running = the grouping anchors. Processes no app is responsible
         // for land in "Other processes", so the rows cover all of the user's processes.
-        let appPIDs = Set(NSWorkspace.shared.runningApplications.compactMap { app -> Int32? in
-            app.processIdentifier > 0 ? Int32(app.processIdentifier) : nil
+        let anchors = attributionAnchors(NSWorkspace.shared.runningApplications.map {
+            RunningAppInfo(pid: Int32($0.processIdentifier), hasBundleIdentifier: $0.bundleIdentifier != nil,
+                           isBackgroundOnly: $0.activationPolicy == .prohibited)
         })
-        let result = scanner.scan(raw, appPIDs: appPIDs, metric: metric, time: time,
-                                  absTime: absTime, cpuTicks: ticks)
+        let result = scanner.scan(raw, appPIDs: anchors.apps, fallbackAppPIDs: anchors.fallbacks,
+                                  metric: metric, time: time, absTime: absTime, cpuTicks: ticks)
         // CPU and energy have no real values until the second scan ("Measuring…" until then).
         store.setBreakdown(result.apps, measuring: result.measuring, totalCPU: result.totalCPUPercent)
     }
