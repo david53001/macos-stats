@@ -61,6 +61,9 @@ final class AppModel: ObservableObject {
     private var nominalPeakMAh: Int?
     private var lastBatteryState: BatteryState?
     private var lastEstimatorSave: Date?
+    /// `typicalSeconds` as last written (or loaded), so unchanged values aren't rewritten.
+    private var savedTypicalSeconds = UserDefaults.standard.double(forKey: Keys.typicalSeconds)
+    private var terminationSource: DispatchSourceSignal?
     private var powerSourceObserver: CFRunLoopSource?
     private enum Keys {
         static let typicalWatts = "batteryDrainTypicalWatts"
@@ -70,7 +73,8 @@ final class AppModel: ObservableObject {
         /// (2.5 W on a Mac that drains 5.5 W). Dropped, not migrated.
         static let legacy = ["batteryTypicalWatts", "batteryTypicalSeconds"]
     }
-    /// The typical-drain average is saved at most this often (and on plug/unplug).
+    /// The typical-drain average is saved at its first on-battery gauge update (~1 min after
+    /// launch or unplug), then at most this often, and on plug/unplug and quit.
     private let estimatorSaveInterval: TimeInterval = 10 * 60
     private let totalMemory = ProcessInfo.processInfo.physicalMemory
 
@@ -85,6 +89,7 @@ final class AppModel: ObservableObject {
         sample(at: Date())   // just stores the first baseline; history starts at the next sample
         readSlowSensors()    // so even the first open has battery + temperature on frame one
         observePowerSource()
+        saveEstimatorOnQuit()
         startIdleSampler()
     }
 
@@ -265,11 +270,33 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Writes the typical drain if it learned anything since the last write. Only a real write
+    /// starts the next save interval: the launch-time call used to start it with nothing to
+    /// save, so the first save came ~10 min in and a relaunch before that lost what was learned.
     private func saveEstimator() {
-        lastEstimatorSave = Date()
-        guard let typical = estimator.typicalWatts else { return }
+        guard let typical = estimator.typicalWatts, estimator.typicalSeconds != savedTypicalSeconds else { return }
         UserDefaults.standard.set(typical, forKey: Keys.typicalWatts)
         UserDefaults.standard.set(estimator.typicalSeconds, forKey: Keys.typicalSeconds)
+        savedTypicalSeconds = estimator.typicalSeconds
+        lastEstimatorSave = Date()
+    }
+
+    /// Saves the learned drain when MacStats quits: the Quit button and logout post
+    /// `willTerminateNotification`; `pkill` (how `install.sh` and `bundle.sh` stop the running
+    /// copy for an update) sends SIGTERM, which would otherwise end the process without it.
+    private func saveEstimatorOnQuit() {
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification,
+                                               object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.saveEstimator() }
+        }
+        signal(SIGTERM, SIG_IGN)   // handled by the dispatch source instead of killing at once
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        source.setEventHandler { [weak self] in
+            MainActor.assumeIsolated { self?.saveEstimator() }
+            exit(0)
+        }
+        source.resume()
+        terminationSource = source
     }
 
     /// Re-reads the battery the moment macOS reports a power-source change (plug/unplug,
