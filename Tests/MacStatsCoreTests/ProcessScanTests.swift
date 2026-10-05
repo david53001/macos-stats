@@ -466,8 +466,27 @@ import Testing
         let app = r.apps.first { $0.appPID == 100 }!
         let system = r.apps.first { $0.appPID == BreakdownGroup.system }!
         #expect(abs(app.cpuPercent - 25) < 0.01)
-        #expect(app.processes.first?.pid == 101)   // on the shell that started it
+        // Its own child row, not on the (idle) shell that started it.
+        #expect(app.processes.first?.pid == BreakdownGroup.exitedProcesses)
+        #expect(abs((app.processes.first?.cpuPercent ?? 0) - 25) < 0.01)
+        #expect((app.processes.first { $0.pid == 101 }?.cpuPercent ?? 1) < 0.01)
         #expect(abs(system.cpuPercent - 1) < 0.01)
+    }
+
+    @Test func orphanWorkShowsAsExitedProcessesNotOnTheAppsMainProcess() {
+        // An orphaned `yes` (ppid 1) the app is responsible for, killed between scans. Credited
+        // to the app's main process, an idle VS Code read 79 % of one core.
+        let s = BreakdownScanner(cores: 4, responsible: { $0 == 102 ? 100 : nil }, allParents: { [:] })
+        _ = s.scan([p(100, cpu: 0), p(102, cpu: 0)], appPIDs: [100], metric: .cpu, time: 0, absTime: 10,
+                   cpuTicks: ticks0)
+        _ = s.scan([p(100, cpu: 0), p(102, cpu: 1_000_000_000)], appPIDs: [100], metric: .cpu, time: 1,
+                   absTime: 20, cpuTicks: CPUTicks(user: 26, system: 0, idle: 74, nice: 0))
+        let r = s.scan([p(100, cpu: 0)], appPIDs: [100], metric: .cpu, time: 2, absTime: 30,
+                       cpuTicks: CPUTicks(user: 52, system: 0, idle: 148, nice: 0))
+        let app = r.apps.first { $0.appPID == 100 }!
+        #expect(abs(app.cpuPercent - 25) < 0.01)
+        #expect(app.processes.map(\.pid) == [BreakdownGroup.exitedProcesses, 100])
+        #expect(app.processes[1].cpuPercent == 0)
     }
 
     @Test func exitedWorkIsOnlyCreditedOutOfARisenRemainder() {

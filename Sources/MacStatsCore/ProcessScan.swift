@@ -393,7 +393,6 @@ public final class BreakdownScanner {
             let d = deltas?[p.pid]
             let cpu = d.map {
                 let ns = $0.cpuNs - $0.childCreditNs + UInt64(Double($0.childCreditNs) * creditScale)
-                    + (exitCredit[p.pid] ?? 0)
                 return processCPUPercent(previousCPUTimeNs: 0, currentCPUTimeNs: ns, elapsedSeconds: elapsed) / cores
             } ?? 0
             var watts = 0.0
@@ -404,6 +403,19 @@ public final class BreakdownScanner {
             usages.append(ProcessUsage(pid: p.pid, appPID: owners[p.pid] ?? BreakdownGroup.otherProcesses,
                                        cpuPercent: cpu, memoryBytes: p.memoryBytes, watts: watts,
                                        startTime: p.startTime))
+        }
+        // Exit credit is work by processes that are gone, so it gets its own child row in the
+        // app the credited process belongs to instead of landing on a live process: credited to
+        // the app's main process, an idle VS Code read 79 % of one core after an orphaned `yes`
+        // was killed, on the very row someone would Force Quit.
+        var exitedByApp: [Int32: UInt64] = [:]
+        for (pid, ns) in exitCredit {
+            exitedByApp[owners[pid] ?? BreakdownGroup.otherProcesses, default: 0] += ns
+        }
+        for (app, ns) in exitedByApp {
+            let cpu = processCPUPercent(previousCPUTimeNs: 0, currentCPUTimeNs: ns, elapsedSeconds: elapsed) / cores
+            usages.append(ProcessUsage(pid: BreakdownGroup.exitedProcesses, appPID: app, cpuPercent: cpu,
+                                       memoryBytes: 0))
         }
 
         let measuring = metric != .memory && deltas == nil
@@ -430,8 +442,9 @@ public final class BreakdownScanner {
 ///
 /// - `unexplained`: surviving ancestor pid → its vanished descendants' candidate work.
 /// - `orphans`: vanished pid with no surviving ancestor → candidate work, credited to the app
-///   it belonged to (`previousOwners`), on the app's main process, if that is still `alive`.
-/// Returns surviving pid → ns to add.
+///   it belonged to (`previousOwners`), keyed by the app's main process, if that is still `alive`.
+/// Returns surviving pid → ns credited on its behalf. `BreakdownScanner` shows it in that
+/// process's app as an "Exited processes" child row, not on the process itself.
 public func exitWorkCredit(unexplained: [Int32: UInt64], orphans: [Int32: UInt64],
                            previousOwners: [Int32: Int32], alive: (Int32) -> Bool,
                            budgetNs: Double) -> [Int32: UInt64] {

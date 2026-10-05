@@ -176,7 +176,26 @@ struct BreakdownView: View {
         Button("\(Int((cpuPercent * Double(Self.cores)).rounded()))% of one core") {}.disabled(true)
     }
 
-    private func processRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
+    @ViewBuilder private func processRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
+        if process.pid == BreakdownGroup.exitedProcesses {
+            exitedRow(process)
+        } else {
+            liveProcessRow(process, in: app)
+        }
+    }
+
+    /// The app's CPU credited for processes that exited between scans: no process to act on.
+    private func exitedRow(_ process: ProcessUsage) -> some View {
+        ProcessRow(process: process, name: "Exited processes", metric: metric, barScale: barScale)
+            .transition(.opacity)
+            .contextMenu {
+                Button("Exited processes") {}.disabled(true)
+                if metric == .cpu { oneCoreLine(process.cpuPercent) }
+            }
+            .help("Work by this app's processes that ended since the last update")
+    }
+
+    private func liveProcessRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
         let isAppItself = app.isApp && process.pid == app.appPID
         let name = isAppItself ? apps.info(for: app.appPID).name
                                : apps.name(ofProcess: process.pid, startTime: process.startTime)
@@ -356,7 +375,9 @@ private struct ProcessRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 4) {
                     Text(name).lineLimit(1).truncationMode(.middle)
-                    Text(verbatim: String(process.pid)).foregroundStyle(.tertiary).monospacedDigit()
+                    if process.pid > 0 {
+                        Text(verbatim: String(process.pid)).foregroundStyle(.tertiary).monospacedDigit()
+                    }
                 }
                 .font(.caption)
                 UsageBar(fraction: fraction, color: barColor(metric).opacity(0.7), height: 2)

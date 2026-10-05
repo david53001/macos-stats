@@ -67,6 +67,10 @@ public enum BreakdownGroup {
     /// CPU the machine used outside the user's processes: the kernel, WindowServer and other
     /// users' daemons, which can't be read per process. No processes, no actions.
     public static let system: Int32 = -2
+    /// The pid of an app's synthetic "Exited processes" child row (a `ProcessUsage`, not an app
+    /// row): CPU credited to the app for processes that exited before a scan could read their
+    /// last stretch (see `exitWorkCredit`). No process to act on.
+    public static let exitedProcesses: Int32 = -3
 }
 
 /// One app's summed usage across all of its processes.
