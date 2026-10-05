@@ -25,6 +25,9 @@ public struct BatterySample: Equatable {
     /// The percent charging stops at when below 100 (a charge limit or Optimized Charging's
     /// hold); nil for a full charge or when unknown. Set by the app.
     public var chargeLimitPercent: Int?
+    /// True when nothing is known about a limit, so time to full assumes 100 % and is labelled
+    /// "to 100%" rather than "to full". Set by the app.
+    public var chargeTargetAssumed = false
 
     public var isCharging: Bool { state == .charging }
 

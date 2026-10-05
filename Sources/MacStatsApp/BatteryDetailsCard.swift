@@ -75,17 +75,20 @@ extension BatterySample {
         }
     }
 
-    /// "Time to full", or "Time to 85%" when charging stops at a limit.
-    var chargeTargetLabel: String {
-        chargeLimitPercent.map { "Time to \($0)%" } ?? "Time to full"
+    /// "Time to full", "Time to 85%" when charging stops at a limit, or "Time to 100%" when
+    /// MacStats can't tell whether a limit will stop it sooner.
+    var chargeTargetLabel: String { "Time to \(chargeTargetName)" }
+
+    private var chargeTargetName: String {
+        if let limit = chargeLimitPercent { return "\(limit)%" }
+        return chargeTargetAssumed ? "100%" : "full"
     }
 
     /// The Battery card's short secondary line (the card's text column is ~120 pt).
     var cardMeta: String {
         switch state {
         case .charging:
-            let target = chargeLimitPercent.map { "\($0)%" } ?? "full"
-            return timeToFullMinutes.map { "\(formatDuration($0)) to \(target)" }
+            return timeToFullMinutes.map { "\(formatDuration($0)) to \(chargeTargetName)" }
                 ?? (percent >= 90 ? "almost full" : "charging")   // no estimate in the last trickle
         case .charged: return "fully charged"
         case .notCharging: return "not charging"

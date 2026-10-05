@@ -50,7 +50,14 @@ final class AppModel: ObservableObject {
         typicalWatts: UserDefaults.standard.object(forKey: Keys.typicalWatts) as? Double,
         typicalSeconds: UserDefaults.standard.double(forKey: Keys.typicalSeconds))
     private var chargeCurrent = ChargeCurrent()
-    private var learnedLimit = UserDefaults.standard.object(forKey: Keys.chargeLimit) as? Int
+    private var chargeLimits = ChargeLimitResolver(
+        remembered: UserDefaults.standard.object(forKey: Keys.powerdChargeLimit) as? Int,
+        rememberedAt: UserDefaults.standard.object(forKey: Keys.powerdChargeLimitDate) as? Date,
+        observed: UserDefaults.standard.object(forKey: Keys.chargeLimit) as? Int)
+    private var savedRememberedLimit = UserDefaults.standard.object(forKey: Keys.powerdChargeLimit) as? Int
+    private var savedRememberedAt = UserDefaults.standard.object(forKey: Keys.powerdChargeLimitDate) as? Date
+        ?? .distantPast
+    private var pluggedInSince: Date?                   // nil: plugged in when MacStats launched
     private var powerdLimit = ChargeLimitHint.unknown
     private var powerdLimitReadFor: BatterySample?      // the reading it was last read for
     private var lastTelemetry: BatteryTelemetry?
@@ -74,6 +81,9 @@ final class AppModel: ObservableObject {
         static let typicalWatts = "batteryDrainTypicalWatts"
         static let typicalSeconds = "batteryDrainTypicalSeconds"
         static let chargeLimit = "batteryLearnedChargeLimit"
+        /// powerd's last believed charge limit (100 = none) and when it said so.
+        static let powerdChargeLimit = "batteryPowerdChargeLimit"
+        static let powerdChargeLimitDate = "batteryPowerdChargeLimitDate"
         static let nominalRecent = "batteryNominalCapacityRecent"
         /// Before 2026-10-05: a "typical" learned from plugged-in and across-sleep readings
         /// (2.5 W on a Mac that drains 5.5 W). Dropped, not migrated.
@@ -232,7 +242,8 @@ final class AppModel: ObservableObject {
             }
         }
 
-        let limit = chargeLimit(for: sample, previousState: previousState)
+        let target = chargeTarget(for: sample, previousState: previousState)
+        let limit: Int? = if case .limit(let percent)? = target { percent } else { nil }
         switch state {
         case .discharging:
             if let wh = telemetry?.remainingWh {
@@ -242,6 +253,7 @@ final class AppModel: ObservableObject {
         case .charging:
             let limit = limit.flatMap { $0 > sample.percent ? $0 : nil }   // still charging past it ⇒ not a limit
             sample.chargeLimitPercent = limit
+            sample.chargeTargetAssumed = target == .unknown   // labelled "to 100%", not "to full"
             if let raw = telemetry?.currentMAh, let max = telemetry?.rawMaxMAh, let mA = chargeCurrent.milliamps,
                let minutes = minutesToTarget(currentMAh: raw, maxMAh: max, chargeMA: mA,
                                              targetPercent: limit ?? 100) {
@@ -261,27 +273,35 @@ final class AppModel: ObservableObject {
                                   averageSinceUnplug: sessionStartedAtUnplug)
     }
 
-    /// The percent charging stops at (below 100), or nil. powerd's policy file is re-read only
-    /// when the percent or state changes. Only an active policy in it counts: the file was
-    /// seen with an empty policy list while unplugged on a Mac that holds at 85 % on AC, and
-    /// it isn't known to be filled in at plug-in, so otherwise the level where charging was
-    /// last seen to stop is used (forgotten once charging goes past it).
-    private func chargeLimit(for sample: BatterySample, previousState: BatteryState?) -> Int? {
-        let learned = learnedChargeLimit(previous: learnedLimit, previousState: previousState,
-                                         state: sample.state, percent: sample.percent)
-        if learned != learnedLimit {
-            learnedLimit = learned
-            UserDefaults.standard.set(learned, forKey: Keys.chargeLimit)
+    /// Where charging stops (`ChargeLimitResolver`), nil on battery. powerd's policy file
+    /// (filled in within ~20 s of plug-in) is re-read when the percent or state changes, and on
+    /// every refresh for the first two minutes after plug-in. What it said is remembered across
+    /// launches, as is where charging was last seen to stop (the fallback without the file).
+    private func chargeTarget(for sample: BatterySample, previousState: BatteryState?) -> ChargeTarget? {
+        let now = Date()
+        let observed = learnedChargeLimit(previous: chargeLimits.observed, previousState: previousState,
+                                          state: sample.state, percent: sample.percent)
+        if observed != chargeLimits.observed {
+            chargeLimits.observed = observed
+            UserDefaults.standard.set(observed, forKey: Keys.chargeLimit)
         }
         guard sample.state.isPluggedIn else { return nil }
-        if powerdLimitReadFor?.percent != sample.percent || powerdLimitReadFor?.state != sample.state {
+        if previousState == .discharging { pluggedInSince = now }
+        let pluggedInFor = now.timeIntervalSince(pluggedInSince ?? .distantPast)
+        if powerdLimitReadFor?.percent != sample.percent || powerdLimitReadFor?.state != sample.state
+            || pluggedInFor < 2 * ChargeLimitResolver.powerdSettleSeconds {
             powerdLimit = readPowerdChargeLimit()
             powerdLimitReadFor = sample
         }
-        switch powerdLimit {
-        case .limit(let percent): return percent
-        case .noLimit, .unknown: return learnedLimit
+        let target = chargeLimits.resolve(powerd: powerdLimit, pluggedInFor: pluggedInFor, now: now)
+        if let remembered = chargeLimits.remembered, let at = chargeLimits.rememberedAt,
+           remembered != savedRememberedLimit || at.timeIntervalSince(savedRememberedAt) > 24 * 3600 {
+            UserDefaults.standard.set(remembered, forKey: Keys.powerdChargeLimit)
+            UserDefaults.standard.set(at, forKey: Keys.powerdChargeLimitDate)
+            savedRememberedLimit = remembered
+            savedRememberedAt = at
         }
+        return target
     }
 
     /// Writes the recent full-charge readings (health) when they changed, and the typical drain
