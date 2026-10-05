@@ -23,6 +23,8 @@ final class AppModel: ObservableObject {
     private var procTimer: Timer?
     /// Attribution caches + the previous scan, for the open breakdown only (nil otherwise).
     private var scanner: BreakdownScanner?
+    /// Running app pid → whether it has a bundle id (see `procScanTick`); open breakdown only.
+    private var appHasBundleID: [Int32: Bool] = [:]
 
     /// Cumulative-counter snapshots, oldest→newest, covering ~`rateWindowSeconds` (just the
     /// last two while idle). Rates diff against the snapshot ~1s back (see `rateBaselineIndex`)
@@ -299,6 +301,7 @@ final class AppModel: ObservableObject {
         procTimer?.invalidate()
         procTimer = nil
         scanner = nil
+        appHasBundleID = [:]
         store.clearBreakdown()
     }
 
@@ -410,10 +413,17 @@ final class AppModel: ObservableObject {
 
         // GUI apps the user is running = the grouping anchors. Processes no app is responsible
         // for land in "Other processes", so the rows cover all of the user's processes.
-        let anchors = attributionAnchors(NSWorkspace.shared.runningApplications.map {
-            RunningAppInfo(pid: Int32($0.processIdentifier), hasBundleIdentifier: $0.bundleIdentifier != nil,
-                           isBackgroundOnly: $0.activationPolicy == .prohibited)
+        // `bundleIdentifier` costs ~2 µs per app per call (120 µs a scan here), so whether an
+        // app has one is kept per pid for the breakdown's life (pruned to running apps).
+        var hasBundleID: [Int32: Bool] = [:]
+        let anchors = attributionAnchors(NSWorkspace.shared.runningApplications.map { app in
+            let pid = Int32(app.processIdentifier)
+            let hasID = appHasBundleID[pid] ?? (app.bundleIdentifier != nil)
+            hasBundleID[pid] = hasID
+            return RunningAppInfo(pid: pid, hasBundleIdentifier: hasID,
+                                  isBackgroundOnly: app.activationPolicy == .prohibited)
         })
+        appHasBundleID = hasBundleID
         let result = scanner.scan(raw, appPIDs: anchors.apps, fallbackAppPIDs: anchors.fallbacks,
                                   metric: metric, time: time, absTime: absTime, cpuTicks: ticks,
                                   memoryInUseBytes: metric == .memory ? memoryInUseAtFullSize(readVMRaw()) : nil)
