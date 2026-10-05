@@ -68,12 +68,22 @@ public struct BatteryTelemetry: Equatable {
 
 /// The largest of the last few values. The gauge's `NominalChargeCapacity` swings ~2 %
 /// between updates (4474 → 4558 mAh within minutes), which made health flicker 98/99 % while
-/// System Settings held 99 %; health is taken from the peak of the recent readings.
+/// System Settings held 99 %; health is taken from the peak of the recent readings. The app
+/// saves `values` and seeds the next launch with them: starting empty, the first reading after
+/// launch alone set health (4509 mAh → 98 % for about a minute while System Settings said 99 %).
 public struct RecentMax: Equatable {
     public let capacity: Int
     public private(set) var values: [Int] = []
 
-    public init(capacity: Int) { self.capacity = max(1, capacity) }
+    /// `values`: earlier readings, oldest first (e.g. saved by the last launch); the last
+    /// `capacity` positive ones are kept.
+    public init(capacity: Int, values: [Int] = []) {
+        self.capacity = max(1, capacity)
+        self.values = Array(values.filter { $0 > 0 }.suffix(self.capacity))
+    }
+
+    /// The largest kept value, nil before any.
+    public var peak: Int? { values.max() }
 
     /// Adds a reading and returns the largest of the last `capacity`.
     public mutating func add(_ value: Int) -> Int {

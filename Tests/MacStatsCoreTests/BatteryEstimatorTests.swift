@@ -350,10 +350,98 @@ import Foundation
         #expect(parsePowerdChargeLimit(ended, bootSessionUUID: "BOOT-1") == .noLimit)
     }
 
+    /// powerd's file on this Mac 20 s after plugging in (2026-10-05 22:03): a manual 85 % limit
+    /// (end of charge) plus Optimized Charging's 80 % (not end of charge; the charge went on
+    /// past 80 % to the limit).
+    static let pluggedInFile = Data(base64Encoded: """
+        YnBsaXN0MDDSAQIDBF8QD2Jvb3RTZXNzaW9uVVVJRFhwb2xpY2llc18QJEM2NkRBQzY2LTNCRUEtNEQ5Ny05Qjk3LTAzNDhDOTM3\
+        OEJBQ08RArNicGxpc3QwMNQBAgMEBQYHClgkdmVyc2lvblkkYXJjaGl2ZXJUJHRvcFgkb2JqZWN0cxIAAYagXxAPTlNLZXllZEFy\
+        Y2hpdmVy0QgJVHJvb3SAAasLDBMlJiowND0+QlUkbnVsbNINDg8SWk5TLm9iamVjdHNWJGNsYXNzohARgAKAB4AK2RQVFg4XGBka\
+        GxwdHh8gISEgJFZyZWFzb25Vb3duZXJYc29jbGltaXRVZHJhaW5adGVybWluYXRlZF5ub0NoYXJnZVRvRnVsbF1pc0VuZE9mQ2hh\
+        cmdlVXRva2VugAMRAmcQVYAGCQgICYAEXxARbWFudWFsQ2hhcmdlTGltaXTSJw4oKVxOUy51dWlkYnl0ZXNPEBDJ5hNsXflEbIGr\
+        RZUtkCqggAXSKywtLlokY2xhc3NuYW1lWCRjbGFzc2VzVk5TVVVJRKItL1hOU09iamVjdNIrLDEyXxAQQ2hhcmdlQ3RybFBvbGlj\
+        eaIzL18QEENoYXJnZUN0cmxQb2xpY3nZFBUWDhcYGRobNR02HyAhISE8gAgQUIAGCQgICIAJXxAYb3B0aW1pemVkQmF0dGVyeUNo\
+        YXJnaW5n0j8OQClcTlMudXVpZGJ5dGVzTxAQNVLhrzHaSGKD3LULbbgZIoAF0issQ0ReTlNNdXRhYmxlQXJyYXmjQ0UvV05TQXJy\
+        YXkACAARABoAJAApADIANwBJAEwAUQBTAF8AZQBqAHUAfAB/AIEAgwCFAJgAnwClAK4AtAC/AM4A3ADiAOQA5wDpAOsA7ADtAO4A\
+        7wDxAQUBCgEXASoBLAExATwBRQFMAU8BWAFdAXABcwGGAZkBmwGdAZ8BoAGhAaIBowGlAcABxQHSAeUB5wHsAfsB/wAAAAAAAAIB\
+        AAAAAAAAAEYAAAAAAAAAAAAAAAAAAAIHAAgADQAfACgATwAAAAAAAAIBAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAMG
+        """)!
+
+    @Test func realPluggedInFileGivesTheLimitAndTheOptimizedChargingHold() {
+        // That charge stopped at 80 % (the hold), 40 minutes later.
+        let policy = parsePowerdChargePolicy(Self.pluggedInFile, bootSessionUUID: "C66DAC66-3BEA-4D97-9B97-0348C9378BAC")
+        #expect(policy == PowerdChargePolicy(limit: .limit(85), hold: 80))
+        #expect(parsePowerdChargePolicy(Self.pluggedInFile, bootSessionUUID: "OTHER-BOOT")
+                == PowerdChargePolicy(limit: .unknown))
+    }
+
+    @Test func onlyAnOptimizedChargingHoldIsAHoldWithoutALimit() throws {
+        let data = try powerdFile(policies: [["soclimit": 80, "terminated": false, "isEndOfCharge": false]])
+        #expect(parsePowerdChargePolicy(data, bootSessionUUID: "BOOT-1") == PowerdChargePolicy(limit: .noLimit, hold: 80))
+    }
+
     @Test func staleOrUnreadableFileIsUnknown() throws {
         let data = try powerdFile(policies: [["soclimit": 85, "terminated": false]], boot: "OLD")
         #expect(parsePowerdChargeLimit(data, bootSessionUUID: "BOOT-1") == .unknown)
         #expect(parsePowerdChargeLimit(Data("garbage".utf8), bootSessionUUID: "BOOT-1") == .unknown)
         #expect(parsePowerdChargeLimit(nil, bootSessionUUID: "BOOT-1") == .unknown)
+    }
+}
+
+@Suite struct ChargeLimitResolverTests {
+    private let now = Date(timeIntervalSince1970: 1_791_227_000)
+
+    @Test func powerdLimitWinsAndIsRemembered() {
+        var r = ChargeLimitResolver(observed: 80)
+        #expect(r.resolve(powerd: .limit(85), pluggedInFor: 20, now: now) == .limit(85))
+        #expect(r.remembered == 85 && r.rememberedAt == now)
+    }
+
+    @Test func rightAfterPlugInTheRememberedLimitBridgesTheEmptyFile() {
+        // The round-2 case: the file still empty from the unplug reads "no limit". Remembered
+        // from the last plug-in, the target is 85 % from the first reading.
+        var r = ChargeLimitResolver(remembered: 85, rememberedAt: now.addingTimeInterval(-86_400))
+        #expect(r.resolve(powerd: .noLimit, pluggedInFor: 5, now: now) == .limit(85))
+        #expect(r.resolve(powerd: .unknown, pluggedInFor: 5, now: now) == .limit(85))
+    }
+
+    @Test func noLimitIsBelievedOnceTheFileHadTimeToFillIn() {
+        // The limit was switched off: powerd's file stays empty after plug-in.
+        var r = ChargeLimitResolver(remembered: 85, rememberedAt: now.addingTimeInterval(-86_400))
+        #expect(r.resolve(powerd: .noLimit, pluggedInFor: 61, now: now) == .full)
+        #expect(r.remembered == 100)
+        #expect(r.resolve(powerd: .noLimit, pluggedInFor: 5, now: now) == .full)   // next plug-in
+    }
+
+    @Test func withNothingKnownTheTargetIsUnknown() {
+        var r = ChargeLimitResolver()
+        #expect(r.resolve(powerd: .noLimit, pluggedInFor: 5, now: now) == .unknown)
+        #expect(r.resolve(powerd: .unknown, pluggedInFor: 3600, now: now) == .unknown)
+    }
+
+    @Test func withoutPowerdTheObservedStopIsUsed() {
+        // Older macOS (no policy file): where charging was last seen to stop.
+        var r = ChargeLimitResolver(observed: 80)
+        #expect(r.resolve(powerd: .unknown, pluggedInFor: 3600, now: now) == .limit(80))
+    }
+
+    @Test func anOptimizedChargingHoldIsTheTargetUntilPassed() {
+        // Live 2026-10-05: limit 85 %, hold 80 %; charging stopped at 80 %.
+        var r = ChargeLimitResolver()
+        #expect(r.resolve(powerd: .limit(85), hold: 80, percent: 56, pluggedInFor: 30, now: now) == .limit(80))
+        #expect(r.resolve(powerd: .limit(85), hold: 80, percent: 80, pluggedInFor: 60, now: now) == .limit(80))
+        // Earlier charges ran on past 80 %: then the limit is the target again.
+        #expect(r.resolve(powerd: .limit(85), hold: 80, percent: 81, pluggedInFor: 600, now: now) == .limit(85))
+        #expect(r.remembered == 85)   // only the end limit is remembered
+        // With no limit set, the hold still comes first.
+        var free = ChargeLimitResolver()
+        #expect(free.resolve(powerd: .noLimit, hold: 80, percent: 60, pluggedInFor: 600, now: now) == .limit(80))
+        #expect(free.resolve(powerd: .noLimit, hold: 80, percent: 81, pluggedInFor: 600, now: now) == .full)
+    }
+
+    @Test func aLongUnconfirmedMemoryExpires() {
+        var r = ChargeLimitResolver(remembered: 85, rememberedAt: now.addingTimeInterval(-31 * 86_400))
+        #expect(r.resolve(powerd: .unknown, pluggedInFor: 3600, now: now) == .unknown)
+        #expect(ChargeLimitResolver(remembered: 0, rememberedAt: now).remembered == nil)   // nonsense
     }
 }

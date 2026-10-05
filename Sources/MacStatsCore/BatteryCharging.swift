@@ -130,38 +130,138 @@ public enum ChargeLimitHint: Equatable {
     case limit(Int)
 }
 
+/// powerd's charging policies: where charging ends (`limit`), and a pause before that, such as
+/// Optimized Charging holding at 80 % (`hold`, below the limit; nil if none).
+public struct PowerdChargePolicy: Equatable {
+    public var limit: ChargeLimitHint
+    public var hold: Int?
+
+    public init(limit: ChargeLimitHint, hold: Int? = nil) {
+        self.limit = limit; self.hold = hold
+    }
+}
+
 /// Parses `/Library/Preferences/com.apple.powerd.charging.plist` (macOS 26): a plist whose
 /// `policies` value is an NSKeyedArchiver blob of charge-control policies, each archived as a
-/// dictionary with `soclimit` (percent), `terminated` and a `reason` (e.g. a manual charge
-/// limit). Private format, so anything unexpected yields `.unknown`.
-public func parsePowerdChargeLimit(_ data: Data?, bootSessionUUID: String?) -> ChargeLimitHint {
+/// dictionary with `soclimit` (percent), `terminated`, `isEndOfCharge` and a `reason` (e.g. a
+/// manual charge limit). Private format, so anything unexpected yields `.unknown`.
+///
+/// powerd fills the list within ~20 s of plugging in and empties it when unplugged (seen
+/// 2026-10-05: empty at 18:41 after unplugging; at a 22:02:43 plug-in it held
+/// `manualChargeLimit` 85 % with `isEndOfCharge` and `optimizedBatteryCharging` 80 % without).
+/// That charge stopped at 80 % (raw 79.0 %, 22:42, macOS's own time to full jumping to
+/// 1586 min): Optimized Charging's hold was in force. Earlier charges on this Mac ran on to
+/// the 85 % limit, so a hold is a likely stop, not a certain one: end-of-charge policies give
+/// `limit`, the others `hold`. Files without `isEndOfCharge` keys count every policy as a limit.
+public func parsePowerdChargePolicy(_ data: Data?, bootSessionUUID: String?) -> PowerdChargePolicy {
     guard let data,
           let outer = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
           let blob = outer["policies"] as? Data,
           let archive = try? PropertyListSerialization.propertyList(from: blob, format: nil) as? [String: Any],
           let objects = archive["$objects"] as? [Any] else {
-        return .unknown
+        return PowerdChargePolicy(limit: .unknown)
     }
     if let fileBoot = outer["bootSessionUUID"] as? String, let bootSessionUUID, fileBoot != bootSessionUUID {
-        return .unknown   // written before this boot: may describe a policy that no longer runs
+        return PowerdChargePolicy(limit: .unknown)   // written before this boot: may describe a policy that no longer runs
     }
-    let limits = objects.compactMap { object -> Int? in
+    let active = objects.compactMap { object -> (limit: Int, endOfCharge: Bool?)? in
         guard let policy = object as? [String: Any],
-              let limit = (policy["soclimit"] as? NSNumber)?.intValue,
-              (1...99).contains(limit),
+              let limit = (policy["soclimit"] as? NSNumber)?.intValue, (1...99).contains(limit),
               (policy["terminated"] as? NSNumber)?.boolValue != true else { return nil }
-        return limit
+        return (limit, (policy["isEndOfCharge"] as? NSNumber)?.boolValue)
     }
-    return limits.min().map(ChargeLimitHint.limit) ?? .noLimit
+    let marked = active.contains { $0.endOfCharge != nil }
+    let limit = active.filter { !marked || $0.endOfCharge == true }.map(\.limit).min()
+    let hold = active.filter { marked && $0.endOfCharge != true }.map(\.limit).filter { $0 < limit ?? 100 }.min()
+    return PowerdChargePolicy(limit: limit.map(ChargeLimitHint.limit) ?? .noLimit, hold: hold)
+}
+
+/// The end-of-charge part of `parsePowerdChargePolicy`.
+public func parsePowerdChargeLimit(_ data: Data?, bootSessionUUID: String?) -> ChargeLimitHint {
+    parsePowerdChargePolicy(data, bootSessionUUID: bootSessionUUID).limit
+}
+
+/// Where the current charge will stop, as far as MacStats can tell.
+public enum ChargeTarget: Equatable {
+    /// Charging stops at this percent (below 100).
+    case limit(Int)
+    /// Known to charge to 100 %.
+    case full
+    /// Nothing known (no readable powerd policy, nothing remembered or seen): estimates go to
+    /// 100 % and say so.
+    case unknown
+}
+
+/// Decides the charge target from powerd's file, what it said on earlier plug-ins, and where
+/// charging was last seen to stop. After a reinstall or relaunch the in-memory limit was gone
+/// and the file still read "no limit" for the first seconds after plug-in, so "Time to full"
+/// targeted 100 %: 79 min shown on average where charging stopped after 24 (this Mac's
+/// limit-ended charges, round-2 review).
+public struct ChargeLimitResolver: Equatable {
+    /// powerd's "no limit" is believed once plugged in this long (it rewrites the file within
+    /// ~20 s of plug-in; before that the file can still hold the unplugged, empty list).
+    public static let powerdSettleSeconds: TimeInterval = 60
+    /// A remembered powerd answer not confirmed for this long is dropped (e.g. a macOS update
+    /// changed the file's format and the setting may have changed since).
+    public static let rememberSeconds: TimeInterval = 30 * 24 * 3600
+
+    /// powerd's last believed answer (100 = no limit) and when it was given; persisted.
+    public private(set) var remembered: Int?
+    public private(set) var rememberedAt: Date?
+    /// Where charging was last seen to stop (`learnedChargeLimit`); persisted. Used only when
+    /// powerd has never answered (older macOS has no policy file).
+    public var observed: Int?
+
+    public init(remembered: Int? = nil, rememberedAt: Date? = nil, observed: Int? = nil) {
+        let valid = remembered.map { (1...100).contains($0) } ?? false
+        self.remembered = valid ? remembered : nil
+        self.rememberedAt = valid ? rememberedAt : nil
+        self.observed = observed
+    }
+
+    /// The target at `percent`, plugged in for `pluggedInFor` seconds, with powerd saying
+    /// `powerd` and listing `hold`. A hold is the target until the charge has passed it
+    /// (then charging went on, so the hold wasn't used); only the end limit is remembered.
+    public mutating func resolve(powerd: ChargeLimitHint, hold: Int? = nil, percent: Int = 0,
+                                 pluggedInFor: TimeInterval, now: Date) -> ChargeTarget {
+        let target = resolveEnd(powerd: powerd, pluggedInFor: pluggedInFor, now: now)
+        if let hold, percent <= hold {
+            if case .limit(let end) = target, end <= hold { return target }
+            return .limit(hold)
+        }
+        return target
+    }
+
+    private mutating func resolveEnd(powerd: ChargeLimitHint, pluggedInFor: TimeInterval, now: Date) -> ChargeTarget {
+        switch powerd {
+        case .limit(let percent):
+            remember(percent, now)
+            return .limit(percent)
+        case .noLimit where pluggedInFor >= Self.powerdSettleSeconds:
+            remember(100, now)
+            return .full
+        case .noLimit, .unknown:
+            break
+        }
+        if let remembered, let at = rememberedAt, now.timeIntervalSince(at) < Self.rememberSeconds {
+            return remembered < 100 ? .limit(remembered) : .full
+        }
+        return observed.map(ChargeTarget.limit) ?? .unknown
+    }
+
+    private mutating func remember(_ percent: Int, _ now: Date) {
+        remembered = percent
+        rememberedAt = now
+    }
 }
 
 /// Reads powerd's charging-policy file (a few hundred bytes, world-readable). Cheap enough to
 /// call when the battery percent or state changes.
-public func readPowerdChargeLimit() -> ChargeLimitHint {
+public func readPowerdChargePolicy() -> PowerdChargePolicy {
     let url = URL(fileURLWithPath: "/Library/Preferences/com.apple.powerd.charging.plist")
     var buffer = [CChar](repeating: 0, count: 64)
     var size = buffer.count
     let boot = sysctlbyname("kern.bootsessionuuid", &buffer, &size, nil, 0) == 0
         ? String(cString: buffer) : nil
-    return parsePowerdChargeLimit(try? Data(contentsOf: url), bootSessionUUID: boot)
+    return parsePowerdChargePolicy(try? Data(contentsOf: url), bootSessionUUID: boot)
 }

@@ -646,3 +646,118 @@ found: other users' and root processes' footprints can't be read without root.
   **Manual check:** after installing (`./Scripts/bundle.sh && open ~/Applications/MacStats.app`),
   open the Memory breakdown and check the card's three values add up to the header; open the CPU
   breakdown, expand an app and check the "% of one core" lines.
+
+## Review fixes (round 3): battery (2026-10-05, branch `review3/battery`)
+
+**Context.** Two independent round-2 reviews of branch `fix/readings-accuracy` at `164ce01`
+(`docs/reviews/2026-10-05-readings-accuracy-review-round2-A.md` and `-B.md`; at the time of
+writing uncommitted files in the main checkout at
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/reviews/`, evidence in
+`docs/reviews/2026-10-05-readings-accuracy/round2-A|round2-B/`) both scored Battery 7/10. Goal:
+≥ 9/10. This round touched only battery code (`Sources/MacStatsCore/Battery*.swift`, the battery
+parts of `Sources/MacStatsApp/MacStatsApp.swift`, `Sources/MacStatsApp/BatteryDetailsCard.swift`)
+and their tests. **Tests:** `./Scripts/test.sh` → **238 tests in 34 suites pass** (221 before).
+
+**Terms.** *Raw charge*: `AppleRawCurrentCapacity / AppleRawMaxCapacity` from
+`ioreg -rn AppleSmartBattery`; macOS shows ⌊raw⌋ + 1 % while charging. *powerd*: the macOS
+power daemon. *Optimized Charging (OBC)*: macOS holding the charge at 80 % until shortly
+before it expects you to unplug. *Powerlog*: macOS's world-readable battery history,
+`/private/var/db/powerlog/Library/BatteryLife/CurrentPowerlog.PLSQL` (+ `Archives/*.gz`), table
+`PLBatteryAgent_EventBackward_Battery`, one row per gauge update (~1/min awake); copy before
+querying.
+
+### Live charge (the owner plugged in at 55 %, 22:02:43)
+Logged every 30 s for 40 min: `ioreg -rn AppleSmartBattery`, `pmset -g batt`, and
+`/Library/Preferences/com.apple.powerd.charging.plist` (scratch logger, not in the repo).
+- **Charging stopped at 80 % shown / raw 79.0 % at ~22:42** (not at the 85 % limit). At the
+  stop, macOS's `AvgTimeToFull` jumped from 64 to 1586 min: Optimized Charging's hold.
+- **Charge-limit source found: powerd's policy file is live.** Empty while unplugged (as
+  reviewer B saw); within ~20 s of plug-in it held two policies: `manualChargeLimit`
+  `soclimit` 85 with `isEndOfCharge` = true, and `optimizedBatteryCharging` `soclimit` 80 with
+  `isEndOfCharge` = false. Rewritten again at 22:08 and at the stop (same content).
+- Checked and **not** a usable source: `ioreg -l` (no limit key anywhere; the gauge's
+  `ChargerData.ChargingVoltage` tracks the charge, it isn't the limit), `pmset -g`,
+  `pmset -g adapter`, `pmset -g log` (no limit events), IOPS power-source dictionary (no OBC
+  key), `/Library/Preferences/com.apple.PowerManagement*.plist`. Useful side facts:
+  `ChargerData.NotChargingReason` is `0x80` (128) with no adapter and has bit `0x1000000` set
+  whenever charging is held by a limit or hold (all powerlog holds at raw 84.0 %, and this
+  80 % stop); `~/Library/Preferences/com.apple.batteryui.charging.mac.plist` holds
+  `com.apple.batteryui.charging.mac.prior.limit = 85` (last changed Sep 9; meaning not clear,
+  not used). Powerlog table `PLBatteryAgent_EventBackward_ChargingLimit` logs OBC engagement
+  but lags by minutes.
+- **Time to full, out of sample** (the model was fitted on earlier charges): replaying this
+  charge through the app's own `ChargeCurrent` + `minutesToTarget`
+  (`LiveChargeTests` in `Tests/MacStatsCoreTests/ChargeCalibrationTests.swift`):
+
+  | target | readings | mean error (bias) | mean abs error | worst |
+  |---|---|---|---|---|
+  | 80 % (where it stopped; what the app now targets) | 46 | +0.3 min | **1.1 min** | 3.9 min |
+  | 85 % (the limit alone) | 47 | +8.5 min | 8.5 min | 12.9 min |
+  | 100 % (round 2's "limit unknown" case) | 47 | +64.7 min | 64.7 min | 71.9 min |
+  | macOS (`AvgTimeToFull`, to 100 %) | — | 139 → 64 min shown while 38 → 1 min was true | | |
+
+  The stretch above raw 85 % is still unverified (no charge to 100 % while awake).
+
+### 1. Time to full when the limit is unknown (B-B1, Medium): fixed
+- `parsePowerdChargePolicy` (`Sources/MacStatsCore/BatteryCharging.swift`) returns the end
+  limit (end-of-charge policies) and a **hold** (other policies below it, i.e. OBC's 80 %). The
+  old parse took the minimum of all policies, which happened to be right today but would stay
+  "80 %" while a charge ran past an unused hold.
+- `ChargeLimitResolver` (same file, pure, tested in `ChargeLimitResolverTests`) decides the
+  target: powerd's end limit if listed; "no limit" only after 60 s plugged in (before that the
+  file can still be the empty unplugged one); else the **remembered** answer from the last
+  plug-in (UserDefaults `batteryPowerdChargeLimit`, 100 = none, plus
+  `batteryPowerdChargeLimitDate`; dropped after 30 days without confirmation); else where
+  charging was last seen to stop (`batteryLearnedChargeLimit`, the fallback for macOS without
+  the file); else **unknown**. A hold is the target until the charge passes it (then the hold
+  wasn't used). Only the end limit is remembered.
+- The app re-reads the file on every refresh during the first 2 minutes after plug-in, and on
+  each percent/state change (a ~800-byte file; no new timer).
+- Unknown target: the drill-in says **"Time to 100%"** and the card "… to 100%" instead of "to
+  full". At the stop percent while still charging (the last minute): "Almost done".
+
+### 2. Time left swings (A-B3, B-B2): improved, not eliminated
+Tuned `BatteryEstimator` on this Mac's real history: 5 days of powerlog (14 on-battery sessions,
+2 666 gauge readings), drain per interval from the coulomb counter `PassedCharge` (whole mAh),
+intervals over 180 s (sleep) skipped as the app does. Each reading's expected draw was compared
+with the drain that actually followed (next 60 min, next 120 min, rest of the session); swing =
+|ln| change of the expected draw over 10 awake minutes. Scripts were in the session scratch dir
+(`replay.py`, `grid*.py`); the Python mirror matches the Swift code on the embedded session
+(0.113 / 0.135 both).
+
+| | mean abs log error (60 / 120 / rest) | mean abs error at 120 min | swing per 10 min (mean / p90) |
+|---|---|---|---|
+| before (5 / 30 min, 3 h, weight 0.6) | 37.7 / 36.4 / 34.2 % | 31.5 % | 21.6 % / 52 % |
+| **after** | **35.8 / 31.3 / 32.1 %** | **27.9 %** | **16.4 % / 38 %** |
+
+New constants: short 10 min, recent 60 min, typical 12 h, prior 20 min (unchanged); short weight
+**0.8 when the load rose, 0.6 when it fell**, the latter phased in over the first 10 min of a
+session. The gain shows on each half of the history separately (constants chosen on all of it; 0.364 → 0.333 and
+0.364 → 0.341 error; 0.22 → 0.17 swing). Trusting the long-run average much more scores better
+on this history (~31 % / 12 %) but read 45–57 % pessimistic for a light half hour after heavy
+use, so the search was restricted to settings within ±25 % of synthetic load changes after
+30 min. Honesty checks (pinned in `Tests/MacStatsCoreTests/TimeLeftReplayTests.swift`): a 15 W
+render right after unplugging is within 9 % after 10 min (was 20 %); a 4 → 12 W step reaches
+85 % of the step in 30 min (was 83 %); a light 1.8 W session on a 5 W Mac reads −21 % after
+30 min (was −19 %); 4 W after a 12 W build reads −24 % (was −17 %). Reviewer B's live window
+replayed: ends at 7 h 49 m vs 7 h 21 m measured (+6 %; was 8 h 17 m, +13 %); its range is
+5 h 27 m – 7 h 49 m (was 5 h 44 m – 8 h 17 m), so swings right after launch remain.
+The next-hour drain of real use is largely unpredictable (error floor ~30 %).
+
+### 3. Health 98 % for a minute after launch (A-B2): fixed
+`RecentMax` can be seeded; the app saves its last 10 `NominalChargeCapacity` readings
+(UserDefaults `batteryNominalCapacityRecent`) with the drain average (plug/unplug, every
+10 min on battery, quit/SIGTERM) and seeds the next launch.
+
+### 4. Average label (B-B4): fixed
+"Avg awake since unplugged" / "Avg awake since MacStats started".
+
+### 5. Other battery findings
+- A-B1 (Medium, time to full validated in-sample only): answered by the live out-of-sample
+  charge above (1.1 min); above raw 85 % still unvalidated.
+- A-B4 / B-B5 (Low, remaining-energy voltage model near empty): not changed; needs a logged
+  full drain.
+
+**To verify by hand (needs a person):** plug in with the Battery drill-in open and check the row
+reads "Time to 80%" (or "85%") within ~20 s; on a later plug-in where charging runs past 80 %,
+check it switches to "Time to 85%".

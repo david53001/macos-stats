@@ -36,7 +36,7 @@ struct BatteryDetailsCard: View {
             rows.append(("Time left", b.timeToEmptyMinutes.map(formatDuration) ?? "Calculating…"))
         case .charging:
             rows.append((b.chargeTargetLabel, b.timeToFullMinutes.map(formatDuration)
-                            ?? (b.percent >= 90 ? "Almost full" : "Calculating…")))
+                            ?? (b.atChargeLimit ? "Almost done" : b.percent >= 90 ? "Almost full" : "Calculating…")))
         case .charged, .notCharging:
             if let limit = b.chargeLimitPercent { rows.append(("Charge limit", "\(limit)%")) }
         }
@@ -45,8 +45,9 @@ struct BatteryDetailsCard: View {
         if let power = store.batteryPowerWatts {
             rows.append(("Power, last min", formatWatts(power)))
         }
+        // Awake time only: intervals that span sleep are left out (see `gaugeInterval`).
         if let avg = store.batteryAverageWatts {
-            rows.append((store.batteryAverageSinceUnplug ? "Avg since unplugged" : "Avg since MacStats started",
+            rows.append((store.batteryAverageSinceUnplug ? "Avg awake since unplugged" : "Avg awake since MacStats started",
                          formatWatts(avg)))
         }
         if b.state.isPluggedIn, let adapter = t?.adapterWatts {
@@ -74,18 +75,24 @@ extension BatterySample {
         }
     }
 
-    /// "Time to full", or "Time to 85%" when charging stops at a limit.
-    var chargeTargetLabel: String {
-        chargeLimitPercent.map { "Time to \($0)%" } ?? "Time to full"
+    /// "Time to full", "Time to 85%" when charging stops at a limit, or "Time to 100%" when
+    /// MacStats can't tell whether a limit will stop it sooner.
+    var chargeTargetLabel: String { "Time to \(chargeTargetName)" }
+
+    /// Charging, and already showing the percent it stops at (the last minute before it does).
+    var atChargeLimit: Bool { chargeLimitPercent.map { percent >= $0 } ?? false }
+
+    private var chargeTargetName: String {
+        if let limit = chargeLimitPercent { return "\(limit)%" }
+        return chargeTargetAssumed ? "100%" : "full"
     }
 
     /// The Battery card's short secondary line (the card's text column is ~120 pt).
     var cardMeta: String {
         switch state {
         case .charging:
-            let target = chargeLimitPercent.map { "\($0)%" } ?? "full"
-            return timeToFullMinutes.map { "\(formatDuration($0)) to \(target)" }
-                ?? (percent >= 90 ? "almost full" : "charging")   // no estimate in the last trickle
+            return timeToFullMinutes.map { "\(formatDuration($0)) to \(chargeTargetName)" }
+                ?? (atChargeLimit ? "almost done" : percent >= 90 ? "almost full" : "charging")   // no estimate in the last trickle
         case .charged: return "fully charged"
         case .notCharging: return "not charging"
         case .discharging: return timeToEmptyMinutes.map { "\(formatDuration($0)) left" } ?? "calculating…"
