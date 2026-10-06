@@ -418,6 +418,15 @@ is off (no new timers or observers). `./Scripts/test.sh` **366/366**; `swift bui
 - CPU breakdown: loginwindow, Dock, WindowManager are no longer rows; expand "Other processes" and right-click
   loginwindow: no Quit / Force Quit.
 
+## Review round 5 (2026-10-07) — IN PROGRESS
+Scores: reviewer A 8.1, reviewer B 8.2 (reports `docs/reviews/2026-10-06-stability-tour-review-r5-A.md`, `-B.md`).
+Done so far (commits e277f5d, f4263a0, 486d45e, 70a1d77): fast release; partial freeze through the hovered app;
+process rows 10 s dwell + promotion floor; Finished processes only when > 0; BreakdownList in Core; ended "N more…"
+kept disabled; copy (footnotes, hint, step 1, welcome); chip 18 pt; ↑ line 20 % hold; design note
+`docs/design/breakdown-stability.md`. `./Scripts/test.sh` 372/372.
+Next: r5 probe folder `docs/research/2026-10-06-probes/r5-fixes/` (record/replay incl. burst fall, child order),
+render probe captures, then the full "Review round 5" section below.
+
 ## Next
 Review round 5 (`/reviewer`, two independent reviewers) on HEAD of `feat/stability-tour`. Probes:
 ```bash
