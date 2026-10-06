@@ -32,12 +32,16 @@ struct OverviewView: View {
                      onTap: { onSelect(.cpu) }) {
                 Sparkline(points: store.cpuHistory, color: .green, maxValue: 100)
             }
+            .help(store.cpuTempCelsius == nil ? "Click to see which apps use the CPU"
+                  : "Click to see which apps use the CPU \u{00B7} \u{00B0}C is its temperature")
             .tourAnchor("overview.cpu", radius: Design.cardCornerRadius)
             StatCard(label: "Memory", value: memoryValue,
                      number: Double(store.cardMemory?.usedBytes ?? 0), meta: memoryMeta,
                      metaDot: pressureColor, onTap: { onSelect(.memory) }) {
                 Sparkline(points: store.memHistory, color: .blue, maxValue: 1.0)
             }
+            .help("Click to see which apps use memory \u{00B7} The dot turns yellow when your Mac runs low, "
+                  + "red when very low (macOS\u{2019}s memory pressure)")
             .tourAnchor("overview.memory", radius: Design.cardCornerRadius)
             StatCard(label: "Network", value: networkValue,
                      number: store.cardNetwork?.downBytesPerSec ?? 0, meta: networkMeta) {
@@ -111,11 +115,12 @@ struct OverviewView: View {
         guard let t = store.cpuTempCelsius else { return "" }   // no usable sensor on this chip
         return "\(Int(t)) °C"   // the Battery screen's format
     }
+    /// macOS's memory pressure in plain words (the tooltip names the term).
     private var memoryMeta: String {
         switch store.cardMemory?.pressure {
-        case .normal: return "pressure normal"
-        case .warning: return "pressure high"   // the alert's wording
-        case .critical: return "pressure critical"
+        case .normal: return "OK"
+        case .warning: return "running low"
+        case .critical: return "very low"
         case nil: return ""
         }
     }

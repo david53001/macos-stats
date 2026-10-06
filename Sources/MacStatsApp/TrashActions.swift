@@ -22,7 +22,7 @@ enum TrashActions {
             return "MacStats needs permission to control Finder. Enable it in "
                  + "System Settings → Privacy & Security → Automation, then try again."
         }
-        return "Couldn't empty the Trash (error \(code))."
+        return "Couldn\u{2019}t empty the Trash (error \(code))."
     }
 
     /// Total logical size (bytes) of everything in the Trash, read via Finder. A direct

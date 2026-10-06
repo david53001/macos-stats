@@ -455,7 +455,7 @@ final class AppModel: ObservableObject {
 
     private func presentTrashError(_ message: String) {
         let alert = NSAlert()
-        alert.messageText = "Couldn't empty the Trash"
+        alert.messageText = "Couldn\u{2019}t empty the Trash"
         alert.informativeText = message
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")

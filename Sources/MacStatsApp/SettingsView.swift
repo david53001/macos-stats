@@ -62,7 +62,7 @@ private struct AppearanceCard: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
-            Text("How much of what's behind shows through the panel.")
+            Text("How much of what\u{2019}s behind shows through the panel.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
