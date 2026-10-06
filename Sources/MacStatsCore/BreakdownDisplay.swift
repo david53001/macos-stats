@@ -185,10 +185,11 @@ public struct BreakdownDisplay {
 
     /// One app's process rows, in order, and what the next scan needs (`AppRow.kids`, `.processes`).
     /// Known processes rank like the apps but with a longer dwell (`breakdownProcessReorderDwell`), and
-    /// rows under `RankHysteresis.promotionFloor` (and "Finished processes") pass a neighbour only by the
-    /// margins: tiny values crossing are noise. A process new to the app joins below the known ones for
-    /// one scan (most are short-lived). While frozen: no newcomers, and ended processes stay as
-    /// placeholders. "Finished processes" shows only while it has something to show (or is frozen).
+    /// rows under `RankHysteresis.promotionFloor` pass a neighbour only by the margins: tiny values
+    /// crossing are noise. A process new to the app joins below the known ones for one scan (most are
+    /// short-lived). While frozen: no newcomers, and ended processes stay as placeholders.
+    /// "Finished processes" (work of processes that are gone) is always last, like a group row, and
+    /// shows only while it has something to show (or is frozen).
     private func processRows(of app: AppUsage, old: AppRow?, appEnded: Bool, frozen: Bool,
                              time: TimeInterval?) -> (ListRanking, [Int32: ProcessRow], [ProcessUsage]) {
         let exited = BreakdownGroup.exitedProcesses
@@ -218,11 +219,14 @@ public struct BreakdownDisplay {
         let settled = old == nil ? texts : texts.filter { known.contains($0.key) }
         var kids = old?.kids ?? ListRanking()
         kids.rank(settled.mapValues(\.shown), rule: rule, fixed: frozen ? .max : 0, time: time,
-                  dwell: breakdownProcessReorderDwell, groupsLast: false) { pid in
-            pid != exited && (settled[pid]?.shown ?? 0) >= rule.promotionFloor
+                  dwell: breakdownProcessReorderDwell, groupsLast: true) { pid in
+            (settled[pid]?.shown ?? 0) >= rule.promotionFloor
         }
         kids.order += stableRanking(previous: [], now: texts.filter { settled[$0.key] == nil }.mapValues(\.shown),
-                                    rule: rule)
+                                    rule: rule, groupsLast: true)
+        if let i = kids.order.firstIndex(of: exited), i != kids.order.count - 1 {
+            kids.order.append(kids.order.remove(at: i))   // below a newcomer too
+        }
         let processes = kids.order.compactMap { byPID[$0] }
 
         var processRows: [Int32: ProcessRow] = [:]

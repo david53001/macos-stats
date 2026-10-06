@@ -223,6 +223,20 @@ import Testing
         #expect(store.breakdown[0].pids == [10])
     }
 
+    @Test func exitedRowIsAlwaysLast() {
+        // After a burst it was the biggest row and jumped to the top; it stands for processes that are
+        // gone, so it sits below every live one, like a group row.
+        let store = cpuStore()
+        let exited = BreakdownGroup.exitedProcesses
+        store.setBreakdown([app(1, 6, children: [(10, 3), (11, 1)])], measuring: false, time: 0)
+        store.setBreakdown([app(1, 18, children: [(exited, 12), (10, 3), (11, 1)])], measuring: false, time: 2)
+        #expect(store.breakdown[0].pids == [10, 11, exited])
+        store.setBreakdown([app(1, 18, children: [(exited, 12), (10, 3), (12, 2), (11, 1)])], measuring: false, time: 4)
+        #expect(store.breakdown[0].pids == [10, 11, 12, exited])
+        store.setBreakdown([app(1, 18, children: [(exited, 12), (10, 3), (12, 2), (11, 1)])], measuring: false, time: 20)
+        #expect(store.breakdown[0].pids == [10, 12, 11, exited])
+    }
+
     @Test func tinyProcessRowsDontSwapByTheInversionTimeout() {
         // Under the promotion floor (0.5 % CPU), 0.3 % sitting above 0.4 % isn't worth a reorder;
         // above it, the timeout passes as for apps.
