@@ -115,4 +115,12 @@ import Testing
         #expect(heldTimeToFull(shown: 30, minutes: 32) == 32)
         #expect(heldTimeToFull(shown: nil, minutes: 31) == 31)
     }
+
+    @Test func relativeBandIsCapped() {
+        // 50 % shown: 10 % would hold up to 55 %; the 2 pp cap lets 52 % through.
+        #expect(heldValue(shown: 50, value: 51.9, step: 1, relBand: 0.10, cap: 2) == 50)
+        #expect(heldValue(shown: 50, value: 52, step: 1, relBand: 0.10, cap: 2) == 52)
+        // Small rows keep the relative band (under the cap).
+        #expect(heldValue(shown: 5, value: 5.4, step: 0.1, relBand: 0.10, cap: 2) == 5)
+    }
 }

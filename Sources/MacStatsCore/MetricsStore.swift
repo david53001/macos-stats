@@ -74,6 +74,16 @@ public final class MetricsStore: ObservableObject {
         let app: Int32
         let pid: Int32
     }
+    /// Rows kept in place while frozen although their app or process has ended (`isEnded`).
+    private var endedApps: Set<Int32> = []
+    private var endedProcesses: Set<ProcessRowKey> = []
+    /// Each shown process row's start time, so a placeholder keeps its name (`AppInfoCache`).
+    private var lastProcesses: [ProcessRowKey: UInt64] = [:]
+
+    /// Asks the view whether the pointer is over the list right now (AppKit's pointer location),
+    /// read once a scan. Hover events alone miss a pointer that hasn't moved: after the list
+    /// appears under it, or after a context menu closes. Set by the breakdown view; reset on begin/clear.
+    public var breakdownPointerProbe: (() -> Bool)?
 
     /// Seconds of history the sparklines span (newest point at the right edge).
     public let historyWindow: TimeInterval
@@ -167,7 +177,8 @@ public final class MetricsStore: ObservableObject {
 
     /// Sets the held card values from a reading; `restart` drops the hold (a fresh open).
     private func updateCards(cpuPercent: Double, memory: MemorySample, network: NetworkSample, restart: Bool) {
-        let cpu = heldValue(shown: restart ? nil : cardCPUPercent, value: cpuPercent, step: 1, band: 0.75)
+        // Band 1.0 (was 0.75): about half as many changes, within 1 pp of the reading.
+        let cpu = heldValue(shown: restart ? nil : cardCPUPercent, value: cpuPercent, step: 1, band: 1.0)
         if cpu != cardCPUPercent { cardCPUPercent = cpu }
         let mem = heldMemory(shown: restart ? nil : cardMemory, value: memory)
         if mem != cardMemory { cardMemory = mem }
@@ -252,7 +263,10 @@ public final class MetricsStore: ObservableObject {
     /// (`stableRanking`); the order is frozen while the pointer is in the list or a context menu
     /// is open, and until the first scan `breakdownUnfreezeDelay` after both end; the expanded
     /// app keeps its index. Row values stay exact (bars follow them); the text reads
-    /// `shownValue`, held within max(0.75 × the printed step, 10 % (memory 3 %) of the value).
+    /// `shownValue`, held within max(0.75 × the printed step, min(10 % (memory 3 %) of the value,
+    /// 2 pp / 0.2 W)). While frozen, a row whose app or process ended stays in place as a
+    /// placeholder (`isEnded`), so nothing below it moves; it goes at the unfreeze. An app's
+    /// "Exited processes" row stays (at 0) once it has appeared, instead of coming and going.
     public func setBreakdown(_ apps: [AppUsage], measuring: Bool, totalCPU: Double? = nil,
                              time: TimeInterval = Date().timeIntervalSinceReferenceDate) {
         if totalCPU != breakdownTotalCPU { breakdownTotalCPU = totalCPU }
@@ -264,34 +278,62 @@ public final class MetricsStore: ObservableObject {
         }
         let metric = activeBreakdownMetric ?? .cpu
         if let at = unfreezeAt, time >= at { unfreezeAt = nil }
-        let frozen = pointerFrozen || menuFrozen || unfreezeAt != nil
+        let frozen = pointerFrozen || menuFrozen || unfreezeAt != nil || breakdownPointerProbe?() == true
         let rule = RankHysteresis.for(metric)
         let relBand = metric == .memory ? 0.03 : 0.10
+        let bandCap = metric == .cpu ? 2 : metric == .energy ? 0.2 : .infinity
         func hold(_ shown: Double?, _ value: Double) -> Double {
             heldValue(shown: shown, value: value, step: breakdownValueStep(metric, value), band: 0.75,
-                      relBand: relBand)
+                      relBand: relBand, cap: bandCap)
+        }
+        func placeholder(_ pid: Int32, app: Int32) -> ProcessUsage {
+            ProcessUsage(pid: pid, appPID: app, cpuPercent: 0, memoryBytes: 0,
+                         startTime: lastProcesses[ProcessRowKey(app: app, pid: pid)] ?? 0)
         }
 
+        var byApp = Dictionary(apps.map { ($0.appPID, $0) }, uniquingKeysWith: { a, _ in a })
+        var nextEndedApps: Set<Int32> = []
+        if frozen {
+            for key in order where byApp[key] == nil {
+                byApp[key] = AppUsage(appPID: key, processes: [], cpuPercent: 0, memoryBytes: 0)
+                nextEndedApps.insert(key)
+            }
+        }
         var values: [Int32: Double] = [:]
-        values.reserveCapacity(apps.count)
-        for app in apps { values[app.appPID] = app.value(for: metric) }
+        values.reserveCapacity(byApp.count)
+        for (key, app) in byApp { values[key] = app.value(for: metric) }
         let newOrder = stableRanking(previous: order, now: values, before: lastValues, rule: rule,
                                      pinned: pinnedApp.map { [$0] } ?? [], frozen: frozen,
                                      groupsLast: metric == .memory)
-        let byApp = Dictionary(apps.map { ($0.appPID, $0) }, uniquingKeysWith: { a, _ in a })
 
         var ordered: [AppUsage] = []
-        ordered.reserveCapacity(apps.count)
+        ordered.reserveCapacity(newOrder.count)
         var nextChildOrder: [Int32: [Int32]] = [:], nextChildValues: [Int32: [Int32: Double]] = [:]
         var nextShownApps: [Int32: Double] = [:], nextShownProcesses: [ProcessRowKey: Double] = [:]
+        var nextEndedProcesses: Set<ProcessRowKey> = [], nextLastProcesses: [ProcessRowKey: UInt64] = [:]
         for key in newOrder {
             guard let app = byApp[key] else { continue }
+            // Memory has nothing to say about exited processes (they hold no memory).
+            var children = metric == .memory
+                ? app.processes.filter { $0.pid != BreakdownGroup.exitedProcesses } : app.processes
+            let previousKids = childOrder[key] ?? []
+            if !nextEndedApps.contains(key) {
+                let present = Set(children.map(\.pid))
+                for pid in previousKids where !present.contains(pid) {
+                    if pid == BreakdownGroup.exitedProcesses {
+                        children.append(placeholder(pid, app: key))   // stays, at 0
+                    } else if frozen {
+                        children.append(placeholder(pid, app: key))
+                        nextEndedProcesses.insert(ProcessRowKey(app: key, pid: pid))
+                    }
+                }
+            }
             var childValues: [Int32: Double] = [:]
-            childValues.reserveCapacity(app.processes.count)
-            for p in app.processes { childValues[p.pid] = p.value(for: metric) }
-            let kids = stableRanking(previous: childOrder[key] ?? [], now: childValues,
+            childValues.reserveCapacity(children.count)
+            for p in children { childValues[p.pid] = p.value(for: metric) }
+            let kids = stableRanking(previous: previousKids, now: childValues,
                                      before: lastChildValues[key] ?? [:], rule: rule, frozen: frozen)
-            let byPID = Dictionary(app.processes.map { ($0.pid, $0) }, uniquingKeysWith: { a, _ in a })
+            let byPID = Dictionary(children.map { ($0.pid, $0) }, uniquingKeysWith: { a, _ in a })
             let processes = kids.compactMap { byPID[$0] }
             nextChildOrder[key] = kids
             nextChildValues[key] = childValues
@@ -299,6 +341,7 @@ public final class MetricsStore: ObservableObject {
             for p in processes {
                 let rowKey = ProcessRowKey(app: key, pid: p.pid)
                 nextShownProcesses[rowKey] = hold(shownProcesses[rowKey], p.value(for: metric))
+                nextLastProcesses[rowKey] = p.startTime
             }
             ordered.append(AppUsage(appPID: app.appPID, processes: processes, cpuPercent: app.cpuPercent,
                                     memoryBytes: app.memoryBytes, watts: app.watts))
@@ -310,6 +353,9 @@ public final class MetricsStore: ObservableObject {
         lastChildValues = nextChildValues
         shownApps = nextShownApps
         shownProcesses = nextShownProcesses
+        endedApps = nextEndedApps
+        endedProcesses = nextEndedProcesses
+        lastProcesses = nextLastProcesses
 
         if metric == .cpu, let totalCPU {
             let shown = heldValue(shown: breakdownShownTotalCPU, value: totalCPU, step: 1, band: 0.75)
@@ -353,6 +399,13 @@ public final class MetricsStore: ObservableObject {
         return shownProcesses[ProcessRowKey(app: app, pid: pid)]
     }
 
+    /// True for a row kept in place while frozen although its app (`pid` nil) or process ended:
+    /// the view dims it and offers no actions.
+    public func isEnded(app: Int32, pid: Int32? = nil) -> Bool {
+        guard let pid else { return endedApps.contains(app) }
+        return endedProcesses.contains(ProcessRowKey(app: app, pid: pid))
+    }
+
     /// Leave the drill-in (back button or popover closed).
     public func clearBreakdown() {
         activeBreakdownMetric = nil
@@ -374,6 +427,10 @@ public final class MetricsStore: ObservableObject {
         energyScale = nil
         shownApps = [:]
         shownProcesses = [:]
+        endedApps = []
+        endedProcesses = []
+        lastProcesses = [:]
+        breakdownPointerProbe = nil
         if breakdownEnergyScale != 1 { breakdownEnergyScale = 1 }
         if breakdownShownTotalCPU != nil { breakdownShownTotalCPU = nil }
     }

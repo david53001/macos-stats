@@ -6,8 +6,9 @@ import MacStatsCore
 /// card that fills the fixed panel height (the list scrolls inside it).
 /// Click an app with several processes to expand it into its processes (one app at a time).
 /// Right-click a row for Quit / Force Quit (Force Quit confirms first); on a process row
-/// they act on that process only. Every app row's tooltip says so, and the footnote does too on
-/// the first few drill-ins (`quitHint`).
+/// they act on that process only. Every app row's tooltip says so, and the footnote does too
+/// until the user has opened a row's menu once (`quitHint`). Rows are buttons with
+/// accessibility actions, so expanding and quitting also work with the keyboard and VoiceOver.
 /// Nothing moves under the pointer: the row order freezes while the pointer is over the list
 /// or a context menu is open, the expanded app keeps its place, and the numbers are the
 /// store's held values (`MetricsStore.setBreakdown`).
@@ -17,6 +18,8 @@ struct BreakdownView: View {
     /// Show "Right-click an app to quit it" in place of the footnote (the first few drill-ins).
     let quitHint: Bool
     let onBack: () -> Void
+    /// A row's context menu opened (the quit hint has done its job).
+    var onMenuUsed: () -> Void = {}
 
     /// Names + small icons, resolved once per app/process and freed when the breakdown closes.
     @StateObject private var apps: AppInfoCache
@@ -26,11 +29,13 @@ struct BreakdownView: View {
 
     private static let cores = ProcessInfo.processInfo.activeProcessorCount
 
-    init(store: MetricsStore, metric: BreakdownMetric, quitHint: Bool = false, onBack: @escaping () -> Void) {
+    init(store: MetricsStore, metric: BreakdownMetric, quitHint: Bool = false, onBack: @escaping () -> Void,
+         onMenuUsed: @escaping () -> Void = {}) {
         _store = ObservedObject(wrappedValue: store)
         self.metric = metric
         self.quitHint = quitHint
         self.onBack = onBack
+        self.onMenuUsed = onMenuUsed
         _apps = StateObject(wrappedValue: AppInfoCache())
     }
 
@@ -105,10 +110,11 @@ struct BreakdownView: View {
                 .background(CardBackground())
                 .clipShape(RoundedRectangle(cornerRadius: Design.cardCornerRadius, style: .continuous))
                 .onHover { store.setBreakdownPointerInside($0) }   // freezes the row order
+                .background(PointerProbe(store: store))   // …and so does a pointer that hasn't moved
 
             PanelFooter {
                 Text(quitHint ? "Right-click an app to quit it" : footnote)
-                    .font(.caption2).foregroundStyle(.tertiary)
+                    .font(.caption2).foregroundStyle(.secondary)
                     .lineLimit(1).minimumScaleFactor(0.8)
                     .tooltip(quitHint ? nil : footnoteHelp)
                     // Ends where the header's trailing text does (the cards' content inset).
@@ -121,6 +127,7 @@ struct BreakdownView: View {
         // on. Observed only while this view exists, i.e. while a breakdown is shown.
         .onReceive(NotificationCenter.default.publisher(for: NSMenu.didBeginTrackingNotification)) { _ in
             store.setBreakdownMenuOpen(true)
+            onMenuUsed()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSMenu.didEndTrackingNotification)) { _ in
             store.setBreakdownMenuOpen(false)
@@ -192,19 +199,33 @@ struct BreakdownView: View {
 
     private func appRow(_ app: AppUsage) -> some View {
         let info = apps.info(for: app.appPID)
-        let expandable = app.processes.count > 1
+        let ended = store.isEnded(app: app.appPID)
+        let expandable = app.processes.count > 1 && !ended
+        let isExpanded = expanded == app.appPID
         let value = shown(app)
-        return AppRow(app: app, info: info, metric: metric, barScale: barScale, shown: value,
-                      disclosure: expandable ? (expanded == app.appPID) : nil)
-            .onTapGesture {
-                guard expandable else { return }
-                withAnimation(.snappy(duration: 0.25)) {
-                    expanded = expanded == app.appPID ? nil : app.appPID
-                    visibleChildren = BreakdownList.initialChildren
-                }
+        return Button {
+            guard expandable else { return }
+            withAnimation(.snappy(duration: 0.25)) {
+                expanded = isExpanded ? nil : app.appPID
+                visibleChildren = BreakdownList.initialChildren
             }
+        } label: {
+            AppRow(app: app, info: info, metric: metric, barScale: barScale, shown: value,
+                   disclosure: expandable ? isExpanded : nil, ended: ended)
+        }
+        .buttonStyle(.plain)
+        .accessibilityRemoveTraits(expandable ? [] : .isButton)
+        .accessibilityValue(expandable ? (isExpanded ? "Expanded" : "Collapsed") : "")
+        .accessibilityActions {
+            if app.isApp, !ended {
+                Button("Quit") { ProcessActions.quit(appPID: app.appPID) }
+                Button("Force Quit\u{2026}") { ProcessActions.confirmForceQuit(appPID: app.appPID, name: info.name) }
+            }
+        }
             .contextMenu {
-                if app.isApp {
+                if ended {
+                    Button(info.name) {}.disabled(true)
+                } else if app.isApp {
                     Button(info.name) {}.disabled(true)   // faint header
                     if metric == .cpu { oneCoreLine(value) }
                     Divider()
@@ -218,7 +239,7 @@ struct BreakdownView: View {
                     if metric == .cpu { oneCoreLine(value) }
                 }
             }
-            .tooltip(rowTooltip(app, value, info))
+            .tooltip(ended ? nil : rowTooltip(app, value, info))
     }
 
     /// Activity Monitor's scale (100 % = one core), for comparing with it. Derived from the
@@ -244,6 +265,11 @@ struct BreakdownView: View {
     @ViewBuilder private func processRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
         if process.pid == BreakdownGroup.exitedProcesses {
             exitedRow(process, in: app)
+        } else if store.isEnded(app: app.appPID, pid: process.pid) {
+            // Kept in place while the list is frozen (`MetricsStore.isEnded`); gone at the unfreeze.
+            ProcessRow(process: process, name: apps.name(ofProcess: process.pid, startTime: process.startTime),
+                       metric: metric, barScale: barScale, shown: 0, ended: true)
+                .transition(.opacity)
         } else {
             liveProcessRow(process, in: app)
         }
@@ -270,7 +296,15 @@ struct BreakdownView: View {
         let value = shown(process, in: app)
         return ProcessRow(process: process, name: name, metric: metric, barScale: barScale, shown: value)
             .transition(.opacity)
-            .tooltip(metric == .cpu ? oneCore(value) : nil)
+            // The pid lives here and in the menu, not on the row (noise for most people).
+            .tooltip(["pid \(process.pid)", metric == .cpu ? oneCore(value) : nil].compactMap { $0 }
+                .joined(separator: "\n"))
+            .accessibilityActions {
+                Button("Quit") {
+                    if isAppItself { ProcessActions.quit(appPID: app.appPID) }
+                    else { ProcessActions.quit(pid: process.pid, startTime: process.startTime) }
+                }
+            }
             .contextMenu {
                 Button("\(name) \u{2014} pid \(process.pid)") {}.disabled(true)
                 if metric == .cpu { oneCoreLine(value) }
@@ -368,6 +402,8 @@ private struct AppRow: View {
     let shown: Double
     /// nil = not expandable; else whether it is expanded.
     let disclosure: Bool?
+    /// The app quit while the list was frozen: a dimmed placeholder (`MetricsStore.isEnded`).
+    var ended = false
 
     @State private var hovering = false
 
@@ -390,8 +426,8 @@ private struct AppRow: View {
                 UsageBar(fraction: fraction, color: barColor(metric), height: 4)
             }
             Spacer(minLength: 8)
-            Text(breakdownValueText(metric, shown))
-                .font(.callout).fontWeight(.semibold).monospacedDigit()
+            Text(ended ? "Ended" : breakdownValueText(metric, shown))
+                .font(.callout).fontWeight(ended ? .regular : .semibold).monospacedDigit()
                 .contentTransition(.interpolate)
                 .animation(.easeInOut(duration: 0.25), value: shown)
                 .frame(width: 58, alignment: .trailing)
@@ -402,13 +438,15 @@ private struct AppRow: View {
                 .opacity(disclosure == nil ? 0 : 1)
                 .frame(width: 8)
         }
+        .opacity(ended ? 0.45 : 1)
         .padding(.horizontal, 8).padding(.vertical, 6)
         .background(RoundedRectangle(cornerRadius: Design.cardCornerRadius - 4, style: .continuous)
-            .fill(Color.primary.opacity(hovering ? 0.07 : 0)))
+            .fill(Color.primary.opacity(hovering && !ended ? 0.07 : 0)))
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.12), value: hovering)
         .animation(.snappy(duration: 0.25), value: disclosure)
         .onHover { hovering = $0 }
+        .accessibilityElement(children: .combine)
     }
 
     private var fraction: Double {
@@ -426,41 +464,62 @@ private struct ProcessRow: View {
     let barScale: Double
     /// The held value the row prints; the bar follows the exact one.
     let shown: Double
+    /// The process ended while the list was frozen: a dimmed placeholder.
+    var ended = false
 
     @State private var hovering = false
 
     var body: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 4) {
-                    Text(name).lineLimit(1).truncationMode(.middle)
-                    if process.pid > 0 {
-                        Text(verbatim: String(process.pid)).foregroundStyle(.tertiary).monospacedDigit()
-                    }
-                }
-                .font(.caption)
+                Text(name).lineLimit(1).truncationMode(.middle)
+                    .font(.caption)
                 UsageBar(fraction: fraction, color: barColor(metric).opacity(0.7), height: 2)
             }
             Spacer(minLength: 8)
-            Text(breakdownValueText(metric, shown))
+            Text(ended ? "Ended" : breakdownValueText(metric, shown))
                 .font(.caption).monospacedDigit().foregroundStyle(.secondary)
                 .contentTransition(.interpolate)
                 .animation(.easeInOut(duration: 0.25), value: shown)
                 .frame(width: 58, alignment: .trailing)
             Color.clear.frame(width: 8, height: 1)   // the app rows' chevron column
         }
+        .opacity(ended ? 0.45 : 1)
         .padding(.leading, BreakdownList.childIndent)
         .padding(.horizontal, 8).padding(.vertical, 4)
         .background(RoundedRectangle(cornerRadius: Design.cardCornerRadius - 4, style: .continuous)
-            .fill(Color.primary.opacity(hovering ? 0.07 : 0)))
+            .fill(Color.primary.opacity(hovering && !ended ? 0.07 : 0)))
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.12), value: hovering)
         .onHover { hovering = $0 }
+        .accessibilityElement(children: .combine)
     }
 
     private var fraction: Double {
         guard barScale > 0 else { return 0 }
         return min(1, process.value(for: metric) / barScale)
+    }
+}
+
+/// Answers "is the pointer over the list right now?" from AppKit, for `MetricsStore` to read once
+/// a scan (`breakdownPointerProbe`): hover events miss a pointer that hasn't moved since the list
+/// appeared under it or a context menu closed. Never takes clicks; does nothing between scans.
+private struct PointerProbe: NSViewRepresentable {
+    let store: MetricsStore
+
+    func makeNSView(context: Context) -> ProbeView { ProbeView() }
+
+    func updateNSView(_ view: ProbeView, context: Context) {
+        store.breakdownPointerProbe = { [weak view] in view?.pointerInside ?? false }
+    }
+
+    final class ProbeView: NSView {
+        var pointerInside: Bool {
+            guard let window, window.isVisible else { return false }
+            return bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
+        }
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }
 

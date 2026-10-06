@@ -48,9 +48,66 @@ import Testing
         store.setBreakdownPointerInside(true, time: 1)
         // 1 quit, 3 spiked (would jump to the top), 4 is new.
         store.setBreakdown(scan([app(2, 1), app(3, 50), app(4, 7)]), measuring: false, time: 2)
-        #expect(order(store) == [2, 3, 4])
+        // 1 stays in place, ended, so nothing below it moves up under the pointer.
+        #expect(order(store) == [1, 2, 3, 4])
+        #expect(store.isEnded(app: 1))
+        #expect(!store.isEnded(app: 2))
         #expect(store.breakdown.first { $0.appPID == 3 }?.cpuPercent == 50)
         #expect(store.shownValue(app: 3) == 50)
+        // At the unfreeze the ended row goes.
+        store.setBreakdownPointerInside(false, time: 3)
+        store.setBreakdown(scan([app(2, 1), app(3, 50), app(4, 7)]), measuring: false, time: 4.5)
+        #expect(!order(store).contains(1))
+        #expect(!store.isEnded(app: 1))
+    }
+
+    @Test func endedProcessesKeepTheirPlaceWhileFrozen() {
+        let store = cpuStore()
+        store.setBreakdown([app(1, 6, children: [(10, 3), (11, 2), (12, 1)])], measuring: false, time: 0)
+        store.setBreakdownPointerInside(true, time: 1)
+        store.setBreakdown([app(1, 6, children: [(10, 3), (12, 1)])], measuring: false, time: 2)
+        #expect(store.breakdown[0].pids == [10, 11, 12])
+        #expect(store.isEnded(app: 1, pid: 11))
+        #expect(!store.isEnded(app: 1, pid: 12))
+        store.setBreakdownPointerInside(false, time: 3)
+        store.setBreakdown([app(1, 6, children: [(10, 3), (12, 1)])], measuring: false, time: 4.5)
+        #expect(store.breakdown[0].pids == [10, 12])
+    }
+
+    @Test func exitedRowStaysOnceItAppeared() {
+        let store = cpuStore()
+        let exited = BreakdownGroup.exitedProcesses
+        store.setBreakdown([app(1, 6, children: [(10, 3), (exited, 2)])], measuring: false, time: 0)
+        store.setBreakdown([app(1, 3, children: [(10, 3)])], measuring: false, time: 2)
+        #expect(store.breakdown[0].pids == [10, exited])
+        #expect(store.breakdown[0].processes.last?.cpuPercent == 0)
+        #expect(!store.isEnded(app: 1, pid: exited))
+    }
+
+    @Test func memoryHasNoExitedRow() {
+        let store = MetricsStore()
+        store.beginBreakdown(metric: .memory)
+        let procs = [ProcessUsage(pid: 10, appPID: 1, cpuPercent: 0, memoryBytes: 500),
+                     ProcessUsage(pid: BreakdownGroup.exitedProcesses, appPID: 1, cpuPercent: 2, memoryBytes: 0)]
+        store.setBreakdown([AppUsage(appPID: 1, processes: procs, cpuPercent: 2, memoryBytes: 500)],
+                           measuring: false, time: 0)
+        #expect(store.breakdown[0].pids == [10])
+    }
+
+    @Test func pointerProbeFreezesWithoutAHoverEvent() {
+        // The list appeared under a still pointer (or a menu closed over it): no hover event came.
+        let store = cpuStore()
+        store.setBreakdown(scan([app(1, 5), app(2, 4)]), measuring: false, time: 0)
+        var inside = true
+        store.breakdownPointerProbe = { inside }
+        let spiked = scan([app(1, 1), app(2, 40)])
+        store.setBreakdown(spiked, measuring: false, time: 2)
+        #expect(order(store) == [1, 2])
+        inside = false
+        store.setBreakdown(spiked, measuring: false, time: 4)
+        #expect(order(store) == [2, 1])
+        store.clearBreakdown()
+        #expect(store.breakdownPointerProbe == nil)
     }
 
     @Test func unfreezeHappensAtTheFirstScanASecondAfterThePointerLeaves() {

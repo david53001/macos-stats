@@ -6,15 +6,15 @@ import Foundation
 /// bound each function states. See `docs/research/2026-10-06-stability-diagnosis.md` §5.4.
 
 /// The value to show: `shown` (the last shown value, already quantised to `step`) unless `value`
-/// moved at least max(band × step, relBand × |shown|) away from it; then `value` quantised to `step`.
-/// nil `shown` → quantised `value`. The error is bounded: |result − value| ≤ max(band × step, relBand × |shown|)
-/// (and ≤ step / 2 when the value passes).
+/// moved at least max(band × step, min(relBand × |shown|, cap)) away from it; then `value` quantised to
+/// `step`. nil `shown` → quantised `value`. The error is bounded by that threshold (and ≤ step / 2 when
+/// the value passes).
 public func heldValue(shown: Double?, value: Double, step: Double, band: Double = 0.75,
-                      relBand: Double = 0) -> Double {
+                      relBand: Double = 0, cap: Double = .infinity) -> Double {
     guard step > 0, value.isFinite else { return value }
     let quantised = (value / step).rounded() * step
     guard let shown else { return quantised }
-    let threshold = max(band * step, relBand * abs(shown))
+    let threshold = max(band * step, min(relBand * abs(shown), cap))
     return abs(value - shown) < threshold ? shown : quantised
 }
 
