@@ -221,6 +221,87 @@ Open-overview render cost (tour-render `--cost`): 12.7 % tour off / 13.5 % step 
 - Right-click a busy row, wait 5 s without moving the pointer, close the menu: nothing re-sorts.
 - VoiceOver on a breakdown row: "Expanded/Collapsed", actions Quit / Force Quit.
 
+## Review round 2 (2026-10-06) — fixed, verified, committed
+**Scores:** reviewer A **7.9** (Stability **7.2**, Interaction 7.8, Intuitiveness 7.8, Copy 8.2, Visual 8.6, Tour 8.9,
+Code 7.8, Resource 8.6); reviewer B **7.8** (Stability 7.3, Interaction 8.0, Intuitiveness 7.8, Copy 8.0, Visual 7.8,
+Tour 8.6, Code 7.8, Resource 8.0). Bar: both > 9.0 and no area < 8.5. Reports:
+`docs/reviews/2026-10-06-stability-tour-review-r2-A.md`, `docs/reviews/2026-10-06-stability-tour-review-r2-B.md`.
+
+Terms: **mis-sorted pair** = a row printed > 25 % and > 2 printed steps above the row directly above it (both
+reviewers' measure). **Still pointer** = the pointer rests on the list from the moment it opens (the clicked card
+sits where the list appears) and never moves.
+
+### Fixed (commits `5a83125` core + breakdown UI, `7b4d51c` tour, `68a87df` probes)
+| Finding (severity) | Verified? | Fix | Evidence |
+|---|---|---|---|
+| A S1/I2 (Medium): the order froze at the noisy 0.5 s first scan under a still pointer | Yes: still-pointer probe 44/75 scans mis-sorted at `66141b1` | `BreakdownPointer(inside, moved)`: the view's `PointerProbe` records the pointer when the list appears; an unmoved pointer doesn't freeze. The first scan after "Measuring…" is provisional: the first unfrozen scan after it sorts and holds afresh | Tests `aPointerStillRestingFromTheClickDoesNotFreeze`, `theShortFirstWindowIsResortedAtTheNextScan`, `…StaysFrozenUnderAPointerThatMoved`; probe still pointer 44/75 → 4/75 → **0/75** |
+| A C1, B C1 (Medium): ~15 parallel breakdown fields, 100-line `setBreakdown` | Yes | `Sources/MacStatsCore/BreakdownDisplay.swift`: one value type (per-app row struct with its processes, freeze state, `apply`, `isFrozen`); `MetricsStore` replaces it to reset; `setBreakdown` is ~15 lines | All store tests unchanged in intent and green |
+| A S3, B S1 (Medium): the pinned expanded app kept its index forever (most mis-sorts) | Yes: 30 of 31 CPU mis-sorted scans were next to it | Pin removed (`setBreakdownPinnedApp`, `stableRanking(pinned:)`): the freeze already holds the list while pointing; otherwise the expanded app re-ranks with the `.snappy` slide | Probe CPU 31/65 → 0/65 |
+| B S2 (Medium): 25 % hysteresis left visible mis-sorts | Yes, plus a cause the reviewers didn't name: ranking used exact values while the text shows held ones (e.g. "0.03 W above 0.05 W" for 3 scans) | Rows **rank by their printed (held) values** with one reading (the hold already needs two scans); margins 15 % and **1.5 printed steps** (CPU 0.15 pp, energy 0.015 W), so a 2-step gap climbs and a 1-step one doesn't | Energy 16/65 → 0/65 mis-sorted scans; tests `noSwapWithinTheMargin`, `energyRowsSortAtTheirPrintedPrecision` |
+| B S3 (Medium), A S2/S4 (Low): text changes/flips | Yes | Rows: `HeldReading`, a change shows after two scans in the same direction unless ≥ 2× the hold. Cards: `cardDwellSeconds` = 2 s dwell for CPU and network text unless the reading jumps (CPU ≥ 2 pp; network ×2 and ≥ 10 KB/s); network band 1.5 → 2 steps | Fixed-series replay (`r2-fixes/row-hold-replay.txt`): row changes −27…−56 %, flip-backs −7…−65 %. Live: CPU card 34.8 → 26.8–31.6/min, network ↓/↑ 20.8/21.6 → 6.8–16/8.4–15.6/min |
+| B S4 (Low): memory hold unquantised | Yes | `heldMemory` measures from the *printed* figure | Test `memoryIsMeasuredFromThePrintedFigure` |
+| A I1 (Low–Medium): quitting the expanded app while pointing collapsed it | Yes (`processes: []` placeholder) | An app that ended while frozen keeps its processes as "Ended" placeholders; collapses after the unfreeze | Test `anEndedAppKeepsItsProcessesWhileFrozen` |
+| A U2, B U3 (Low): CPU bars on a 100 % scale | Yes | CPU bars use the sticky 1-2-5 scale above the top row, like energy (`breakdownBarScale`, was `breakdownEnergyScale`) | Test `cpuBarsFollowTheTopRow`; capture `tour-render/out/r2-breakdown-cpu-expanded-light.png` |
+| A U4 (Low): "0.00 W" rows | Yes | "<0.01 W" below 0.005 W | Test `energyBelowTheLastDigitSaysSo` |
+| B U2 (Medium): child names truncated alike | Yes | `processDisplayName`: "Google Chrome Helper (Renderer)" under Chrome reads "Helper (Renderer)"; the full name is in the tooltip and menu | Test `processNamesDropTheirAppsName`; `r2-breakdown-memory-expanded-dark.png` |
+| B U1 (Medium): Battery details card ~45 % of the panel | Yes | Two label-value pairs per line; status moved to the header ("64% · On battery"); Health and Cycles split | `r2-breakdown-energy-expanded-light.png`: 3 detail lines, 6 list rows visible with an app expanded |
+| A U1, A/B copy (Low): jargon | Yes | Memory parts "Apps / Kept by macOS / Compressed" (tooltips name Activity Monitor's terms); footnotes "Each app’s share of the whole Mac" (cores → tooltip), "Processor power only, not the screen" (GPU gone; detail in tooltip); memory tour body "How much memory is in use…"; CPU card tooltip reworded; Settings Help "What each card shows" + button, caption dropped | Lint + fit: footnote scales 1.00 / 0.88 / 0.99 |
+| A I3 (Low): live process count in the tooltip | Yes | "Click to show its processes · Right-click to quit" | Build |
+| B I1 (Low): non-expandable rows highlight on hover | Yes | Hover fill only on rows a click expands; process rows have none | Build |
+| A T1 (Low): callout shadow darkens the strip above the highlight | Yes | The callout is masked to its own side of the edge facing the highlight | Render probe `strip near=0.702 far=0.702` (light), `0.602/0.602` (dark) on every step |
+| A T2 (Low): Esc on the welcome = No Thanks | Yes | Shortcut removed (closing the panel asks again next time) | Build |
+| B R1 (Low): clicking the highlighted card ended the tour | Yes | The tour stays on its step, hidden, and comes back with the overview | Build; owner check below |
+| B I2/C4 (Low): tour pause/resume on `onAppear`/`onDisappear` | Yes | `AppModel.setVisibility` calls `tour.panelOpened()` / `panelClosed()` on its window-aware transitions | Build |
+| A/B C2 (Low): review history in comments | Partly | Removed from `StableRanking`, `MetricsStore`, `TourOverlay` | — |
+
+Accuracy trade-offs, all display-only (stored readings, graphs, bars and alerts stay exact): the CPU card can show a
+value up to ~2 pp off for ≤ 2 s (was ≤ 1.25 pp at any time); a row's text can trail by up to twice its hold for one
+2 s scan.
+
+**Measured** (`docs/research/2026-10-06-probes/r2-fixes/README.md`, 150 s runs on live processes): mis-sorted scans
+still pointer 44/75 → 0/75, CPU 31/65 → 0/65, energy 16/65 → 0/65, memory 0 → 0; rows moved while pointing 0; expanded
+app auto-collapses 0; top-8 order changes ≈ 2 → ≈ 10 a minute (the list now follows the printed numbers); probe
+process 1.01 → 0.93–1.00 % of a core. Tour render probe: centring unchanged (2 px gap, 6 px ring edge, every step,
+light + dark), `failures=0`. `./Scripts/test.sh` **356/356**; `swift build` green.
+
+### Rejected or deferred (with the reason)
+- **A S1 alt. / B S6 (Low): let the freeze lapse after a few seconds without movement, or re-sort on a huge lead.**
+  A pointer that *moved* onto the list and rests there is usually about to click; rows moving under it was the
+  owner's original bug. The "unmoved since it appeared" rule covers the common case reviewer A measured.
+- **B S5 (Low): derive the System row as header − the other shown rows.** It would tie System's text to every
+  other row's hold (more changes on a row people read) and fake a number. The header stays the measured whole-Mac
+  figure; the rows are each within their hold. Honest note: on a busy Mac (28 % mean CPU) the shown rows' sum was
+  up to 3.9 pp from the header (1.2 pp at 11 %). If a reviewer flags it again, consider showing the header as the
+  rounded sum of shown rows.
+- **B P1 (Medium): install this branch and verify the closed-panel CPU live.** The hard rules forbid installing and
+  driving the menu bar. Read-only check now: the installed copy (built 17:49, before `478bde3`) uses **33.7 % of a
+  core, 80 MB, 64 min of CPU in 4 h** with its panel closed. Owner check below.
+- **A C3 (Low): `PointerProbe` installs its closure in `updateNSView`.** Kept: `beginBreakdown`/`clearBreakdown`
+  reset the closure, so it must be re-installed by the live view.
+- **A U3 (Low): label for "45 °C".** The card's tooltip now says "The °C is the chip’s temperature."; no glyph
+  added (the meta line is plain text in every card).
+- **A C4 / B C5, B U4, A/B V1, B V2, A T3, A I2 (Low):** as in round 1 (`onKeyPress` needs focus the panel doesn't
+  reliably give; no-battery card; sparse Settings; corner gap would crowd the neighbouring card; first-launch
+  prompt timing is explained on the welcome card; a new app joins at the bottom only while you point at the list).
+- **A resource (Low): the tour's 4–6 MB not returned 20 s after skipping, in the probe.** The app's
+  `malloc_zone_pressure_relief` 1.5 s after close isn't in the probe; owner check below.
+- `docs/research/2026-10-06-probes/r1-fixes/main.swift` targets the round-1 API (`breakdownPointerProbe` → `Bool`)
+  and no longer builds; kept as the round-1 record (its README says so). The repo stability probe was updated.
+
+### Owner checks this round adds (need `./Scripts/bundle.sh`, the owner's OK)
+- **Closed-panel cost (most important):** install, open and close the panel a few times (also: click another app
+  while it's open), then `ps -o pcpu,rss,cputime -p $(pgrep -x MacStats)`: expect < 0.5 % closed.
+- Click the CPU card and leave the pointer still for 30 s while a busy app starts: the list keeps sorting. Then
+  move the pointer onto the list: it stops moving.
+- Expand an app, keep the pointer on the list, quit that app from its menu: its rows stay dimmed ("Ended") until
+  the pointer leaves.
+- Tour step 1, click the CPU card, go back: the tour is still on step 1.
+
 ## Next
-Review round 2 (`/reviewer`, two independent reviewers) on HEAD of `feat/stability-tour`, using the probes:
-`docs/research/2026-10-06-probes/{stability,tour-render,r1-fixes,visibility}/`.
+Review round 3 (`/reviewer`, two independent reviewers) on HEAD of `feat/stability-tour`, using the probes
+`docs/research/2026-10-06-probes/{r2-fixes,tour-render,visibility}/` (and `stability/`).
+```bash
+docs/research/2026-10-06-probes/r2-fixes/run.sh 150          # stability, 4 breakdowns + cards
+docs/research/2026-10-06-probes/tour-render/run.sh            # tour captures + insets + shadow strips
+docs/research/2026-10-06-probes/tour-render/run.sh --breakdowns
+```
