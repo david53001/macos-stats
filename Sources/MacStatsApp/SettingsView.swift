@@ -17,6 +17,7 @@ struct SettingsView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)   // Esc goes back
                 Spacer()
             }
 
@@ -80,7 +81,7 @@ struct SettingsButton: View {
             Image(systemName: "gearshape")
                 .accessibilityLabel("Settings")
         }
-        .buttonStyle(SubtleButtonStyle())
+        .buttonStyle(SubtleButtonStyle(cornerRadius: Design.cardCornerRadius))   // concentric, like Quit
         .help("Settings")
     }
 }

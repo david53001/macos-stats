@@ -11,10 +11,9 @@ struct MemoryPartsCard: View {
         let m = store.cardMemory   // held as one unit, so the parts still add up to the header
         let gb = m.map { roundedParts([$0.appBytes, $0.wiredBytes, $0.compressedBytes], unit: 1_073_741_824) }
         HStack(spacing: 8) {
-            part("App Memory", gb?[0], help: "Memory in use by every process (yours, macOS's and "
-                    + "other users'), not counting what is compressed")
-            part("Wired", gb?[1], help: "Memory the kernel and drivers keep in RAM; "
-                    + "it can't be compressed or freed")
+            // Plain-language tooltips; the labels stay Activity Monitor's.
+            part("App Memory", gb?[0], help: "Memory apps and macOS are using right now")
+            part("Wired", gb?[1], help: "Memory macOS keeps for itself. It can\u{2019}t be freed.")
             part("Compressed", gb?[2], help: compressedHelp(m))
         }
         .font(.caption)
@@ -38,10 +37,9 @@ struct MemoryPartsCard: View {
     }
 
     private func compressedHelp(_ m: MemorySample?) -> String {
-        guard let m, m.compressedDataBytes > m.compressedBytes else {
-            return "RAM holding compressed app data. The rows below count that data at full size."
-        }
+        let tail = "squeezed into less RAM to make room. Normal, not a problem."
+        guard let m, m.compressedDataBytes > m.compressedBytes else { return "App data \(tail)" }
         let held = String(format: "%.1f", Double(m.compressedDataBytes) / 1_073_741_824)
-        return "RAM holding \(held) GB of compressed app data. The rows below count that data at full size."
+        return "\(held) GB of app data \(tail)"
     }
 }

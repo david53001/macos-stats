@@ -31,6 +31,7 @@ struct OverviewView: View {
                 Sparkline(points: store.netDownHistory, color: .purple, maxValue: 0,
                           dynamicMinimum: 10_000)
             }
+            .help("↓ download and ↑ upload speed, right now")
             StatCard(label: "Battery", value: batteryValue,
                      number: Double(store.battery?.percent ?? 0), meta: batteryMeta,
                      onTap: store.battery == nil ? nil : { onSelect(.energy) }) {
@@ -77,14 +78,14 @@ struct OverviewView: View {
         return mb >= 1024 ? String(format: "%.1f GB", mb / 1024) : String(format: "%.0f MB", mb)
     }
     private var cpuMeta: String {
-        guard let t = store.cpuTempCelsius else { return "live" }
-        return "\(Int(t))°C"
+        guard let t = store.cpuTempCelsius else { return "" }   // no usable sensor on this chip
+        return "\(Int(t)) °C"   // the Battery screen's format
     }
     private var memoryMeta: String {
         switch store.cardMemory?.pressure {
-        case .normal: return "normal"
-        case .warning: return "warning"
-        case .critical: return "critical"
+        case .normal: return "pressure normal"
+        case .warning: return "pressure high"   // the alert's wording
+        case .critical: return "pressure critical"
         case nil: return ""
         }
     }
@@ -164,7 +165,7 @@ struct PanelFooter<Trailing: View>: View {
 
     var body: some View {
         HStack {
-            Button("Quit") { NSApplication.shared.terminate(nil) }
+            Button("Quit MacStats") { NSApplication.shared.terminate(nil) }
                 .buttonStyle(SubtleButtonStyle(cornerRadius: Design.cardCornerRadius))
             Spacer()
             trailing

@@ -6,13 +6,16 @@ import MacStatsCore
 /// card that fills the fixed panel height (the list scrolls inside it).
 /// Click an app with several processes to expand it into its processes (one app at a time).
 /// Right-click a row for Quit / Force Quit (Force Quit confirms first); on a process row
-/// they act on that process only.
+/// they act on that process only. Every app row's tooltip says so, and the footnote does too on
+/// the first few drill-ins (`quitHint`).
 /// Nothing moves under the pointer: the row order freezes while the pointer is over the list
 /// or a context menu is open, the expanded app keeps its place, and the numbers are the
 /// store's held values (`MetricsStore.setBreakdown`).
 struct BreakdownView: View {
     @ObservedObject var store: MetricsStore
     let metric: BreakdownMetric
+    /// Show "Right-click an app to quit it" in place of the footnote (the first few drill-ins).
+    let quitHint: Bool
     let onBack: () -> Void
 
     /// Names + small icons, resolved once per app/process and freed when the breakdown closes.
@@ -23,9 +26,10 @@ struct BreakdownView: View {
 
     private static let cores = ProcessInfo.processInfo.activeProcessorCount
 
-    init(store: MetricsStore, metric: BreakdownMetric, onBack: @escaping () -> Void) {
+    init(store: MetricsStore, metric: BreakdownMetric, quitHint: Bool = false, onBack: @escaping () -> Void) {
         _store = ObservedObject(wrappedValue: store)
         self.metric = metric
+        self.quitHint = quitHint
         self.onBack = onBack
         _apps = StateObject(wrappedValue: AppInfoCache())
     }
@@ -85,6 +89,7 @@ struct BreakdownView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)   // Esc goes back
                 Spacer()
                 Text(liveTotal)
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()
@@ -102,10 +107,12 @@ struct BreakdownView: View {
                 .onHover { store.setBreakdownPointerInside($0) }   // freezes the row order
 
             PanelFooter {
-                Text(footnote)
+                Text(quitHint ? "Right-click an app to quit it" : footnote)
                     .font(.caption2).foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.trailing)
-                    .lineLimit(metric == .memory ? 2 : 1).minimumScaleFactor(0.8)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .tooltip(quitHint ? nil : footnoteHelp)
+                    // Ends where the header's trailing text does (the cards' content inset).
+                    .padding(.trailing, Design.cardPadding - Design.panelInset)
             }
         }
         .padding([.horizontal, .bottom], Design.panelInset)
@@ -131,12 +138,19 @@ struct BreakdownView: View {
     private var footnote: String {
         switch metric {
         case .cpu: return "Share of the whole Mac (all \(Self.cores) cores)"
-        // Like Activity Monitor's Memory column (footprints). They don't reconcile with Memory
-        // Used either way: compressed memory counts at full size (more), and macOS's own and
-        // other users' processes aren't listed (less).
-        case .memory: return "Rows are each app's footprint (as in Activity Monitor); they don't add up to Memory Used"
-        case .energy: return "App power counts CPU only"
+        // Like Activity Monitor's Memory column (footprints); why they don't add up is the tooltip.
+        case .memory: return "Each app\u{2019}s memory, as in Activity Monitor"
+        case .energy: return "App power: CPU only, not screen or GPU"
         }
+    }
+
+    /// The footnote's tooltip: the detail that doesn't fit on its one line.
+    private var footnoteHelp: String? {
+        guard metric == .memory else { return nil }
+        // Compressed memory counts at full size (more), and macOS's own and other users'
+        // processes aren't listed (less).
+        return "Compressed memory counts at full size here, and macOS\u{2019}s own processes aren\u{2019}t "
+            + "listed, so the rows don\u{2019}t add up to the total above."
     }
 
     @ViewBuilder private var list: some View {
@@ -144,11 +158,11 @@ struct BreakdownView: View {
             VStack(spacing: 10) {
                 ProgressView().controlSize(.small)
                 Text("Measuring\u{2026}").font(.callout).fontWeight(.semibold)
-                Text(metric == .energy ? "Sampling energy use" : "Sampling CPU usage")
+                Text("Takes about a second")
                     .font(.caption).foregroundStyle(.secondary)
             }
         } else if store.breakdown.isEmpty {
-            Text("No apps").font(.callout).foregroundStyle(.secondary)
+            Text("Nothing to show yet").font(.callout).foregroundStyle(.secondary)
         } else {
             ScrollView {
                 LazyVStack(spacing: 0) {
@@ -181,7 +195,6 @@ struct BreakdownView: View {
         let expandable = app.processes.count > 1
         let value = shown(app)
         return AppRow(app: app, info: info, metric: metric, barScale: barScale, shown: value,
-                      perCore: metric == .cpu ? oneCore(value) : nil,
                       disclosure: expandable ? (expanded == app.appPID) : nil)
             .onTapGesture {
                 guard expandable else { return }
@@ -205,7 +218,7 @@ struct BreakdownView: View {
                     if metric == .cpu { oneCoreLine(value) }
                 }
             }
-            .tooltip(rowTooltip(value, info))
+            .tooltip(rowTooltip(app, value, info))
     }
 
     /// Activity Monitor's scale (100 % = one core), for comparing with it. Derived from the
@@ -218,10 +231,14 @@ struct BreakdownView: View {
         Button(oneCore(cpuPercent)) {}.disabled(true)
     }
 
-    /// A group row's explanation; on CPU rows also Activity Monitor's figure (100 % = one core).
-    private func rowTooltip(_ cpuPercent: Double, _ info: AppInfoCache.Info) -> String? {
-        guard metric == .cpu else { return info.detail }
-        return [info.detail, oneCore(cpuPercent)].compactMap { $0 }.joined(separator: "\n")
+    /// What a row does (an app) or stands for (a group); on CPU rows also Activity Monitor's
+    /// figure (100 % = one core), which no longer has a column of its own.
+    private func rowTooltip(_ app: AppUsage, _ cpuPercent: Double, _ info: AppInfoCache.Info) -> String? {
+        let what = !app.isApp ? info.detail
+            : app.processes.count > 1 ? "Click to show its \(app.processes.count) processes \u{00B7} Right-click to quit"
+            : "Right-click to quit"
+        guard metric == .cpu else { return what }
+        return [what, oneCore(cpuPercent)].compactMap { $0 }.joined(separator: "\n")
     }
 
     @ViewBuilder private func processRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
@@ -236,13 +253,14 @@ struct BreakdownView: View {
     private func exitedRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
         let value = shown(process, in: app)
         return ProcessRow(process: process, name: "Exited processes", metric: metric, barScale: barScale,
-                          shown: value, perCore: metric == .cpu ? oneCore(value) : nil)
+                          shown: value)
             .transition(.opacity)
             .contextMenu {
                 Button("Exited processes") {}.disabled(true)
                 if metric == .cpu { oneCoreLine(value) }
             }
-            .help("Work by this app's processes that ended since the last update")
+            .help(["Work by this app\u{2019}s processes that ended since the last update",
+                   metric == .cpu ? oneCore(value) : nil].compactMap { $0 }.joined(separator: "\n"))
     }
 
     private func liveProcessRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
@@ -250,9 +268,9 @@ struct BreakdownView: View {
         let name = isAppItself ? apps.info(for: app.appPID).name
                                : apps.name(ofProcess: process.pid, startTime: process.startTime)
         let value = shown(process, in: app)
-        return ProcessRow(process: process, name: name, metric: metric, barScale: barScale, shown: value,
-                          perCore: metric == .cpu ? oneCore(value) : nil)
+        return ProcessRow(process: process, name: name, metric: metric, barScale: barScale, shown: value)
             .transition(.opacity)
+            .tooltip(metric == .cpu ? oneCore(value) : nil)
             .contextMenu {
                 Button("\(name) \u{2014} pid \(process.pid)") {}.disabled(true)
                 if metric == .cpu { oneCoreLine(value) }
@@ -348,8 +366,6 @@ private struct AppRow: View {
     let barScale: Double
     /// The held value the row prints (`MetricsStore.shownValue`); the bar follows the exact one.
     let shown: Double
-    /// CPU only: Activity Monitor's figure for the app ("415% of one core"), beside the bar.
-    let perCore: String?
     /// nil = not expandable; else whether it is expanded.
     let disclosure: Bool?
 
@@ -369,18 +385,9 @@ private struct AppRow: View {
             .frame(width: 24, height: 24)
             .clipShape(RoundedRectangle(cornerRadius: 5.5, style: .continuous))
 
-            VStack(alignment: .leading, spacing: perCore == nil ? 4 : 1) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(info.name).font(.callout).lineLimit(1)
-                HStack(spacing: 6) {
-                    UsageBar(fraction: fraction, color: barColor(metric), height: 4)
-                    if let perCore {
-                        // A fixed column ("800% of one core" fits) keeps every row's bar the same length.
-                        Text(perCore)
-                            .font(.caption2).foregroundStyle(.tertiary).monospacedDigit()
-                            .lineLimit(1).minimumScaleFactor(0.8)
-                            .frame(width: 88, alignment: .leading)
-                    }
-                }
+                UsageBar(fraction: fraction, color: barColor(metric), height: 4)
             }
             Spacer(minLength: 8)
             Text(breakdownValueText(metric, shown))
@@ -390,7 +397,7 @@ private struct AppRow: View {
                 .frame(width: 58, alignment: .trailing)
             Image(systemName: "chevron.right")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)   // as strong as the cards' chevrons: "this opens"
                 .rotationEffect(.degrees(disclosure == true ? 90 : 0))
                 .opacity(disclosure == nil ? 0 : 1)
                 .frame(width: 8)
@@ -419,14 +426,12 @@ private struct ProcessRow: View {
     let barScale: Double
     /// The held value the row prints; the bar follows the exact one.
     let shown: Double
-    /// CPU only: Activity Monitor's figure for this process ("100% of one core"), under the name.
-    let perCore: String?
 
     @State private var hovering = false
 
     var body: some View {
         HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: perCore == nil ? 3 : 1) {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 4) {
                     Text(name).lineLimit(1).truncationMode(.middle)
                     if process.pid > 0 {
@@ -434,14 +439,7 @@ private struct ProcessRow: View {
                     }
                 }
                 .font(.caption)
-                HStack(spacing: 6) {
-                    UsageBar(fraction: fraction, color: barColor(metric).opacity(0.7), height: 2)
-                    if let perCore {
-                        Text(perCore)
-                            .font(.caption2).foregroundStyle(.tertiary).monospacedDigit()
-                            .fixedSize()
-                    }
-                }
+                UsageBar(fraction: fraction, color: barColor(metric).opacity(0.7), height: 2)
             }
             Spacer(minLength: 8)
             Text(breakdownValueText(metric, shown))
@@ -510,11 +508,10 @@ final class AppInfoCache: ObservableObject {
         switch appPID {
         case BreakdownGroup.otherProcesses:
             info = Info(name: "Other processes", icon: nil, symbol: "gearshape.2",
-                        detail: "Your background processes that no app is responsible for")
+                        detail: "Background tasks that don\u{2019}t belong to an open app")
         case BreakdownGroup.system:
             info = Info(name: "System", icon: nil, symbol: "apple.logo",
-                        detail: "The kernel, WindowServer, other users' processes, commands run with sudo, "
-                            + "and processes that exited before they could be traced to an app")
+                        detail: "macOS itself: the kernel, WindowServer and other system work")
         default:
             let app = NSRunningApplication(processIdentifier: pid_t(appPID))
             info = Info(name: app?.localizedName ?? "PID \(appPID)",
