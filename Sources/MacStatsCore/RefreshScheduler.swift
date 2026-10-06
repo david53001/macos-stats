@@ -35,21 +35,23 @@ public let batteryInterval: TimeInterval = 10.0      // IOPowerSources dictionar
 /// Hovering the menu-bar icon takes an extra idle sample; skip it if one was taken this recently.
 public let prewarmMinInterval: TimeInterval = 1.0
 
-/// The CPU breakdown shows "Measuring…" until its second process scan (a delta needs two), so
-/// that scan comes quickly; later scans settle to `breakdownScanInterval`. Half a second, not
-/// less: 0.3 s windows read a bursty app (VS Code) anywhere from 8 % to 76 % of a core against
-/// a 15 % average, so the first numbers shown were noise that then "dropped".
-public let breakdownFirstRescanDelay: TimeInterval = 0.5
-/// Later scans come every 2 s, and each row is averaged over the last `trailingWindowSeconds`.
+/// Breakdown scans come every 2 s, and each row is averaged over the last `trailingWindowSeconds`.
+/// CPU and energy show "Measuring…" until the second scan (a delta needs two), so their first
+/// numbers already cover 2 s: shown after a 0.5 s first window, they were noise that the next scan
+/// re-sorted, moving 5–8 of the top 8 rows 2.5 s after the list appeared.
 /// With 1 s scans and 1 s values the CPU breakdown's top-8 order changed on every scan (59 a
 /// minute) and VS Code read 0.2–7.3 % between scans; 2 s scans over a 4 s window, with the
 /// ranking hysteresis, measured 5–13 order changes a minute, and halve the scan cost
 /// (`docs/research/2026-10-06-stability-diagnosis.md` §4.1, variant D). Activity Monitor's own
 /// default refresh is 5 s.
 public let breakdownScanInterval: TimeInterval = 2.0
-/// The span breakdown CPU and energy rows (and the CPU header) are averaged over: the last two
-/// scan intervals (`BreakdownScanner`). Memory rows stay instantaneous.
-public let trailingWindowSeconds: TimeInterval = 4.0
+/// The span breakdown CPU and energy rows (and the CPU header) are averaged over: the last four
+/// scan intervals (`BreakdownScanner`). Memory rows stay instantaneous. 8 s, not 4: replaying the
+/// same 5 min of live scans, the CPU list's top 8 reordered 5.1 → 3.6 times a minute with scans
+/// showing a lower number above a higher one 83 → 10 of 149, and each row's text changed every
+/// 35 s instead of 15 s; at idle the Battery list's rows (CPU energy, read in lumps) stopped
+/// swapping (scans with an inversion 61 → 1 of 149). Activity Monitor averages over 5 s.
+public let trailingWindowSeconds: TimeInterval = 8.0
 /// A breakdown's row order stays frozen this long after the pointer leaves the list (or a
 /// context menu closes), so moving out and back in to click doesn't meet a reshuffle. Checked
 /// against scan timestamps (`MetricsStore.setBreakdown`), not with a timer.

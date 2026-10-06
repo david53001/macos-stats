@@ -161,10 +161,11 @@ public final class MetricsStore: ObservableObject {
     private func updateCards(cpuPercent: Double, memory: MemorySample, network: NetworkSample,
                              time: TimeInterval, restart: Bool) {
         if restart { cardCPUChangedAt = nil; cardDownChangedAt = nil; cardUpChangedAt = nil }
-        // Within 1.25 pp of the reading; a move of 2 pp or more shows at once.
+        // Within 1.25 pp of the reading; a move of 3 pp or more shows at once (2 pp let bursty
+        // load skip the dwell: about one change every 1.5 s).
         let cpu = heldValue(shown: restart ? nil : cardCPUPercent, value: cpuPercent, step: 1, band: 1.25)
         if cpu != cardCPUPercent,
-           restart || dwellAllows(since: cardCPUChangedAt, now: time, bigMove: abs(cpuPercent - cardCPUPercent) >= 2) {
+           restart || dwellAllows(since: cardCPUChangedAt, now: time, bigMove: abs(cpuPercent - cardCPUPercent) >= 3) {
             cardCPUPercent = cpu
             if !restart { cardCPUChangedAt = time }
         }
@@ -267,7 +268,6 @@ public final class MetricsStore: ObservableObject {
             // CPU/energy "Measuring…": every value is 0, so there's nothing to rank or hold yet.
             breakdown = apps
             breakdownMeasuring = true
-            display.noteMeasuring()
             return
         }
         let frozen = display.isFrozen(at: time, pointer: breakdownPointerProbe?())
@@ -314,7 +314,7 @@ public final class MetricsStore: ObservableObject {
     }
 
     private func resetBreakdownDisplay(_ metric: BreakdownMetric) {
-        display = BreakdownDisplay(metric: metric)
+        display = BreakdownDisplay(metric: metric, shownTotalCPU: cardCPUPercent)
         breakdownPointerProbe = nil
         if breakdownBarScale != 1 { breakdownBarScale = 1 }
         if breakdownShownTotalCPU != nil { breakdownShownTotalCPU = nil }

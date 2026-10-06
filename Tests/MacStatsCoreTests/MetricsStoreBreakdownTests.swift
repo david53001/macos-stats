@@ -42,31 +42,58 @@ import Testing
         #expect(order(store) == [2, 1])
     }
 
-    @Test func theShortFirstWindowIsResortedAtTheNextScan() {
-        // The 0.5 s numbers put 1 first; over the next 2 s, 2 leads by less than the hysteresis
-        // would let it climb. The first full scan sorts afresh (and its text starts afresh).
+    @Test func aSmallInversionLastsOneScan() {
+        // 2 edges past 1 by less than the margins: it shows above for one scan, then passes it.
         let store = cpuStore()
-        store.setBreakdown([app(1, 0), app(2, 0)], measuring: true, time: 0)
-        store.setBreakdown(scan([app(1, 3), app(2, 0.2)]), measuring: false, time: 0.5)
+        store.setBreakdown(scan([app(1, 3.0), app(2, 2.6)]), measuring: false, time: 0)
+        store.setBreakdown(scan([app(1, 3.0), app(2, 3.3)]), measuring: false, time: 2)
         #expect(order(store) == [1, 2])
-        store.setBreakdown(scan([app(1, 2.5), app(2, 2.7)]), measuring: false, time: 2.5)
+        store.setBreakdown(scan([app(1, 3.0), app(2, 3.3)]), measuring: false, time: 4)
         #expect(order(store) == [2, 1])
-        #expect(store.shownValue(app: 2).map { breakdownValueText(.cpu, $0) } == "2.7%")
-        // From then on the hysteresis applies again.
-        store.setBreakdown(scan([app(1, 2.8), app(2, 2.7)]), measuring: false, time: 4.5)
+        // A one-scan blip doesn't: 1 leads again before the timeout.
+        store.setBreakdown(scan([app(1, 3.4), app(2, 3.3)]), measuring: false, time: 6)
+        store.setBreakdown(scan([app(1, 3.0), app(2, 3.3)]), measuring: false, time: 8)
         #expect(order(store) == [2, 1])
     }
 
-    @Test func theShortFirstWindowStaysFrozenUnderAPointerThatMoved() {
+    @Test func aMenuOpenedWithoutMovingCountsAsPointing() {
+        // Right-click on the row under a pointer that never moved: after the menu closes the list
+        // stays frozen while the pointer is still there.
         let store = cpuStore()
-        store.setBreakdown([app(1, 0), app(2, 0)], measuring: true, time: 0)
-        store.setBreakdown(scan([app(1, 3), app(2, 0.2)]), measuring: false, time: 0.5)
-        store.breakdownPointerProbe = { BreakdownPointer(inside: true, moved: true) }
-        store.setBreakdown(scan([app(1, 0.1), app(2, 9)]), measuring: false, time: 2.5)
+        store.setBreakdown(scan([app(1, 5), app(2, 4)]), measuring: false, time: 0)
+        store.breakdownPointerProbe = { BreakdownPointer(inside: true, moved: false) }
+        store.setBreakdownMenuOpen(true, time: 1)
+        store.setBreakdownMenuOpen(false, time: 2)
+        store.setBreakdown(scan([app(1, 1), app(2, 40)]), measuring: false, time: 4)
         #expect(order(store) == [1, 2])
-        store.breakdownPointerProbe = { BreakdownPointer(inside: false, moved: true) }
-        store.setBreakdown(scan([app(1, 2.5), app(2, 2.7)]), measuring: false, time: 4.5)
-        #expect(order(store) == [2, 1])   // still the fresh sort, at the first unfrozen scan
+    }
+
+    @Test func aFrozenAppGainsNoRows() {
+        // New processes (and a first "Finished processes" row) would push the rows below an
+        // expanded app down under the pointer: they wait for the unfreeze.
+        let store = cpuStore()
+        store.setBreakdown([app(1, 6, children: [(10, 3), (11, 2)]), app(2, 1)], measuring: false, time: 0)
+        store.setBreakdownPointerInside(true, time: 1)
+        let grown = [app(1, 9, children: [(10, 3), (11, 2), (12, 2.5), (BreakdownGroup.exitedProcesses, 1)]),
+                     app(2, 1)]
+        store.setBreakdown(grown, measuring: false, time: 2)
+        #expect(store.breakdown[0].pids == [10, 11])
+        #expect(order(store) == [1, 2])
+        store.setBreakdownPointerInside(false, time: 3)
+        store.setBreakdown(grown, measuring: false, time: 4)
+        #expect(Set(store.breakdown[0].pids) == [10, 11, 12, BreakdownGroup.exitedProcesses])
+    }
+
+    @Test func theHeaderStartsFromTheCardValue() {
+        let store = MetricsStore()
+        let memory = MemorySample(usedBytes: 1, totalBytes: 2, pressure: .normal)
+        store.record(cpuPercent: 27, memory: memory, network: NetworkSample(downBytesPerSec: 0, upBytesPerSec: 0),
+                     time: 0)
+        store.beginBreakdown(metric: .cpu)
+        store.setBreakdown([app(1, 5)], measuring: false, totalCPU: 26.5, time: 2)
+        #expect(store.breakdownShownTotalCPU == 27)
+        store.setBreakdown([app(1, 5)], measuring: false, totalCPU: 23, time: 4)
+        #expect(store.breakdownShownTotalCPU == 23)
     }
 
     @Test func freezeHoldsOrderButUpdatesValuesAppendsAndRemoves() {

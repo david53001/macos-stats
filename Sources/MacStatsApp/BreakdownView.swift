@@ -178,7 +178,7 @@ struct BreakdownView: View {
             VStack(spacing: 10) {
                 ProgressView().controlSize(.small)
                 Text("Measuring\u{2026}").font(.callout).fontWeight(.semibold)
-                Text("Takes about a second")
+                Text("Takes about two seconds")
                     .font(.caption).foregroundStyle(.secondary)
             }
         } else if store.breakdown.isEmpty {
@@ -280,7 +280,7 @@ struct BreakdownView: View {
             exitedRow(process, in: app)
         } else if store.isEnded(app: app.appPID, pid: process.pid) {
             // Kept in place while the list is frozen (`MetricsStore.isEnded`); gone at the unfreeze.
-            ProcessRow(process: process, name: apps.name(ofProcess: process.pid, startTime: process.startTime),
+            ProcessRow(process: process, name: process.name ?? apps.name(ofProcess: process.pid, startTime: process.startTime),
                        metric: metric, barScale: barScale, shown: 0, ended: true)
                 .transition(.opacity)
         } else {
@@ -291,21 +291,22 @@ struct BreakdownView: View {
     /// The app's CPU credited for processes that exited between scans: no process to act on.
     private func exitedRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
         let value = shown(process, in: app)
-        return ProcessRow(process: process, name: "Ended processes", metric: metric, barScale: barScale,
+        return ProcessRow(process: process, name: "Finished processes", metric: metric, barScale: barScale,
                           shown: value)
             .transition(.opacity)
             .contextMenu {
-                Button("Ended processes") {}.disabled(true)
+                Button("Finished processes") {}.disabled(true)
                 if metric == .cpu { oneCoreLine(value) }
             }
-            .help(["Work by this app\u{2019}s processes that ended since the last update",
-                   metric == .cpu ? oneCore(value) : nil].compactMap { $0 }.joined(separator: "\n"))
+            .tooltip(["Work by this app\u{2019}s processes that finished since the last update",
+                      metric == .cpu ? oneCore(value) : nil].compactMap { $0 }.joined(separator: "\n"))
     }
 
     private func liveProcessRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
         let isAppItself = app.isApp && process.pid == app.appPID
         let appName = apps.info(for: app.appPID).name
-        let name = isAppItself ? appName : apps.name(ofProcess: process.pid, startTime: process.startTime)
+        let name = isAppItself ? appName
+            : process.name ?? apps.name(ofProcess: process.pid, startTime: process.startTime)
         let value = shown(process, in: app)
         // Under its own app, "Google Chrome Helper (Renderer)" reads "Helper (Renderer)": the row
         // shows the part that differs, the tooltip and menu the full name.

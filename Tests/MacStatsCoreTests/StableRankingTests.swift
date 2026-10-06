@@ -5,46 +5,40 @@ import Testing
     private let cpu = RankHysteresis.cpu
 
     @Test func emptyPreviousIsAPlainSort() {
-        let order = stableRanking(previous: [], now: [1: 2, 2: 5, 3: 0.5, BreakdownGroup.system: 5], before: [:],
-                                  rule: cpu)
+        let order = stableRanking(previous: [], now: [1: 2, 2: 5, 3: 0.5, BreakdownGroup.system: 5], rule: cpu)
         #expect(order == [2, BreakdownGroup.system, 1, 3])
     }
 
     @Test func noSwapWithinTheMargin() {
         // 4.5 vs 4: needs > max(4 × 1.15, 4 + 0.15) = 4.6, so the row below doesn't climb…
-        let order = stableRanking(previous: [2, 1], now: [1: 4.5, 2: 4], before: [1: 4.5, 2: 4], rule: cpu)
+        let order = stableRanking(previous: [2, 1], now: [1: 4.5, 2: 4], rule: cpu)
         #expect(order == [2, 1])
         // …and 4.0 vs 3.5 (a 14 % lead) doesn't either; 4.1 vs 3.5 (17 %) does.
-        #expect(stableRanking(previous: [2, 1], now: [1: 4, 2: 3.5], before: [1: 4, 2: 3.5], rule: cpu) == [2, 1])
-        #expect(stableRanking(previous: [2, 1], now: [1: 4.1, 2: 3.5], before: [1: 4.1, 2: 3.5], rule: cpu) == [1, 2])
-    }
-
-    @Test func aSwapNeedsTwoReadings() {
-        // 1 jumps from 4 to 7 (not a 1.5× lead over 5, so no jump rule): held for one reading…
-        let first = stableRanking(previous: [2, 1], now: [1: 7, 2: 5], before: [1: 4, 2: 5], rule: cpu)
-        #expect(first == [2, 1])
-        // …and moves when it leads on both.
-        let second = stableRanking(previous: first, now: [1: 7, 2: 5], before: [1: 7, 2: 5], rule: cpu)
-        #expect(second == [1, 2])
+        #expect(stableRanking(previous: [2, 1], now: [1: 4, 2: 3.5], rule: cpu) == [2, 1])
+        #expect(stableRanking(previous: [2, 1], now: [1: 4.1, 2: 3.5], rule: cpu) == [1, 2])
     }
 
     @Test func jumpRuleMovesASpikeAtOnce() {
         // 1 → 6 pp over 2's 1 pp: > 1.5× and > 1 pp ahead.
-        let order = stableRanking(previous: [2, 1], now: [1: 6, 2: 1], before: [1: 0.5, 2: 1], rule: cpu)
+        let order = stableRanking(previous: [2, 1], now: [1: 6, 2: 1], rule: cpu)
         #expect(order == [1, 2])
     }
 
+    @Test func aPromotedKeyPassesWithinTheMargin() {
+        // 4.5 vs 4 is within the margins, but a promoted key passes what it outranks.
+        #expect(stableRanking(previous: [2, 1], now: [1: 4.5, 2: 4], rule: cpu, promoted: [1]) == [1, 2])
+        #expect(stableRanking(previous: [2, 1], now: [1: 3.5, 2: 4], rule: cpu, promoted: [1]) == [2, 1])
+    }
+
     @Test func newKeysEnterAtTheirSortedPlaceAndVanishedOnesGo() {
-        let order = stableRanking(previous: [1, 2, 3], now: [1: 9, 3: 1, 4: 5], before: [1: 9, 2: 6, 3: 1],
-                                  rule: cpu)
+        let order = stableRanking(previous: [1, 2, 3], now: [1: 9, 3: 1, 4: 5], rule: cpu)
         #expect(order == [1, 4, 3])
     }
 
     @Test func frozenKeepsOrderAndAppendsNewKeys() {
-        let order = stableRanking(previous: [1, 2, 3], now: [1: 0, 2: 1, 3: 50, 4: 99], before: [:],
-                                  rule: cpu, frozen: true)
+        let order = stableRanking(previous: [1, 2, 3], now: [1: 0, 2: 1, 3: 50, 4: 99], rule: cpu, frozen: true)
         #expect(order == [1, 2, 3, 4])
-        let quit = stableRanking(previous: [1, 2, 3], now: [1: 0, 3: 50], before: [:], rule: cpu, frozen: true)
+        let quit = stableRanking(previous: [1, 2, 3], now: [1: 0, 3: 50], rule: cpu, frozen: true)
         #expect(quit == [1, 3])
     }
 
@@ -52,45 +46,43 @@ import Testing
         let mb = 1_048_576.0
         let other = BreakdownGroup.otherProcesses
         let values: [Int32: Double] = [other: 4_000 * mb, 7: 300 * mb, 8: 100 * mb, 9: 2_000 * mb]
-        let order = stableRanking(previous: [7, 8, other], now: values, before: values, rule: .memory,
+        let order = stableRanking(previous: [7, 8, other], now: values, rule: .memory,
                                   groupsLast: true)
         #expect(order == [9, 7, 8, other])
-        let frozen = stableRanking(previous: [7, 8, other], now: values, before: values, rule: .memory,
+        let frozen = stableRanking(previous: [7, 8, other], now: values, rule: .memory,
                                    frozen: true, groupsLast: true)
         #expect(frozen == [7, 8, 9, other])
     }
 
     @Test func tiesAreDeterministicByKey() {
         let values: [Int32: Double] = [9: 0, 3: 0, 5: 0, BreakdownGroup.otherProcesses: 0]
-        let a = stableRanking(previous: [], now: values, before: [:], rule: cpu)
-        let b = stableRanking(previous: [], now: values, before: [:], rule: cpu)
+        let a = stableRanking(previous: [], now: values, rule: cpu)
+        let b = stableRanking(previous: [], now: values, rule: cpu)
         #expect(a == [3, 5, 9, BreakdownGroup.otherProcesses])
         #expect(a == b)
         // New tied keys enter in key order too.
-        #expect(stableRanking(previous: [3], now: values, before: [:], rule: cpu)
+        #expect(stableRanking(previous: [3], now: values, rule: cpu)
                 == [3, 5, 9, BreakdownGroup.otherProcesses])
     }
 
     @Test func aRowItCantBeatDoesNotBlockOneItCan() {
         // Round 1's CPU case: 4.3 % sat under 0.4 % because 2.3 % (within its margin) stopped it.
         let values: [Int32: Double] = [1: 2.9, 2: 3.3, 3: 0.4, 4: 2.3, 5: 4.3]
-        let order = stableRanking(previous: [1, 2, 3, 4, 5], now: values, before: values, rule: cpu)
+        let order = stableRanking(previous: [1, 2, 3, 4, 5], now: values, rule: cpu)
         #expect(order == [5, 1, 2, 4, 3])
         // A row passes the lower rows it outranks but stops under a higher one.
-        let stops = stableRanking(previous: [1, 2, 3], now: [1: 5, 2: 0.1, 3: 4.5], before: [1: 5, 2: 0.1, 3: 4.5],
-                                  rule: cpu)
+        let stops = stableRanking(previous: [1, 2, 3], now: [1: 5, 2: 0.1, 3: 4.5], rule: cpu)
         #expect(stops == [1, 3, 2])
     }
 
     @Test func energyRowsSortAtTheirPrintedPrecision() {
         // Round 1's Battery capture: 0.00 W on top, 0.17 W near the bottom (the old 0.05 W margin).
         let values: [Int32: Double] = [1: 0.14, 2: 0.01, 3: 0.00, 4: 0.05, 5: 0.04, 6: 0.17]
-        let order = stableRanking(previous: [1, 2, 3, 4, 5, 6], now: values, before: values, rule: .energy)
+        let order = stableRanking(previous: [1, 2, 3, 4, 5, 6], now: values, rule: .energy)
         // Everything sorts: 0.17 W leads 0.14 W by 21 % and 0.03 W, past both margins (15 %, 0.02 W).
         #expect(order == [6, 1, 4, 5, 2, 3])
         // 0.15 vs 0.14 (7 %) is within them, so those two keep their order.
-        let close = stableRanking(previous: [1, 6], now: [1: 0.14, 6: 0.15], before: [1: 0.14, 6: 0.15],
-                                  rule: .energy)
+        let close = stableRanking(previous: [1, 6], now: [1: 0.14, 6: 0.15], rule: .energy)
         #expect(close == [1, 6])
     }
 
@@ -109,7 +101,7 @@ import Testing
                 values[Int32(k)] = (u * u * u * scale * 100).rounded() / 100
             }
             let previous = values.keys.shuffled(using: &rng)
-            let order = stableRanking(previous: previous, now: values, before: values, rule: rule)
+            let order = stableRanking(previous: previous, now: values, rule: rule)
             #expect(Set(order) == Set(values.keys))
             for (i, upper) in order.enumerated() {
                 for lower in order[(i + 1)...] {

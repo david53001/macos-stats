@@ -413,13 +413,8 @@ final class AppModel: ObservableObject {
         scanSession = BreakdownScanSession()
         scanGeneration &+= 1
         procScanTick(waitForResult: true)   // first scan: the CPU baseline (CPU stays "measuring")
-        // Second scan soon after, so CPU leaves "Measuring…" quickly; then the steady cadence.
         procTimer?.invalidate()
-        procTimer = makeTimer(after: breakdownFirstRescanDelay, tolerance: 0.03) { model in
-            model.procScanTick()
-            model.procTimer = model.makeTimer(after: breakdownScanInterval, tolerance: 0.1,
-                                              repeats: true) { $0.procScanTick() }
-        }
+        procTimer = makeTimer(after: breakdownScanInterval, tolerance: 0.1, repeats: true) { $0.procScanTick() }
     }
 
     func exitBreakdown() {

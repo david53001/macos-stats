@@ -42,13 +42,16 @@ public struct ProcessUsage: Equatable, Identifiable, Sendable {
     /// The process's start time (see `RawProcess.startTime`), so an action can check that the
     /// pid still belongs to the same process before signalling it.
     public let startTime: UInt64
+    /// The process's name, read during the scan (`processName`), so a row of a process that ends
+    /// before it is drawn still has one. nil if unreadable.
+    public let name: String?
 
     public var id: Int32 { pid }
 
     public init(pid: Int32, appPID: Int32, cpuPercent: Double, memoryBytes: UInt64, watts: Double = 0,
-                startTime: UInt64 = 0) {
+                startTime: UInt64 = 0, name: String? = nil) {
         self.pid = pid; self.appPID = appPID; self.cpuPercent = cpuPercent; self.memoryBytes = memoryBytes
-        self.watts = watts; self.startTime = startTime
+        self.watts = watts; self.startTime = startTime; self.name = name
     }
 
     public func value(for metric: BreakdownMetric) -> Double {

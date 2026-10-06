@@ -1,7 +1,8 @@
 import Foundation
 
 /// How strongly a breakdown resists re-ranking. A row must lead by BOTH margins: `rel` of the row
-/// above's value and `abs`, on two readings. `abs` is 1.5 printed steps of a small row
+/// above's value and `abs`. The values are the rows' printed (held) values, which already take two
+/// scans to change (`HeldReading`), so one reading is enough here. `abs` is 1.5 printed steps of a small row
 /// (`breakdownValueStep`: 0.1 pp, 0.01 W): rows ranked by their printed values climb over a row
 /// 2 steps lower, not over one a single step lower. Memory keeps 5 % / 20 MB (its list is still and sorted).
 public struct RankHysteresis: Equatable, Sendable {
@@ -27,20 +28,19 @@ public struct RankHysteresis: Equatable, Sendable {
 }
 
 /// Re-ranks keys with hysteresis. Starts from `previous`: vanished keys are dropped, and new keys enter at
-/// their sorted place (by `now`, ties by today's `ranksBefore` rule). A key "clearly beats" a key when
-/// min(now, before) of it > max(now, before) of the other × (1 + rel) and + abs, i.e. it leads by both
-/// margins on both readings; or when it leads by > 1.5× AND > `jump` on `now` (moves at once: a big,
-/// clear lead isn't held back a scan).
+/// their sorted place (by `now`, ties by `precedes`). A key "clearly beats" a key when its value >
+/// the other's × (1 + rel) and + abs, i.e. it leads by both margins; or when it leads by > 1.5× AND
+/// > `jump`.
 /// Each key moves up past the run of keys directly above it that it outranks on `now`, as far as the
 /// highest of them it clearly beats: so a key it can't clearly beat doesn't block one further up that
 /// it can, and it never passes a key with a higher value.
 /// With steady readings one pass leaves no key clearly beaten by a key below it (tested).
+/// A `promoted` key climbs over every key directly above it that it outranks, margins or not.
 /// `frozen` returns `previous` minus vanished keys, plus new keys appended at the end. `groupsLast` (memory) keeps negative keys
 /// (group rows) after all apps. One insertion pass, O(n²) on ~60 rows (O(n) when little changed).
-/// A key missing from `before` counts its `now` value for both readings.
-public func stableRanking(previous: [Int32], now: [Int32: Double], before: [Int32: Double],
+public func stableRanking(previous: [Int32], now: [Int32: Double],
                           rule: RankHysteresis, frozen: Bool = false,
-                          groupsLast: Bool = false) -> [Int32] {
+                          groupsLast: Bool = false, promoted: Set<Int32> = []) -> [Int32] {
     var seen = Set<Int32>()
     let kept = previous.filter { now[$0] != nil && seen.insert($0).inserted }
     // `now` has unique keys, so this sort decides ties by key alone: deterministic.
@@ -64,15 +64,14 @@ public func stableRanking(previous: [Int32], now: [Int32: Double], before: [Int3
     }
 
     func value(_ key: Int32) -> Double { now[key] ?? 0 }
-    func low(_ key: Int32) -> Double { min(value(key), before[key] ?? value(key)) }
-    func high(_ key: Int32) -> Double { max(value(key), before[key] ?? value(key)) }
     func outranks(_ a: Int32, _ b: Int32) -> Bool {
         if groupsLast, (a < 0) != (b < 0) { return a > 0 }
         return value(a) > value(b)
     }
     func climbs(_ a: Int32, over b: Int32) -> Bool {
         if groupsLast, (a < 0) != (b < 0) { return a > 0 }
-        if low(a) > max(high(b) * (1 + rule.rel), high(b) + rule.abs) { return true }
+        if promoted.contains(a) { return true }
+        if value(a) > max(value(b) * (1 + rule.rel), value(b) + rule.abs) { return true }
         return value(a) > 1.5 * value(b) && value(a) - value(b) > rule.jump
     }
     if list.count > 1 {

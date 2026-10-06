@@ -318,7 +318,7 @@ public final class ProcessSampler {
 /// One breakdown's scan pipeline: attribution + interval usage + the CPU header over the
 /// same span. Lives only while a breakdown is open (a new one per drill-in).
 ///
-/// CPU and energy rows are averaged over a trailing window (`windowSeconds`, the last two
+/// CPU and energy rows are averaged over a trailing window (`windowSeconds`, the last four
 /// 2 s scan intervals by default), and so is the CPU header, so rows + System still add up to
 /// it. A process that started mid-window counts what it used over the whole window; one that
 /// exited mid-window keeps its earlier work in its app's "Exited processes" row while the app
@@ -369,15 +369,20 @@ public final class BreakdownScanner: @unchecked Sendable {
     /// The trailing window's intervals, oldest first. A few dictionaries of ~500 entries
     /// (~20–60 KB), freed with the scanner when the breakdown closes.
     private var window: [Interval] = []
+    /// Each live process's name, read once when it first shows up (a few new processes a scan).
+    private var names: [ProcessKey: String] = [:]
+    private let nameOf: (Int32) -> String?
 
     /// `windowSeconds`: the span rows are averaged over; 0 = the latest interval only.
     public init(cores: Int = ProcessInfo.processInfo.activeProcessorCount,
                 windowSeconds: TimeInterval = trailingWindowSeconds,
                 responsible: @escaping (Int32) -> Int32? = responsiblePID(for:),
-                allParents: @escaping () -> [Int32: Int32] = readAllParentPIDs) {
+                allParents: @escaping () -> [Int32: Int32] = readAllParentPIDs,
+                nameOf: @escaping (Int32) -> String? = processName) {
         self.cores = Double(max(1, cores))
         self.windowSeconds = max(0, windowSeconds)
         self.attributor = ProcessAttributor(responsible: responsible, allParents: allParents)
+        self.nameOf = nameOf
     }
 
     public func scan(_ processes: [RawProcess], appPIDs: Set<Int32>, fallbackAppPIDs: Set<Int32> = [],
@@ -489,15 +494,20 @@ public final class BreakdownScanner: @unchecked Sendable {
         var usages: [ProcessUsage] = []
         usages.reserveCapacity(processes.count + exitedNs.count)
         var liveApps = Set<Int32>()
+        var liveNames: [ProcessKey: String] = [:]
+        liveNames.reserveCapacity(processes.count)
         for p in processes {
             let key = ProcessKey(pid: p.pid, startTime: p.startTime)
             let app = owners[p.pid] ?? BreakdownGroup.otherProcesses
             liveApps.insert(app)
+            let name = names[key] ?? nameOf(p.pid)
+            liveNames[key] = name
             usages.append(ProcessUsage(pid: p.pid, appPID: app, cpuPercent: (ns[key] ?? 0) * percentPerNs,
                                        memoryBytes: p.memoryBytes,
                                        watts: span > 0 ? (nj[key] ?? 0) / 1_000_000_000 / span : 0,
-                                       startTime: p.startTime))
+                                       startTime: p.startTime, name: name))
         }
+        names = liveNames
         for (app, exited) in exitedNs where liveApps.contains(app) {
             let watts = span > 0 ? (exitedNj[app] ?? 0) / 1_000_000_000 / span : 0
             guard exited > 0 || watts > 0 else { continue }
