@@ -25,6 +25,11 @@ final class AppModel: ObservableObject {
     /// core with the panel ordered out for hours), so the window has the last word.
     private var panelAppeared = false
     private var panelWindowVisible = true
+    /// The window is ordered in (`isVisible`), covered or not. A covered panel (screen locked, display
+    /// asleep) pauses the timers but isn't a close: the breakdown and the tour stay where they are.
+    private var panelWindowOrderedIn = true
+    /// SwiftUI shows the content and the window is ordered in: the panel is open, maybe covered.
+    private var panelShown = false
     private weak var panelWindow: NSWindow?
 
     /// Dedicated per-process scan loop — exists only while a breakdown is open, so the
@@ -136,7 +141,7 @@ final class AppModel: ObservableObject {
     /// screen too, so the first tick runs before the first frame, as before.
     func setPanelAppeared(_ appeared: Bool) {
         panelAppeared = appeared
-        if appeared { panelWindowVisible = true }
+        if appeared { panelWindowVisible = true; panelWindowOrderedIn = true }
         updateVisibility()
     }
 
@@ -144,6 +149,7 @@ final class AppModel: ObservableObject {
     func panelWindowChanged(_ window: NSWindow) {
         panelWindow = window
         panelWindowVisible = Self.isOnScreen(window)
+        panelWindowOrderedIn = window.isVisible
         updateVisibility()
     }
 
@@ -152,7 +158,17 @@ final class AppModel: ObservableObject {
     }
 
     private func updateVisibility() {
-        setVisibility(panelAppeared && panelWindowVisible ? .popoverOpen : .idle)
+        let shown = panelAppeared && panelWindowOrderedIn
+        if shown != panelShown {
+            panelShown = shown
+            if shown {
+                tour.panelOpened()
+            } else {
+                tour.panelClosed()
+                exitBreakdown()   // stop per-process scanning + clear nav state
+            }
+        }
+        setVisibility(shown && panelWindowVisible ? .popoverOpen : .idle)
     }
 
     private func setVisibility(_ newValue: MacStatsCore.Visibility) {
@@ -160,7 +176,6 @@ final class AppModel: ObservableObject {
         visibility = newValue
         switch newValue {
         case .popoverOpen:
-            tour.panelOpened()
             stopIdleSampler()
             reliefTimer?.invalidate()
             reliefTimer = nil
@@ -172,11 +187,13 @@ final class AppModel: ObservableObject {
             lastBatteryRead = nil
             tick()
             if !tour.defersPermissionPrompts { refreshTrashSize() }   // Finder asks on the first read
+            // Uncovered again with a breakdown still open: scan afresh (the old window spans the gap).
+            if procTimer == nil, let metric = store.activeBreakdownMetric { enterBreakdown(metric) }
         case .idle:
-            tour.panelClosed()
             timer?.invalidate()
             timer = nil
-            exitBreakdown()   // stop per-process scanning + clear nav state
+            procTimer?.invalidate()   // a covered panel keeps its breakdown, without scanning
+            procTimer = nil
             // MenuBarExtra keeps the closed popover's views alive, so a published sample
             // re-renders them (~0.7–1.3 % of a core): record without publishing until reopened.
             store.pausePublishing()
