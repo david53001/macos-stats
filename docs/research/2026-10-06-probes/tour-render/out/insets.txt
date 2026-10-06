@@ -1,0 +1,26 @@
+fit body=cpu lines=2 OK
+fit body=memory lines=2 OK
+fit body=network lines=2 OK
+fit body=battery lines=2 OK
+fit body=footer lines=2 OK
+fit footnote="Share of the whole Mac (all 8 cores)" width=178.0 room=182.0 scale=1.00 OK
+fit footnote="Each app’s memory, as in Activity Monitor" width=206.0 room=182.0 scale=0.88 OK
+fit footnote="App power: CPU only, not screen or GPU" width=200.0 room=182.0 scale=0.91 OK
+fit footnote="Right-click an app to quit it" width=135.0 room=182.0 scale=1.00 OK
+step=cpu light inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(8.0,36.0,304.0,67.0)pt cutout=(5.0,33.0,310.0,73.0)pt radius=11.0 callout=(8.0,112.0,304.0,108.0)pt placement=below OK
+step=memory light inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(8.0,109.0,304.0,67.0)pt cutout=(5.0,106.0,310.0,73.0)pt radius=11.0 callout=(8.0,185.0,304.0,108.0)pt placement=below OK
+step=network light inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(8.0,182.0,304.0,67.0)pt cutout=(5.0,179.0,310.0,73.0)pt radius=11.0 callout=(8.0,258.0,304.0,108.0)pt placement=below OK
+step=battery light inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(8.0,255.0,304.0,67.0)pt cutout=(5.0,252.0,310.0,73.0)pt radius=11.0 callout=(8.0,138.0,304.0,108.0)pt placement=above OK
+step=footer light inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(234.0,372.0,78.0,24.0)pt cutout=(231.0,369.0,84.0,30.0)pt radius=11.0 callout=(8.0,255.0,304.0,108.0)pt placement=above OK
+step=footer-nobattery light inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(234.0,372.0,78.0,24.0)pt cutout=(231.0,369.0,84.0,30.0)pt radius=11.0 callout=(8.0,255.0,304.0,108.0)pt placement=above OK
+nobattery progress=4 of 4
+chip offersTour=true offerShows=1
+step=cpu dark inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(8.0,36.0,304.0,67.0)pt cutout=(5.0,33.0,310.0,73.0)pt radius=11.0 callout=(8.0,112.0,304.0,108.0)pt placement=below OK
+step=memory dark inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(8.0,109.0,304.0,67.0)pt cutout=(5.0,106.0,310.0,73.0)pt radius=11.0 callout=(8.0,185.0,304.0,108.0)pt placement=below OK
+step=network dark inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(8.0,182.0,304.0,67.0)pt cutout=(5.0,179.0,310.0,73.0)pt radius=11.0 callout=(8.0,258.0,304.0,108.0)pt placement=below OK
+step=battery dark inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(8.0,255.0,304.0,67.0)pt cutout=(5.0,252.0,310.0,73.0)pt radius=11.0 callout=(8.0,138.0,304.0,108.0)pt placement=above OK
+step=footer dark inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(234.0,372.0,78.0,24.0)pt cutout=(231.0,369.0,84.0,30.0)pt radius=11.0 callout=(8.0,255.0,304.0,108.0)pt placement=above OK
+step=footer-nobattery dark inner(px) L=2 R=2 T=2 B=2 outer(px) L=6 R=6 T=6 B=6 target=(234.0,372.0,78.0,24.0)pt cutout=(231.0,369.0,84.0,30.0)pt radius=11.0 callout=(8.0,255.0,304.0,108.0)pt placement=above OK
+nobattery progress=4 of 4
+chip offersTour=true offerShows=2
+failures=0
