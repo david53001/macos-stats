@@ -9,19 +9,42 @@ public struct RankHysteresis: Equatable, Sendable {
     public var rel: Double      // relative margin
     public var abs: Double      // absolute margin (metric units)
     public var jump: Double     // a lead this big (and > 1.5×) moves at once, on one reading
+    /// Process rows printed below this pass a neighbour only by the margins, never by the inversion
+    /// timeout (`ListRanking`): an expanded app's 0.1–0.4 % helpers crossing each other is noise.
+    public var promotionFloor: Double
 
-    public init(rel: Double, abs: Double, jump: Double) {
-        self.rel = rel; self.abs = abs; self.jump = jump
+    public init(rel: Double, abs: Double, jump: Double, promotionFloor: Double = 0) {
+        self.rel = rel; self.abs = abs; self.jump = jump; self.promotionFloor = promotionFloor
     }
 
-    public static let cpu    = RankHysteresis(rel: 0.15, abs: 0.15, jump: 1)         // pp of the whole Mac
+    public static let cpu    = RankHysteresis(rel: 0.15, abs: 0.15, jump: 1, promotionFloor: 0.5)   // pp of the whole Mac
     public static let memory = RankHysteresis(rel: 0.05, abs: 20 * 1_048_576, jump: 200 * 1_048_576)
-    public static let energy = RankHysteresis(rel: 0.15, abs: 0.015, jump: 0.05)     // W
+    public static let energy = RankHysteresis(rel: 0.15, abs: 0.015, jump: 0.05, promotionFloor: 0.05)   // W
 
-    /// Only a big jump moves (`BreakdownDisplay`'s reorder dwell).
+    /// Only a big jump moves (`ListRanking`'s reorder dwell).
     public var jumpsOnly: RankHysteresis { RankHysteresis(rel: 0, abs: .greatestFiniteMagnitude, jump: jump) }
 
     public static func `for`(_ metric: BreakdownMetric) -> RankHysteresis {
+        switch metric {
+        case .cpu: return .cpu
+        case .memory: return .memory
+        case .energy: return .energy
+        }
+    }
+}
+
+/// How a breakdown row's printed value is held (`HeldReading`): it changes once the reading is at least
+/// max(`band` × the printed step, min(`relBand` × the value, `cap`)) away, confirmed over two scans.
+public struct RowHold: Equatable, Sendable {
+    public var band: Double
+    public var relBand: Double
+    public var cap: Double
+
+    public static let cpu    = RowHold(band: 0.75, relBand: 0.10, cap: 2)          // pp
+    public static let memory = RowHold(band: 0.75, relBand: 0.03, cap: .infinity)
+    public static let energy = RowHold(band: 0.75, relBand: 0.10, cap: 0.2)        // W
+
+    public static func `for`(_ metric: BreakdownMetric) -> RowHold {
         switch metric {
         case .cpu: return .cpu
         case .memory: return .memory
@@ -39,10 +62,12 @@ public struct RankHysteresis: Equatable, Sendable {
 /// it can, and it never passes a key with a higher value.
 /// With steady readings one pass leaves no key clearly beaten by a key below it (tested).
 /// A `promoted` key climbs over every key directly above it that it outranks, margins or not.
-/// `frozen` returns `previous` minus vanished keys, plus new keys appended at the end (after the group rows too).
+/// The first `fixed` kept keys keep their places; the rest rank below them, and new keys join there.
+/// `frozen` (= `fixed` all) returns `previous` minus vanished keys, plus new keys appended at the end (after
+/// the group rows too).
 /// Otherwise `groupsLast` (memory) keeps negative keys (group rows) after all apps. One insertion pass, O(n²) on ~60 rows (O(n) when little changed).
 public func stableRanking(previous: [Int32], now: [Int32: Double],
-                          rule: RankHysteresis, frozen: Bool = false,
+                          rule: RankHysteresis, frozen: Bool = false, fixed: Int = 0,
                           groupsLast: Bool = false, promoted: Set<Int32> = []) -> [Int32] {
     var seen = Set<Int32>()
     let kept = previous.filter { now[$0] != nil && seen.insert($0).inserted }
@@ -52,14 +77,13 @@ public func stableRanking(previous: [Int32], now: [Int32: Double],
     }
 
     // Frozen: new keys go after every kept one, group rows included, so nothing under the pointer moves.
-    if frozen { return kept + fresh }
-
+    let fixed = frozen ? kept.count : min(max(0, fixed), kept.count)
     var list = kept
     if list.isEmpty {
         list = fresh
     } else {
         for key in fresh {
-            let at = list.firstIndex { precedes(key, $0, now: now, groupsLast: groupsLast) } ?? list.count
+            let at = list[fixed...].firstIndex { precedes(key, $0, now: now, groupsLast: groupsLast) } ?? list.count
             list.insert(key, at: at)
         }
     }
@@ -76,10 +100,10 @@ public func stableRanking(previous: [Int32], now: [Int32: Double],
         return value(a) > 1.5 * value(b) && value(a) - value(b) > rule.jump
     }
     if list.count > 1 {
-        for i in 1..<list.count {
+        for i in max(1, fixed)..<list.count {
             let key = list[i]
             var j = i, target = i
-            while j > 0, outranks(key, list[j - 1]) {
+            while j > fixed, outranks(key, list[j - 1]) {
                 j -= 1
                 if climbs(key, over: list[j]) { target = j }
             }

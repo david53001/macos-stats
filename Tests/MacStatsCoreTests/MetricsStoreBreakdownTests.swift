@@ -99,11 +99,19 @@ import Testing
                         return AppUsage(appPID: k, processes: [], cpuPercent: v, memoryBytes: UInt64(v * 1e8), watts: v / 10)
                     }
                 }
-                display.apply(scan(), totalCPU: nil, frozen: false, time: 0)
+                display.apply(scan(), totalCPU: nil, freeze: .none, time: 0)
                 for i in 1...6 {
                     let before = display.apps.map(\.appPID)
-                    display.apply(scan(), totalCPU: nil, frozen: true, time: Double(2 * i))
+                    display.apply(scan(), totalCPU: nil, freeze: .all, time: Double(2 * i))
                     #expect(Array(display.apps.map(\.appPID).prefix(before.count)) == before)
+                }
+                // Frozen down to a hovered app: the rows down to it stay exactly where they were.
+                for i in 7...12 {
+                    let before = display.apps.map(\.appPID)
+                    guard let hovered = before.randomElement(using: &rng) else { continue }
+                    let through = before.firstIndex(of: hovered)! + 1
+                    display.apply(scan(), totalCPU: nil, freeze: .through(hovered), time: Double(2 * i))
+                    #expect(Array(display.apps.map(\.appPID).prefix(through)) == Array(before.prefix(through)))
                 }
             }
         }
@@ -198,14 +206,70 @@ import Testing
         #expect(store.breakdown[0].pids == [10, 12])
     }
 
-    @Test func exitedRowStaysOnceItAppeared() {
+    @Test func exitedRowShowsOnlyWhileItHasSomethingToShow() {
+        // "Finished processes 0.0%" read like an error: it goes once it prints 0, unless frozen.
         let store = cpuStore()
         let exited = BreakdownGroup.exitedProcesses
         store.setBreakdown([app(1, 6, children: [(10, 3), (exited, 2)])], measuring: false, time: 0)
+        store.setBreakdownPointerInside(true, time: 1)
         store.setBreakdown([app(1, 3, children: [(10, 3)])], measuring: false, time: 2)
         #expect(store.breakdown[0].pids == [10, exited])
-        #expect(store.breakdown[0].processes.last?.cpuPercent == 0)
         #expect(!store.isEnded(app: 1, pid: exited))
+        store.setBreakdownPointerInside(false, time: 3)
+        store.setBreakdown([app(1, 3, children: [(10, 3)])], measuring: false, time: 4)
+        #expect(store.breakdown[0].pids == [10])
+        // A reading that prints 0.0 % never shows.
+        store.setBreakdown([app(1, 3, children: [(10, 3), (exited, 0.02)])], measuring: false, time: 6)
+        #expect(store.breakdown[0].pids == [10])
+    }
+
+    @Test func tinyProcessRowsDontSwapByTheInversionTimeout() {
+        // Under the promotion floor (0.5 % CPU), 0.3 % sitting above 0.4 % isn't worth a reorder;
+        // above it, the timeout passes as for apps.
+        let store = cpuStore()
+        store.setBreakdown([app(1, 1, children: [(10, 0.4), (11, 0.3)])], measuring: false, time: 0)
+        for t in [2.0, 4, 6, 8, 10, 12] {
+            store.setBreakdown([app(1, 1, children: [(10, 0.3), (11, 0.4)])], measuring: false, time: t)
+        }
+        #expect(store.breakdown[0].pids == [10, 11])
+        let big = cpuStore()
+        big.setBreakdown([app(1, 6, children: [(10, 3.0), (11, 2.6)])], measuring: false, time: 0)
+        for t in [2.0, 4, 6, 8, 10, 12] {
+            big.setBreakdown([app(1, 6, children: [(10, 3.0), (11, 3.3)])], measuring: false, time: t)
+        }
+        #expect(big.breakdown[0].pids == [11, 10])
+    }
+
+    @Test func processRowsReorderAtMostOncePerTheirDwell() {
+        // Two processes trading clear leads every scan: their order follows at most every fifth scan.
+        let store = cpuStore()
+        store.setBreakdown([app(1, 7, children: [(10, 3.8), (11, 3.0)])], measuring: false, time: 0)
+        var orders: [[Int32]] = []
+        for i in 1...10 {
+            let (a, b) = i % 2 == 1 ? (3.0, 3.8) : (3.8, 3.0)
+            store.setBreakdown([app(1, 7, children: [(10, a), (11, b)])], measuring: false, time: Double(2 * i))
+            orders.append(store.breakdown[0].pids)
+        }
+        let reorders = zip([[10, 11]] + orders, orders).filter { $0 != $1 }.count
+        #expect(reorders <= 2)
+    }
+
+    @Test func aPointerOnAnAppFreezesOnlyDownToIt() {
+        // A busy app below the hovered row still climbs, but never past it: nothing under the pointer moves.
+        let store = cpuStore()
+        store.setBreakdown(scan([app(1, 5), app(2, 4), app(3, 3), app(4, 2)]), measuring: false, time: 0)
+        var hovered: Int32? = 2
+        store.breakdownPointerProbe = { BreakdownPointer(inside: true, moved: true, app: hovered) }
+        store.setBreakdown(scan([app(1, 1), app(2, 1), app(3, 1), app(4, 40)]), measuring: false, time: 2)
+        #expect(order(store) == [1, 2, 4, 3])
+        // Not knowing the row (between rows, after a scroll) freezes everything.
+        hovered = nil
+        store.setBreakdown(scan([app(1, 1), app(2, 1), app(3, 50), app(4, 40)]), measuring: false, time: 8)
+        #expect(order(store) == [1, 2, 4, 3])
+        // A new app joins below the hovered one at its sorted place.
+        hovered = 1
+        store.setBreakdown(scan([app(1, 1), app(2, 1), app(3, 50), app(4, 40), app(5, 45)]), measuring: false, time: 14)
+        #expect(order(store) == [1, 5, 3, 4, 2])   // 3 passes 5 on a later scan (a lead within the margins)
     }
 
     @Test func memoryHasNoExitedRow() {
