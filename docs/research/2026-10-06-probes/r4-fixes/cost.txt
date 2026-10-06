@@ -1,0 +1,7 @@
+Building for production...
+Build complete! (10,22 secs)
+cost no tour host: 12.07 % of a core
+cost tour host, tour off: 11.94 % of a core
+cost tour on (step 1): 12.81 % of a core
+scan(.cpu) ms p50 17.1 max 21.1 → 0.85 % of a core at one scan / 2 s
+done

@@ -1,0 +1,6 @@
+# HEAD before round 4 (5fd35d0)
+synthetic CV 0.6: top-8 order changes/min 23.7, inversion scans 274/600 (46%), longest pair inversion 1 scans
+synthetic CV 0.3: top-8 order changes/min 14.2, inversion scans 196/600 (33%), longest pair inversion 1 scans
+# round 4 (final)
+synthetic CV 0.6: top-8 order changes/min 14.3, inversion scans 407/600 (68%), longest pair inversion 3 scans
+synthetic CV 0.3: top-8 order changes/min 9.4, inversion scans 330/600 (55%), longest pair inversion 3 scans
