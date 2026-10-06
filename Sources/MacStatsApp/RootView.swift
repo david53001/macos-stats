@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import MacStatsCore
 
@@ -47,14 +48,15 @@ struct RootView: View {
         .tourHost(tour, showing: !showingSettings && store.activeBreakdownMetric == nil)
         .clipped()
         .background(PanelBackdrop())   // the Opacity setting (Appearance.swift)
+        .background(PanelWindowObserver { model.panelWindowChanged($0) })
         .animation(.snappy(duration: 0.3), value: store.activeBreakdownMetric)
         .animation(.snappy(duration: 0.3), value: showingSettings)
         .onAppear {
-            model.setVisibility(.popoverOpen)
+            model.setPanelAppeared(true)
             tour.panelOpened()
         }
         .onDisappear {
-            model.setVisibility(.idle)
+            model.setPanelAppeared(false)
             showingSettings = false
             tour.panelClosed()
         }
@@ -70,5 +72,41 @@ struct RootView: View {
     /// Settings → Take the Tour: pop back first, so the cutout never slides along with the push.
     private func replayFromSettings() {
         withAnimation(.snappy(duration: 0.3)) { showingSettings = false } completion: { tour.start() }
+    }
+}
+
+/// Reports the panel window whenever it is shown, hidden or covered (occlusion) or becomes key,
+/// so the refresh pipeline follows what is really on screen (`AppModel.panelWindowChanged`).
+/// Two notification observers on our own window; nothing runs between events.
+private struct PanelWindowObserver: NSViewRepresentable {
+    let onChange: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> ObserverView { ObserverView() }
+
+    func updateNSView(_ view: ObserverView, context: Context) {
+        view.onChange = onChange
+    }
+
+    final class ObserverView: NSView {
+        var onChange: ((NSWindow) -> Void)?
+        private var observers: [NSObjectProtocol] = []
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers = []
+            guard let window else { return }
+            observers = [NSWindow.didChangeOcclusionStateNotification, NSWindow.didBecomeKeyNotification]
+                .map { name in
+                    NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                        MainActor.assumeIsolated {
+                            guard let self, let window = self.window else { return }
+                            self.onChange?(window)
+                        }
+                    }
+                }
+        }
+
+        deinit { observers.forEach(NotificationCenter.default.removeObserver) }
     }
 }

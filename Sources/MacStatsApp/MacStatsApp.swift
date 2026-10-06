@@ -19,6 +19,13 @@ final class AppModel: ObservableObject {
     private var idleTimer: Timer?                // closed-popover sampler (repeating)
     private var reliefTimer: Timer?              // returns freed memory to the OS after close
     private var visibility: MacStatsCore.Visibility = .idle
+    /// Open = SwiftUI showed the panel's content (`onAppear`, not yet `onDisappear`) AND its
+    /// window is on screen. `MenuBarExtra` can take the window off screen without `onDisappear`
+    /// (seen live on v1.1.0: the 0.5 s tick and the sparkline slides kept running at ~28 % of a
+    /// core with the panel ordered out for hours), so the window has the last word.
+    private var panelAppeared = false
+    private var panelWindowVisible = true
+    private weak var panelWindow: NSWindow?
 
     /// Dedicated per-process scan loop — exists only while a breakdown is open, so the
     /// expensive enumeration never runs otherwise. Kept separate from the sparkline `tick`.
@@ -125,7 +132,30 @@ final class AppModel: ObservableObject {
         startIdleSampler()
     }
 
-    func setVisibility(_ newValue: MacStatsCore.Visibility) {
+    /// SwiftUI showed (true) or hid (false) the panel's content. Showing counts the window as on
+    /// screen too, so the first tick runs before the first frame, as before.
+    func setPanelAppeared(_ appeared: Bool) {
+        panelAppeared = appeared
+        if appeared { panelWindowVisible = true }
+        updateVisibility()
+    }
+
+    /// The panel's window (`PanelWindowObserver`) was shown, hidden or covered: re-read it.
+    func panelWindowChanged(_ window: NSWindow) {
+        panelWindow = window
+        panelWindowVisible = Self.isOnScreen(window)
+        updateVisibility()
+    }
+
+    private static func isOnScreen(_ window: NSWindow) -> Bool {
+        window.isVisible && window.occlusionState.contains(.visible)
+    }
+
+    private func updateVisibility() {
+        setVisibility(panelAppeared && panelWindowVisible ? .popoverOpen : .idle)
+    }
+
+    private func setVisibility(_ newValue: MacStatsCore.Visibility) {
         guard newValue != visibility else { return }
         visibility = newValue
         switch newValue {
@@ -156,7 +186,14 @@ final class AppModel: ObservableObject {
     private func scheduleNextTick() {
         timer?.invalidate()
         timer = makeTimer(after: refreshInterval(for: .popoverOpen),
-                          tolerance: refreshTolerance(for: .popoverOpen)) { $0.tick() }
+                          tolerance: refreshTolerance(for: .popoverOpen)) { model in
+            // Belt and braces for a hide no notification reported: never tick an unseen panel.
+            if let window = model.panelWindow, !Self.isOnScreen(window) {
+                model.panelWindowChanged(window)
+                return
+            }
+            model.tick()
+        }
     }
 
     private func tick() {
