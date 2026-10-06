@@ -81,8 +81,9 @@ private struct TourHost: ViewModifier {
 }
 
 /// The dim with a squircle hole over the current target, the accent ring inside the hole's
-/// edge, and the callout (or the welcome card). Swallows every click and hover under it, so
-/// nothing behind the tour can be opened by accident; only its own buttons work.
+/// edge, and the callout (or the welcome card). Swallows every click and hover on the dim, so
+/// nothing else can be opened by accident; the hole lets them through, so clicking the
+/// highlighted card does what the callout says (`RootView` ends the tour first).
 private struct TourOverlay: View {
     @ObservedObject var tour: TourController
     let anchors: [String: TourAnchor]
@@ -125,8 +126,8 @@ private struct TourOverlay: View {
         let cut = hole ?? (CGRect(x: panel.midX, y: panel.midY, width: 0, height: 0), 0)
         ZStack(alignment: .topLeading) {
             TourDimShape(cutout: cut.rect, cutoutRadius: cut.radius)
-                .fill(Color.black.opacity(colorScheme == .dark ? 0.40 : 0.25), style: FillStyle(eoFill: true))
-                .contentShape(Rectangle())
+                .fill(Color.black.opacity(colorScheme == .dark ? 0.40 : 0.30), style: FillStyle(eoFill: true))
+                .contentShape(TourDimShape(cutout: cut.rect, cutoutRadius: cut.radius), eoFill: true)
                 .onTapGesture {}
                 .onHover { _ in }
                 .accessibilityHidden(true)

@@ -37,10 +37,10 @@ public enum TourCatalog {
 
     public static let steps: [TourStep] = [
         TourStep(.cpu, "How hard it’s working",
-                 "The big number is right now; the graph is the last minute. Click the card to see which apps."),
+                 "The number is now; the graph is the last minute. Click the card to see which apps use it."),
         TourStep(.memory, "Memory in use",
                  "How much memory apps are using. The dot turns yellow or red when your Mac runs short."),
-        TourStep(.network, "Internet speed",
+        TourStep(.network, "Network activity",
                  "↓ is download and ↑ is upload, right now. The graph shows downloads over the last minute."),
         TourStep(.battery, "Battery and time left",
                  "Charge and a steady estimate of time left. Click for battery health and which apps use power.",
@@ -173,8 +173,9 @@ public enum TourAudience: String, Sendable {
 
 /// Who sees the welcome, the offer chip and the breakdown hint.
 public enum TourRules {
-    /// The breakdown's "Right-click an app to quit it" hint shows on this many drill-ins.
-    public static let breakdownHintLimit = 3
+    /// The breakdown's "Right-click an app to quit it" hint shows until a row's menu has been
+    /// opened once, on at most this many drill-ins (then the footnote it replaces comes back).
+    public static let breakdownHintLimit = 10
     /// The existing-user "Take the Tour" chip shows on this many opens.
     public static let offerLimit = 3
 
@@ -195,8 +196,8 @@ public enum TourRules {
         audience == .new && seenVersion == nil && !answered
     }
 
-    public static func showsBreakdownHint(shows: Int) -> Bool {
-        shows < breakdownHintLimit
+    public static func showsBreakdownHint(shows: Int, menuUsed: Bool = false) -> Bool {
+        !menuUsed && shows < breakdownHintLimit
     }
 }
 
@@ -216,7 +217,9 @@ public enum TourKey {
     public static let offerDismissed = "tourOfferDismissed"
     /// Int: drill-ins that showed the quit hint.
     public static let breakdownHintShows = "breakdownHintShows"
+    /// Bool: a breakdown row's context menu has been opened (the quit hint is no longer needed).
+    public static let breakdownMenuUsed = "breakdownMenuUsed"
 
     public static let all: Set<String> = [audience, seenVersion, resumeStep, interruptions,
-                                          offerShows, offerDismissed, breakdownHintShows]
+                                          offerShows, offerDismissed, breakdownHintShows, breakdownMenuUsed]
 }

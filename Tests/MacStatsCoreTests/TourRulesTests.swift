@@ -46,7 +46,9 @@ import Testing
 
     @Test func breakdownHint() {
         #expect(TourRules.showsBreakdownHint(shows: 0))
-        #expect(TourRules.showsBreakdownHint(shows: 2))
-        #expect(!TourRules.showsBreakdownHint(shows: 3))
+        #expect(TourRules.showsBreakdownHint(shows: 9))
+        #expect(!TourRules.showsBreakdownHint(shows: 10))
+        // Once a row's menu has been opened, the hint has done its job.
+        #expect(!TourRules.showsBreakdownHint(shows: 0, menuUsed: true))
     }
 }

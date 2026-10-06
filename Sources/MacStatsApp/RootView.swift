@@ -28,16 +28,20 @@ struct RootView: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             } else if let metric = store.activeBreakdownMetric {
                 BreakdownView(store: store, metric: metric, quitHint: quitHint,
-                              onBack: { model.exitBreakdown() })
+                              onBack: { model.exitBreakdown() }, onMenuUsed: { tour.breakdownMenuUsed() })
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             } else {
                 OverviewView(store: store,
                              onSelect: { metric in
+                                 endTourForClick()
                                  quitHint = tour.breakdownOpened()
                                  model.enterBreakdown(metric)
                              },
                              onEmptyTrash: { model.confirmAndEmptyTrash() },
-                             onSettings: { showingSettings = true },
+                             onSettings: {
+                                 endTourForClick()
+                                 showingSettings = true
+                             },
                              offersTour: tour.offersTour,
                              onTour: startTour,
                              onDismissOffer: { tour.dismissOffer() })
@@ -60,6 +64,12 @@ struct RootView: View {
             showingSettings = false
             tour.panelClosed()
         }
+    }
+
+    /// A click on the highlighted card or the gear (the cutout lets it through): the user is doing
+    /// what the callout says, so the tour ends there.
+    private func endTourForClick() {
+        if tour.isActive { tour.skip() }
     }
 
     /// The overview's `?` and chip: the tour runs on the overview only.

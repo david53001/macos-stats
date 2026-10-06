@@ -116,12 +116,20 @@ final class TourController: ObservableObject {
         defaults.set(true, forKey: TourKey.offerDismissed)
     }
 
-    /// A breakdown opened: whether its footnote should show the quit hint (first few times).
+    /// A breakdown opened: whether its footnote should show the quit hint (until a row's menu
+    /// has been used once).
     func breakdownOpened() -> Bool {
         let shows = defaults.integer(forKey: TourKey.breakdownHintShows)
-        guard TourRules.showsBreakdownHint(shows: shows) else { return false }
+        guard TourRules.showsBreakdownHint(shows: shows, menuUsed: defaults.bool(forKey: TourKey.breakdownMenuUsed))
+        else { return false }
         defaults.set(shows + 1, forKey: TourKey.breakdownHintShows)
         return true
+    }
+
+    /// A breakdown row's context menu opened: the quit hint is no longer needed.
+    func breakdownMenuUsed() {
+        guard !defaults.bool(forKey: TourKey.breakdownMenuUsed) else { return }
+        defaults.set(true, forKey: TourKey.breakdownMenuUsed)
     }
 
     // MARK: Reading the state
