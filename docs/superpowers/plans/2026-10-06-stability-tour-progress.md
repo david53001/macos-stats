@@ -355,6 +355,15 @@ unchanged; nothing new runs while the panel is closed or the tour is off.
 - **A C3 / B C3, A C4, B C5 (Low):** `CardDisplay` extraction, `onKeyPress`, research citations in comments: as in
   rounds 1–2.
 
+## Review round 4 (2026-10-06) — IN PROGRESS
+Scores: reviewer A **8.3**, reviewer B **8.1** (lowest: B Intuitiveness 7.5). Reports:
+`docs/reviews/2026-10-06-stability-tour-review-r4-A.md`, `docs/reviews/2026-10-06-stability-tour-review-r4-B.md`.
+Done so far: `a4ecd46` macOS agents → Other processes, no Quit on loginwindow; `d586de9` reorder dwell (5 s),
+newcomer processes join below for one scan, fast-attack window restart, frozen memory insertion.
+Next: view fixes (ended expanded app collapse, hide "more" for ended apps), tour callout hugs content + fades
+between steps, step 1 copy, occlusion ≠ close, Exited/Finished naming; then probes, docs, final section here.
+Probe sources for this round: scratchpad `r4/` (record/replay copied from `r3-fixes/replay` + burst + synthetic).
+
 ## Next
 Review round 4 (`/reviewer`, two independent reviewers) on HEAD of `feat/stability-tour`. Probes:
 ```bash
