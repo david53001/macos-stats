@@ -127,9 +127,11 @@ private struct TourOverlay: View {
         ZStack(alignment: .topLeading) {
             TourDimShape(cutout: cut.rect, cutoutRadius: cut.radius)
                 .fill(Color.black.opacity(colorScheme == .dark ? 0.40 : 0.30), style: FillStyle(eoFill: true))
+                // Hover first: an `.onHover` after the content shape would cover the hole too
+                // (measured, `docs/research/2026-10-06-probes/r1-fixes`), swallowing its clicks.
+                .onHover { _ in }
                 .contentShape(TourDimShape(cutout: cut.rect, cutoutRadius: cut.radius), eoFill: true)
                 .onTapGesture {}
-                .onHover { _ in }
                 .accessibilityHidden(true)
 
             if tour.state.phase == .welcome {

@@ -1,0 +1,13 @@
+PASS light: ended child keeps its place [21052, 1, 20835, 121052]
+wrote breakdown-ended-child-light
+PASS dark: ended child keeps its place [21052, 1, 20835, 121052]
+wrote breakdown-ended-child-dark
+PASS control: without the tour the click reaches the CPU card ([MacStatsCore.BreakdownMetric.cpu])
+dim variant 0: [MacStatsCore.BreakdownMetric.cpu]
+dim variant 1: []
+dim variant 2: [MacStatsCore.BreakdownMetric.cpu]
+dim variant 3: [MacStatsCore.BreakdownMetric.cpu]
+PASS tour: a click on the dim does nothing ([])
+PASS tour: a click in the cutout reaches the CPU card ([MacStatsCore.BreakdownMetric.cpu])
+PASS pointer probe: inside=true away=false (mouse (118.55078125, 263.5))
+failures=0
