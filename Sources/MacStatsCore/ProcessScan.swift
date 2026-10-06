@@ -391,7 +391,7 @@ public final class BreakdownScanner: @unchecked Sendable {
 
     /// `windowSeconds`: the span rows are averaged over; 0 = the latest interval only, nil = the
     /// metric's own (`trailingWindowSeconds`, `energyWindowSeconds`). `fastAttack`: restart the window
-    /// when the Mac gets much busier (`breakdownFastAttackCores`).
+    /// when an app gets much busier (`breakdownFastAttackCores`).
     public init(cores: Int = ProcessInfo.processInfo.activeProcessorCount,
                 windowSeconds: TimeInterval? = nil, fastAttack: Bool = true,
                 responsible: @escaping (Int32) -> Int32? = responsiblePID(for:),
@@ -475,14 +475,25 @@ public final class BreakdownScanner: @unchecked Sendable {
                 // Exit credit's baseline: System over this interval alone, not the window.
                 lastSystemPercent = max(0, total - rowsNs / nsPerPercent)
             }
-            // Fast attack: when this interval was much busier than the rest of the window (a new
-            // load), the window restarts from it, so rows and header show the load at once instead of
-            // ramping up over the window (a one-core load read 3, 6, 9 then 12 % over 8 s while the
-            // CPU card showed it within 2 s). It regrows by one interval a scan. Falls still average.
-            if fastAttack, let total, !window.isEmpty, window.allSatisfy({ $0.busyNs != nil }) {
+            // Fast attack: when an app used much more CPU over this interval than over the rest of the
+            // window (a new load), the window restarts from this interval, so rows and header show the
+            // load at once instead of ramping up over the window (a one-core load read 3, 6, 9 then
+            // 12 % over 8 s while the CPU card showed it within 2 s). It regrows by one interval a scan.
+            // Per app, not the whole Mac: a build's compilers come and go inside one steady app row,
+            // and the header rose by only ~2/3 of a core for a one-core load. Falls still average.
+            if fastAttack, !window.isEmpty {
+                var now: [Int32: Double] = [:], before: [Int32: Double] = [:]
+                for w in work.values { now[w.app, default: 0] += w.ns }
+                for (app, credit) in exitedNs { now[app, default: 0] += credit }
+                for interval in window {
+                    for w in interval.work.values { before[w.app, default: 0] += w.ns }
+                    for (app, credit) in interval.exitedNs { before[app, default: 0] += credit }
+                }
                 let restSpan = window.reduce(0) { $0 + $1.elapsed }
-                let rest = window.reduce(0) { $0 + ($1.busyNs ?? 0) } * 100 / (restSpan * cores * 1_000_000_000)
-                if total - rest >= breakdownFastAttackCores * 100 / cores { window = [] }
+                let rise = breakdownFastAttackCores * 1_000_000_000   // ns per second
+                if now.contains(where: { $0.value / elapsed - (before[$0.key] ?? 0) / restSpan >= rise }) {
+                    window = []
+                }
             }
             window.append(Interval(elapsed: elapsed, busyNs: total.map { $0 * nsPerPercent }, work: work,
                                    exitedNs: exitedNs))

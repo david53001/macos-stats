@@ -55,10 +55,10 @@ public let trailingWindowSeconds: TimeInterval = 8.0
 /// readings swapped places every few seconds over 4 s (and still every ~10 s over 8 s: 36 of 149
 /// scans showed an inversion); over 16 s, 0 reorders and 0 inversions in the same replay.
 public let energyWindowSeconds: TimeInterval = 16.0
-/// A breakdown's window restarts from the latest scan interval when that interval was busier than the
-/// rest of the window by this many cores' worth of CPU (`BreakdownScanner`), so a new load shows at
-/// once in the rows and header, as on the CPU card. Three quarters of a core: a new one-core load clears
-/// it on its first or second scan; the usual scan-to-scan wobble of a busy Mac stays averaged.
+/// A breakdown's window restarts from the latest scan interval when an app used this many cores more
+/// over that interval than over the rest of the window (`BreakdownScanner`), so a new load shows at
+/// once in the rows and header, as on the CPU card. Three quarters of a core: a new one-core load
+/// clears it on its first or second scan; an app's usual scan-to-scan wobble stays averaged.
 public let breakdownFastAttackCores: Double = 0.75
 /// Apart from a big jump, a breakdown list (the apps, or one app's processes) reorders at most this
 /// often while the pointer is away (`BreakdownDisplay`): every third 2 s scan. Activity Monitor
