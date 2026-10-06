@@ -250,6 +250,14 @@ func log(_ line: String) {
 
 // MARK: Runs
 
+/// Deletes a throwaway suite, including the plist cfprefsd leaves behind.
+func dropSuite(_ name: String) {
+    UserDefaults.standard.removePersistentDomain(forName: name)
+    let plist = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Preferences/\(name).plist")
+    try? FileManager.default.removeItem(at: plist)
+}
+
 @MainActor func suite(_ name: String, audience: TourAudience) -> UserDefaults {
     let d = UserDefaults(suiteName: name)!
     d.set(audience.rawValue, forKey: TourKey.audience)
@@ -258,7 +266,7 @@ func log(_ line: String) {
 
 @MainActor func render() {
     let suites = (0..<6).map { "MacStatsTourProbe-\(UUID().uuidString)-\($0)" }
-    defer { suites.forEach { UserDefaults.standard.removePersistentDomain(forName: $0) } }
+    defer { suites.forEach(dropSuite) }
     checkFit()
 
     for dark in [false, true] {
@@ -353,7 +361,7 @@ func log(_ line: String) {
 /// 20 s with the tour off, then 20 s on step 1 (or 20 s with `.tourHost` left out: `--no-tour`).
 @MainActor func cost(noTour: Bool) {
     let name = "MacStatsTourProbe-\(UUID().uuidString)"
-    defer { UserDefaults.standard.removePersistentDomain(forName: name) }
+    defer { dropSuite(name) }
     let d = suite(name, audience: .existing)
     let store = makeStore()
     let tour = TourController(defaults: d, hasBattery: { true })
