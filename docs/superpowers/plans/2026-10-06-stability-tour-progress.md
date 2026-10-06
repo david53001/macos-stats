@@ -49,12 +49,12 @@ monitor; build/test/SDK notes in `CLAUDE.md`). **Baseline commit before this wor
 - [x] A6: headless stability probe `docs/research/2026-10-06-probes/stability/` + results; `CLAUDE.md` Status bullet — commit `d9c5623` (+ docs commit)
 
 ### Part B: Intuitiveness + tour (agent 2, only after Part A). Plan section "PART B"
-- [ ] B1: `Tour.swift`, `TourLayout.swift` + `TourStateTests`, `TourRulesTests`, `TourLayoutTests`, `TourCatalogLintTests`
-- [ ] B2: copy, affordance and layout fixes (exact string table in the plan); Trash permission state
-- [ ] B3: `TourController`, audience classified before `AppModel()`, permission prompts after the intro, reopen opens the panel
-- [ ] B4: anchors, `TourOverlay` (dim + centred squircle cutout + accent ring + callout), welcome card, chip, `?` button, Settings Help
-- [ ] B5: render probe `docs/research/2026-10-06-probes/tour-render/` with captures + `out/insets.txt` (equal insets ≤ 1 px)
-- [ ] B6: cost check (static + runtime) + `CLAUDE.md` Status bullet
+- [x] B1: `Tour.swift`, `TourLayout.swift` + `TourStateTests`, `TourRulesTests`, `TourLayoutTests`, `TourCatalogLintTests` — commit `439f918` (27 tests). Notes: the welcome's 1st close returns `.none` (phase off, interruptions 1; it shows again on the next open); `deferPermissionPrompts` also takes `answered` (a paused tour or an answer this run), so a relaunch mid-tour still reads the Trash; `shouldOfferTour` takes `version` (default `TourCatalog.version`) so the bump re-offer is testable; Title Case lint allows minor words ("Take the Tour"). Layout fixtures are placeholders until B5 measures them.
+- [x] B2: copy, affordance and layout fixes; Trash permission state — commits `1a3d174`, `4030cf5`
+- [x] B3: `TourController`, audience classified before `AppModel()`, permission prompts after the intro, reopen opens the panel — commit `a8be945` (one commit with B4: they don't build apart)
+- [x] B4: anchors, `TourOverlay` (dim + centred squircle cutout + accent ring + callout), welcome card, chip, `?` button, Settings Help — commit `a8be945`
+- [x] B5: render probe `docs/research/2026-10-06-probes/tour-render/` with captures + `out/insets.txt` (equal insets ≤ 1 px) — commit `a1cd36e`; every step light + dark: inner 2/2/2/2 px, outer 6/6/6/6 px
+- [x] B6: cost check (static + runtime) + `CLAUDE.md` Status bullet — see "Part B results" below
 
 ### After both parts (orchestrator)
 - [ ] `/reviewer` until the score is > 9/10, fixes and re-review; final verification; docs
@@ -120,6 +120,48 @@ Small deviations from the plan's letter (all in the commits):
 - The scan-cost limit "≤ ~3 ms/s" excluded the running-apps list; with it, the whole scan is 6.4–7.7 ms/s against
   14.5–14.9 before (same probe), and the comparable part is 2.1–2.6 against 4.2.
 
+## Part B results
+Tests 338/338 green (`./Scripts/test.sh`), `swift build` green.
+
+**Centring** (`docs/research/2026-10-06-probes/tour-render/out/insets.txt`): on all 5 steps plus the no-battery
+footer, light and dark, the clear gap between card and ring is 2 px on every side and the ring's outer edge (the
+cutout edge) is 6 px = 3 pt on every side (2× capture). Cutouts: CPU (5,33,310,73), Memory (5,106,310,73),
+Network (5,179,310,73), Battery (5,252,310,73), footer (231,369,84,30), radius 11. Callout 304 × 108 at y 112 / 185 /
+258 (below) and 138 / 255 (above). These rects are the `TourLayoutTests` fixtures.
+
+**Cost.** Static: `git diff 0a4dc66 -- Sources | grep -nE "Timer|asyncAfter|addObserver|DispatchSource|onReceive|NotificationCenter"`
+shows only the one-shot `asyncAfter(2.5 s)` in `MacStatsApp.init` (only while a new user's welcome is pending) and
+the event-driven `applicationShouldHandleReopen`. `TourOverlay` exists only `if tour.isActive && overview showing`;
+`.tourAnchor` attaches `anchorPreference` only while `tourActive`; `OverviewView` takes `offersTour` + closures and
+never observes `TourController` (only `RootView` does); `panelOpened()` reads at most 5 keys (existing user: audience,
+seen, resume, offerShows, offerDismissed; 3 once the tour is seen) and writes only when the chip shows (≤ 3 times) or
+the state changes. Runtime (probe `--cost` / `--no-tour`, % of one core, 20 s each): tour off 14.1 / 15.0, without
+`.tourHost` 15.2 / 15.1 (same within noise), tour on step 1 16.3 / 15.2 (only while shown).
+
+**Deviations from the plan's letter** (all in commits `1a3d174`…`a1cd36e`):
+- Breakdown footnote trailing padding is `Design.cardPadding` (12), not `cardPadding − panelInset` (4): with 4 it
+  ended at 308 pt while the header's trailing text ends at 300 pt; 12 lines them up (the plan's stated intent).
+  Footnotes still fit one line: scale 1.00 / 0.88 / 0.91 / 1.00 (CPU, Memory, Battery, hint), ≥ 0.8 required.
+- Next / Done / Show Me Around use `SubtleButtonStyle(prominent: true)` (accent fill, 24 pt, continuous 6 pt
+  corners) instead of `.borderedProminent`: the system button is 16 pt (small), 20 pt (regular) or 27 pt (large),
+  never the 24 pt of the Back / No Thanks button beside it, so the pair didn't line up.
+- The chip is 20 pt tall (`SubtleButtonStyle(height: 20)`, caption text) and sits on the title's baseline as an
+  overlay, so the title never moves.
+- The notification and Finder prompts fire when the intro **ends** (No Thanks, or the tour's Done / Skip / 2nd
+  close), not at Show Me Around: the Finder prompt is a window of its own and would close the panel mid-tour.
+- The callout is masked by the dim's even-odd shape, so its shadow never darkens the hole (the probe caught it:
+  light-mode T = 0 px on Battery and footer before the fix).
+- The callout body always reserves 2 lines, so every step's callout is the same height (108 pt) and never jumps.
+- The welcome's first close returns `.none` (not `.paused`), with `interruptions` = 1; `deferPermissionPrompts` and
+  `shouldShowWelcome` take `answered`; `shouldOfferTour` takes `version` (default `TourCatalog.version`).
+- `?` and the gear share a fixed 16 pt icon width (`Design.footerIconWidth`), so the pair reads as one group.
+
+**Owner manual checks** (agents can't do these without driving the real menu bar; build with
+`./Scripts/bundle.sh`, which the owner runs or OKs) — in addition to the list above:
+- The dim blocks hover and clicks on the cards under it (no highlight under the dim).
+- Trash "Allow…" opens System Settings → Privacy & Security → Automation (only shows after a refused prompt).
+- The first open after installing this build shows the "Take the Tour" chip (the owner is classified `existing`).
+
 ## Next
-Part B, task B1 (plan section "B1. Pure tour model + layout + tests"). Part A is done: tests 310/310 green,
-`swift build` green.
+The orchestrator's review step: run `/reviewer` on the stability and the tour/clarity work (plan, "After both
+parts"), using the two probes for evidence. Part B is done.
