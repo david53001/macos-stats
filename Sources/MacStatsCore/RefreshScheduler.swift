@@ -35,37 +35,28 @@ public let batteryInterval: TimeInterval = 10.0      // IOPowerSources dictionar
 /// Hovering the menu-bar icon takes an extra idle sample; skip it if one was taken this recently.
 public let prewarmMinInterval: TimeInterval = 1.0
 
-/// Breakdown scans come every 2 s, and each row is averaged over the last `trailingWindowSeconds`.
-/// CPU and energy show "Measuring…" until the second scan (a delta needs two), so their first
-/// numbers already cover 2 s: shown after a 0.5 s first window, they were noise that the next scan
-/// re-sorted, moving 5–8 of the top 8 rows 2.5 s after the list appeared.
-/// With 1 s scans and 1 s values the CPU breakdown's top-8 order changed on every scan (59 a
-/// minute) and VS Code read 0.2–7.3 % between scans; 2 s scans over a 4 s window, with the
-/// ranking hysteresis, measured 5–13 order changes a minute, and halve the scan cost
-/// (`docs/research/2026-10-06-stability-diagnosis.md` §4.1, variant D). Activity Monitor's own
-/// default refresh is 5 s.
+// The breakdown's steadiness constants. What each rule does, why this value, and the test that pins
+// it: docs/design/breakdown-stability.md (measurements: docs/research/2026-10-06-stability-diagnosis.md
+// and the probes in docs/research/2026-10-06-probes/).
+
+/// Breakdown scans come every 2 s. CPU and energy show "Measuring…" until the second scan (a delta
+/// needs two), so their first numbers already cover 2 s. Activity Monitor refreshes every 5 s.
 public let breakdownScanInterval: TimeInterval = 2.0
-/// The span breakdown CPU rows (and the CPU header) are averaged over: the last four scan
-/// intervals (`BreakdownScanner`). Memory rows stay instantaneous. 8 s, not 4: replaying the same
-/// 5 min of live scans, the top 8 reordered 5.1 → 3.6 times a minute (with the inversion timeout),
-/// scans showing a lower number above a higher one went 83 → 10 of 149, and each row's text
-/// changed every 35 s instead of 15 s. Activity Monitor averages over 5 s.
+/// The span breakdown CPU rows (and the CPU header) are averaged over: the last four scan intervals
+/// (`BreakdownScanner`). Memory rows stay instantaneous. Activity Monitor averages over 5 s.
 public let trailingWindowSeconds: TimeInterval = 8.0
-/// The Battery breakdown's rows: CPU energy is counted in lumps, so idle apps' 0.01–0.05 W
-/// readings swapped places every few seconds over 4 s (and still every ~10 s over 8 s: 36 of 149
-/// scans showed an inversion); over 16 s, 0 reorders and 0 inversions in the same replay.
+/// The Battery breakdown's span: CPU energy is counted in lumps, so idle apps' 0.01–0.05 W rows
+/// swap places over shorter spans.
 public let energyWindowSeconds: TimeInterval = 16.0
 /// A breakdown's window restarts from the latest scan interval when an app used this many cores more,
 /// or fewer, over that interval than over the rest of the window (`BreakdownScanner`): a load that
 /// starts or ends shows in the rows and header within a scan, as on the CPU card. An app's usual
 /// scan-to-scan wobble stays well under it and stays averaged.
 public let breakdownFastAttackCores: Double = 0.75
-/// Apart from a big jump, a breakdown list (the apps, or one app's processes) reorders at most this
-/// often while the pointer is away (`BreakdownDisplay`): every third 2 s scan. Activity Monitor
-/// re-sorts every 5 s. Without it, apps racing at similar, bursty CPU reordered on most scans.
+/// Apart from a big jump, the app list reorders at most this often while the pointer is away
+/// (`ListRanking`): every third 2 s scan. Activity Monitor re-sorts every 5 s.
 public let breakdownReorderDwell: TimeInterval = 5.0
-/// The same for an expanded app's process rows: every fifth scan. Their small, bursty values (a
-/// helper at 0.1–0.5 %) re-sorted the visible block about every 6 s at the apps' 5 s.
+/// The same for an expanded app's process rows: every fifth scan (their values are small and bursty).
 public let breakdownProcessReorderDwell: TimeInterval = 10.0
 /// A breakdown's row order stays frozen this long after the pointer leaves the list (or a
 /// context menu closes), so moving out and back in to click doesn't meet a reshuffle. Checked
@@ -81,10 +72,7 @@ public func isDue(last: Date?, now: Date, every interval: TimeInterval) -> Bool 
 /// Rate metrics (CPU %, network throughput) are averaged over this trailing window, regardless
 /// of how fast we sample/plot. Without it, fast ticks would divide tiny sample-to-sample deltas
 /// by tiny intervals, making readings jumpy. A fixed window keeps the values stable and accurate.
-/// 2 s, not 1 s: at 0.5 s ticks a 1 s window changed the CPU card's text 80–91 times a minute and
-/// the network card's 50–103; 2 s (with the cards' display holds) measured 56–72 and 17–26
-/// (`docs/research/2026-10-06-stability-diagnosis.md` §4.2). The closed-popover sampler's
-/// snapshots are 10 s apart, so it is unaffected.
+/// The closed-popover sampler's snapshots are 10 s apart, so it is unaffected.
 public let rateWindowSeconds: TimeInterval = 2.0
 
 /// The overview cards' text changes at most this often (the graphs stay live), unless the reading
