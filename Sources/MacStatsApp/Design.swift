@@ -26,4 +26,6 @@ enum Design {
     static let cardHoverFill: Double = 0.085
     static let cardPressedFill: Double = 0.12
     static let cardHairline: Double = 0.08
+    /// The footer's icon buttons (`?`, gear) share one width, so they read as a pair.
+    static let footerIconWidth: CGFloat = 16
 }

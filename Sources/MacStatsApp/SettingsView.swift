@@ -4,6 +4,7 @@ import MacStatsCore
 /// The in-popover Settings screen, pushed from the overview's footer gear. Same fixed size,
 /// header and card styling as the per-app breakdown. Changes apply live to the popover itself.
 struct SettingsView: View {
+    var onTour: () -> Void = {}
     let onBack: () -> Void
 
     var body: some View {
@@ -22,6 +23,7 @@ struct SettingsView: View {
             }
 
             AppearanceCard()
+            HelpCard(onTour: onTour)
 
             Spacer(minLength: 0)
             PanelFooter()
@@ -72,6 +74,35 @@ private struct AppearanceCard: View {
     }
 }
 
+/// "Help" → Take the Tour: where a skipped tour can always be found again.
+private struct HelpCard: View {
+    let onTour: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("HELP")
+                .font(.caption2).fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Text(TourCatalog.helpRow).font(.callout)
+                Spacer()
+                Button(TourCatalog.takeTheTour, action: onTour)
+                    .buttonStyle(SubtleButtonStyle())
+            }
+
+            Text(TourCatalog.helpCaption)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, Design.cardPadding)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CardBackground())
+    }
+}
+
 /// The footer button that opens Settings (a small gear in the card-button language).
 struct SettingsButton: View {
     let action: () -> Void
@@ -79,6 +110,7 @@ struct SettingsButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "gearshape")
+                .frame(width: Design.footerIconWidth)
                 .accessibilityLabel("Settings")
         }
         .buttonStyle(SubtleButtonStyle(cornerRadius: Design.cardCornerRadius))   // concentric, like Quit

@@ -112,7 +112,7 @@ struct BreakdownView: View {
                     .lineLimit(1).minimumScaleFactor(0.8)
                     .tooltip(quitHint ? nil : footnoteHelp)
                     // Ends where the header's trailing text does (the cards' content inset).
-                    .padding(.trailing, Design.cardPadding - Design.panelInset)
+                    .padding(.trailing, Design.cardPadding)
             }
         }
         .padding([.horizontal, .bottom], Design.panelInset)

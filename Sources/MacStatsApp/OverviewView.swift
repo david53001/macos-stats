@@ -8,10 +8,22 @@ struct OverviewView: View {
     var onSelect: (BreakdownMetric) -> Void
     var onEmptyTrash: () -> Void
     var onSettings: () -> Void
+    /// The existing-user "Take the Tour" chip (`TourController.offersTour`), passed in so this
+    /// view never observes the tour.
+    var offersTour = false
+    var onTour: () -> Void = {}
+    var onDismissOffer: () -> Void = {}
 
     var body: some View {
         VStack(spacing: Design.cardSpacing) {
             PanelHeader { Text("MacStats") }
+                // On the title's baseline, as an overlay so the title never moves.
+                .overlay(alignment: Alignment(horizontal: .trailing, vertical: .lastTextBaseline)) {
+                    if offersTour {
+                        TourOfferChip(onStart: onTour, onDismiss: onDismissOffer)
+                            .padding(.trailing, Design.cardPadding)
+                    }
+                }
 
             // The cards read the store's held values (`cardCPUPercent`…), which change only when
             // a reading moves clearly; the graphs keep the exact history.
@@ -20,11 +32,13 @@ struct OverviewView: View {
                      onTap: { onSelect(.cpu) }) {
                 Sparkline(points: store.cpuHistory, color: .green, maxValue: 100)
             }
+            .tourAnchor("overview.cpu", radius: Design.cardCornerRadius)
             StatCard(label: "Memory", value: memoryValue,
                      number: Double(store.cardMemory?.usedBytes ?? 0), meta: memoryMeta,
                      metaDot: pressureColor, onTap: { onSelect(.memory) }) {
                 Sparkline(points: store.memHistory, color: .blue, maxValue: 1.0)
             }
+            .tourAnchor("overview.memory", radius: Design.cardCornerRadius)
             StatCard(label: "Network", value: networkValue,
                      number: store.cardNetwork?.downBytesPerSec ?? 0, meta: networkMeta) {
                 // Dynamic scale with a 10 KB/s floor, so an idle link draws flat.
@@ -32,14 +46,22 @@ struct OverviewView: View {
                           dynamicMinimum: 10_000)
             }
             .help("↓ download and ↑ upload speed, right now")
+            .tourAnchor("overview.network", radius: Design.cardCornerRadius)
             StatCard(label: "Battery", value: batteryValue,
                      number: Double(store.battery?.percent ?? 0), meta: batteryMeta,
                      onTap: store.battery == nil ? nil : { onSelect(.energy) }) {
                 BatteryGauge(battery: store.battery)
             }
+            .tourAnchor("overview.battery", radius: Design.cardCornerRadius)
 
             trashCard
-            PanelFooter { SettingsButton(action: onSettings) }
+            PanelFooter {
+                HStack(spacing: Design.cardSpacing) {
+                    HelpButton(action: onTour)
+                    SettingsButton(action: onSettings)
+                }
+                .tourAnchor("overview.footer", radius: Design.cardCornerRadius)
+            }
         }
         .padding([.horizontal, .bottom], Design.panelInset)
         .frame(width: Design.panelWidth, height: Design.panelHeight, alignment: .top)

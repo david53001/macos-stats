@@ -30,6 +30,12 @@ final class StatusItemHover: NSResponder {
         }
     }
 
+    /// Opens MacStats' panel as if its menu-bar icon were clicked (a new user's first launch,
+    /// a relaunch from Spotlight). Does nothing if the icon wasn't found.
+    static func openPanel() {
+        shared?.button?.performClick(nil)
+    }
+
     private init(onHover: @escaping () -> Void) {
         self.onHover = onHover
         super.init()

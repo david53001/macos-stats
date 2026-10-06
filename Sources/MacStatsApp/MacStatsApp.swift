@@ -12,6 +12,8 @@ import MacStatsCore
 @MainActor
 final class AppModel: ObservableObject {
     let store = MetricsStore(historyWindow: 60)
+    /// The welcome card, guided tour and their persistence (`TourController`).
+    private(set) lazy var tour = TourController(hasBattery: { [store] in store.battery != nil })
 
     private var timer: Timer?                    // open-popover tick (one-shot, rescheduled)
     private var idleTimer: Timer?                // closed-popover sampler (repeating)
@@ -105,7 +107,15 @@ final class AppModel: ObservableObject {
 
     init() {
         LoginItem.registerOnce()
-        notifier.requestAuthorization()
+        if tour.defersPermissionPrompts {
+            // A new user: the welcome card explains both prompts first, then they fire.
+            tour.onIntroFinished = { [weak self] in
+                self?.notifier.requestAuthorization()
+                self?.refreshTrashSize()
+            }
+        } else {
+            notifier.requestAuthorization()
+        }
         Keys.legacy.forEach(UserDefaults.standard.removeObject(forKey:))
         store.pausePublishing()   // closed: record without re-rendering (see setVisibility)
         sample(at: Date())   // just stores the first baseline; history starts at the next sample
@@ -130,7 +140,7 @@ final class AppModel: ObservableObject {
             lastTempRead = nil
             lastBatteryRead = nil
             tick()
-            refreshTrashSize()
+            if !tour.defersPermissionPrompts { refreshTrashSize() }   // Finder asks on the first read
         case .idle:
             timer?.invalidate()
             timer = nil

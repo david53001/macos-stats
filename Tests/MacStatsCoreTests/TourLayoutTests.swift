@@ -13,10 +13,11 @@ import Testing
         (.memory, CGRect(x: 8, y: 109, width: 304, height: 67), true),
         (.network, CGRect(x: 8, y: 182, width: 304, height: 67), true),
         (.battery, CGRect(x: 8, y: 255, width: 304, height: 67), false),
-        (.footer, CGRect(x: 248, y: 372, width: 64, height: 24), false),
+        (.footer, CGRect(x: 234, y: 372, width: 78, height: 24), false),
     ]
-    /// A callout's measured height range (title, two body lines, footer row).
-    private let calloutHeights: [CGFloat] = [96, 104.5, 110]
+    /// The callout's measured height (108 pt: title, two body lines' room, footer row), and some
+    /// slack either side for other text sizes.
+    private let calloutHeights: [CGFloat] = [96, 104.5, 108, 112]
 
     private func onGrid(_ v: CGFloat, _ scale: CGFloat) -> Bool {
         abs((v * scale).rounded() - v * scale) < 1e-9
