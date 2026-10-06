@@ -20,3 +20,29 @@ pgrep -fl Probe                                      # should print nothing afte
 
 The first run of the tour check **failed** (the click in the cutout did nothing) because `TourOverlay` had
 `.onHover` after the content shape; the variant table above found why, and the fix moved it.
+
+## CPU card hold band (`card-band.swift`)
+
+Headless: records one live CPU series (0.5 s ticks, the app's 2 s trailing window) and replays it through
+`heldValue` with several bands, so every option sees the same data.
+
+```bash
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
+swiftc -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -O -o "$TMPDIR/card-band" \
+  $(ls Sources/MacStatsCore/*.swift | grep -v AppleSensorReader) docs/research/2026-10-06-probes/r1-fixes/card-band.swift
+("$TMPDIR/card-band" 90 & PID=$!; (sleep 130; kill $PID) & wait $PID)
+```
+
+Result (177 ticks, whole Mac 13.6 % mean):
+
+| Hold | Changes / min | Flip-backs (A→B→A) | Max error |
+|---|---|---|---|
+| band 0.75 (round 1) | 56.9 | 9 | 0.73 pp |
+| band 1.00 | 48.1 | 5 | 0.95 pp |
+| **band 1.25 (now)** | **41.4** | **4** | **1.24 pp** |
+| band 1.50 | 38.6 | 6 | 1.46 pp |
+| band 1.0 + at most one change a second | 37.3 | 6 | 8.71 pp |
+
+Wider bands give little more: most remaining changes are the CPU really moving by more than a point. A
+minimum gap between changes lags real jumps by up to 8.7 pp, so it was rejected; 1.25 stays within the
+reviewers' "≤ about 1.25 pp" bound.

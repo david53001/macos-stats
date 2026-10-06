@@ -22,7 +22,7 @@ public final class MetricsStore: ObservableObject {
     /// False when MacStats started on battery, so the average only covers the time since then.
     @Published public private(set) var batteryAverageSinceUnplug = false
 
-    /// What the overview cards print: the readings above, held (`heldValue` step 1 %,
+    /// What the overview cards print: the readings above, held (`heldValue` step 1 %, band 1.25,
     /// `heldMemory`, `heldRate`) so a value on a rounding boundary doesn't flip every tick.
     /// The readings, histories and alerts keep the exact values. Set only when they change.
     @Published public private(set) var cardCPUPercent: Double = 0
@@ -177,8 +177,9 @@ public final class MetricsStore: ObservableObject {
 
     /// Sets the held card values from a reading; `restart` drops the hold (a fresh open).
     private func updateCards(cpuPercent: Double, memory: MemorySample, network: NetworkSample, restart: Bool) {
-        // Band 1.0 (was 0.75): about half as many changes, within 1 pp of the reading.
-        let cpu = heldValue(shown: restart ? nil : cardCPUPercent, value: cpuPercent, step: 1, band: 1.0)
+        // Band 1.25 (was 0.75), within 1.25 pp of the reading: on one live series 41 changes a
+        // minute instead of 57, flip-backs 9 → 4 (`docs/research/2026-10-06-probes/r1-fixes/README.md`).
+        let cpu = heldValue(shown: restart ? nil : cardCPUPercent, value: cpuPercent, step: 1, band: 1.25)
         if cpu != cardCPUPercent { cardCPUPercent = cpu }
         let mem = heldMemory(shown: restart ? nil : cardMemory, value: memory)
         if mem != cardMemory { cardMemory = mem }
