@@ -85,6 +85,30 @@ import Testing
         #expect(store.breakdown.first?.processes.map(\.pid) == [10, 12, 11])
     }
 
+    /// Property: while frozen, the rows already shown keep their exact order at the top of the list (ended
+    /// ones as placeholders), whatever the scans say; new rows only ever join below them. All three metrics.
+    @Test func frozenKeepsTheShownRowsAsAPrefix() {
+        var rng = SystemRandomNumberGenerator()
+        for metric in [BreakdownMetric.cpu, .memory, .energy] {
+            for _ in 0..<50 {
+                var display = BreakdownDisplay(metric: metric)
+                func scan() -> [AppUsage] {
+                    let keys = Array(Set((0..<8).map { _ in Int32.random(in: -2...12, using: &rng) }.filter { $0 != 0 }))
+                    return keys.map { k in
+                        let v = Double.random(in: 0...20, using: &rng)
+                        return AppUsage(appPID: k, processes: [], cpuPercent: v, memoryBytes: UInt64(v * 1e8), watts: v / 10)
+                    }
+                }
+                display.apply(scan(), totalCPU: nil, frozen: false, time: 0)
+                for i in 1...6 {
+                    let before = display.apps.map(\.appPID)
+                    display.apply(scan(), totalCPU: nil, frozen: true, time: Double(2 * i))
+                    #expect(Array(display.apps.map(\.appPID).prefix(before.count)) == before)
+                }
+            }
+        }
+    }
+
     @Test func aMenuOpenedWithoutMovingCountsAsPointing() {
         // Right-click on the row under a pointer that never moved: after the menu closes the list
         // stays frozen while the pointer is still there.

@@ -255,7 +255,7 @@ struct BreakdownView: View {
                     if metric == .cpu { oneCoreLine(value) }
                 }
             }
-            .tooltip(ended ? nil : rowTooltip(app, value, info))
+            .tooltip(ended ? nil : rowTooltip(app, info))
     }
 
     /// Activity Monitor's scale (100 % = one core), for comparing with it. Derived from the
@@ -268,14 +268,12 @@ struct BreakdownView: View {
         Button(oneCore(cpuPercent)) {}.disabled(true)
     }
 
-    /// What a row does (an app) or stands for (a group); on CPU rows also Activity Monitor's
-    /// figure (100 % = one core), which no longer has a column of its own.
-    private func rowTooltip(_ app: AppUsage, _ cpuPercent: Double, _ info: AppInfoCache.Info) -> String? {
-        let what = !app.isApp ? info.detail
+    /// What a row does (an app) or stands for (a group). Activity Monitor's "% of one core" is in
+    /// the right-click menu only (the footnote's tooltip says so): on every row's tooltip it was jargon.
+    private func rowTooltip(_ app: AppUsage, _ info: AppInfoCache.Info) -> String? {
+        !app.isApp ? info.detail
             : app.processes.count > 1 ? "Click to show its processes \u{00B7} Right-click to quit"
             : "Right-click to quit"
-        guard metric == .cpu else { return what }
-        return [what, oneCore(cpuPercent)].compactMap { $0 }.joined(separator: "\n")
     }
 
     @ViewBuilder private func processRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
@@ -301,8 +299,7 @@ struct BreakdownView: View {
                 Button("Finished processes") {}.disabled(true)
                 if metric == .cpu { oneCoreLine(value) }
             }
-            .tooltip(["Work by this app\u{2019}s processes that finished since the last update",
-                      metric == .cpu ? oneCore(value) : nil].compactMap { $0 }.joined(separator: "\n"))
+            .tooltip("Work by this app\u{2019}s processes that finished since the last update")
     }
 
     private func liveProcessRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
@@ -318,8 +315,7 @@ struct BreakdownView: View {
                           barScale: barScale, shown: value)
             .transition(.opacity)
             // The pid lives here and in the menu, not on the row (noise for most people).
-            .tooltip([name, "pid \(process.pid)", metric == .cpu ? oneCore(value) : nil].compactMap { $0 }
-                .joined(separator: "\n"))
+            .tooltip("\(name)\npid \(process.pid)")
             .accessibilityActions {
                 if canQuit {
                     Button("Quit") {

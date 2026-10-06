@@ -440,7 +440,9 @@ final class Scan {
     func run(_ metric: BreakdownMetric) -> BreakdownScanner.Result {
         let anchors = attributionAnchors(NSWorkspace.shared.runningApplications.map { app in
             RunningAppInfo(pid: Int32(app.processIdentifier), hasBundleIdentifier: app.bundleIdentifier != nil,
-                           isBackgroundOnly: app.activationPolicy == .prohibited)
+                           isBackgroundOnly: app.activationPolicy == .prohibited,
+                           isMacOSAgent: isMacOSAgent(path: (app.bundleURL ?? app.executableURL)?.path,
+                                                      isRegularApp: app.activationPolicy == .regular))
         })
         let time = Date().timeIntervalSinceReferenceDate
         let absTime = mach_absolute_time()
