@@ -1,0 +1,68 @@
+MISSORT still t=7 System 3.0% above MacStats 3.8%
+MISSORT cpu t=11 MacStats 3.8% above Google Chrome 5.1% [expanded]
+MISSORT energy t=11 MacStats 0.03 W above Code 0.06 W
+MISSORT still t=11 MacStats 3.8% above Google Chrome 5.1%
+MISSORT energy t=13 MacStats 0.03 W above Code 0.06 W
+MISSORT cpu t=15 Google Chrome 2.7% above MacStats 3.8% [expanded]
+MISSORT energy t=15 MacStats 0.03 W above Code 0.06 W
+MISSORT still t=15 Google Chrome 2.7% above MacStats 3.8%
+MISSORT cpu t=17 Google Chrome 1.3% above Code 1.8% [expanded]
+MISSORT energy t=17 Google Chrome 0.01 W above Code 0.06 W [expanded]
+MISSORT still t=17 Google Chrome 1.3% above Code 1.8%
+MISSORT cpu t=21 Google Chrome 0.3% above Code 1.3% [expanded]
+MISSORT still t=21 Google Chrome 0.3% above Code 1.3%
+MISSORT energy t=27 MacStats 0.03 W above Code 0.05 W
+MISSORT energy t=29 MacStats 0.03 W above Code 0.05 W
+MISSORT cpu t=41 Code 1.3% above Google Chrome 1.9% [expanded]
+MISSORT still t=41 Code 1.3% above Google Chrome 1.9%
+MISSORT cpu t=45 MacStats 3.4% above System 5.2%
+run_s=150 phases: outside [0,67) inside [67,87) outside after
+card.cpu changes/min=22.4 flipbacks/min=2.4
+card.cpu held-vs-exact pp p50=0.57 p95=2.25 max=2.93
+card.mem changes/min=6.4 flipbacks/min=0.4
+card.down changes/min=16.4 flipbacks/min=4.8
+card.up changes/min=21.6 flipbacks/min=4.0
+machine_cpu_mean_last_minute=10.8
+cpu.top8_order_changes_per_min=9.2
+cpu.top8_slot_changes_per_min=25.6
+cpu.row_text_changes_per_min_top8=61.5
+cpu.row_text_flipbacks_per_min_top8=8.2
+cpu.missorted_scans=13/65 pairs=13 next_to_expanded=6
+cpu.hold_err_steps_p50_p95_max=0.43/3.13/9.99
+cpu.hold_err_rel_p95_max=1.000/1.140
+cpu.expanded_app=Google Chrome
+cpu.expanded_auto_collapses=0
+cpu.freeze_scans=10
+cpu.freeze_row_moves=0
+cpu.max_sum_vs_header_gap_pp=1.70
+memory.top8_order_changes_per_min=0.0
+memory.top8_slot_changes_per_min=0.0
+memory.row_text_changes_per_min_top8=4.3
+memory.row_text_flipbacks_per_min_top8=0.5
+memory.missorted_scans=0/66 pairs=0 next_to_expanded=0
+memory.hold_err_steps_p50_p95_max=0.36/0.51/1.81
+memory.hold_err_rel_p95_max=0.029/0.058
+memory.expanded_app=Google Chrome
+memory.expanded_auto_collapses=0
+memory.freeze_scans=10
+memory.freeze_row_moves=0
+energy.top8_order_changes_per_min=7.7
+energy.top8_slot_changes_per_min=19.8
+energy.row_text_changes_per_min_top8=31.5
+energy.row_text_flipbacks_per_min_top8=6.8
+energy.missorted_scans=19/65 pairs=20 next_to_expanded=6
+energy.hold_err_steps_p50_p95_max=0.03/0.63/1.64
+energy.hold_err_rel_p95_max=0.986/1.000
+energy.expanded_app=Google Chrome
+energy.expanded_auto_collapses=0
+energy.freeze_scans=10
+energy.freeze_row_moves=0
+still.top8_order_changes_per_min=8.9
+still.top8_slot_changes_per_min=24.3
+still.row_text_changes_per_min_top8=57.6
+still.row_text_flipbacks_per_min_top8=8.5
+still.missorted_scans=16/75 pairs=16 next_to_expanded=0
+still.hold_err_steps_p50_p95_max=0.43/3.27/9.46
+still.hold_err_rel_p95_max=1.000/1.211
+still.max_sum_vs_header_gap_pp=1.70
+probe_process_cpu_pct=0.99 (4 breakdown scans + overview)

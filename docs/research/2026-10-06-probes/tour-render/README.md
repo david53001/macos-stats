@@ -14,6 +14,7 @@ cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
 docs/research/2026-10-06-probes/tour-render/run.sh            # captures + out/insets.txt (~60 s)
 docs/research/2026-10-06-probes/tour-render/run.sh --cost     # CPU: 20 s tour off, then 20 s on step 1
 docs/research/2026-10-06-probes/tour-render/run.sh --no-tour  # CPU: 20 s with .tourHost left out
+docs/research/2026-10-06-probes/tour-render/run.sh --breakdowns  # real-scan breakdowns, plain + one row expanded
 pgrep -fl Probe                                               # should print nothing afterwards
 ```
 
@@ -70,3 +71,16 @@ slider look inactive; the tour's own buttons are custom and unaffected). The `Me
 its Opacity hook aren't present off-screen (an `NSVisualEffectView(.popover)` stands in), and hover/keyboard
 can't be driven without activating the window: those are the owner's manual checks in
 `docs/superpowers/plans/2026-10-06-stability-tour-progress.md`.
+
+## Review round 2 additions (2026-10-06)
+
+- **Shadow strip**: each `step=` line now ends with `strip near=… far=…`. That is the tour/base luminance
+  ratio of the 6 pt gap between the callout and the cutout ("near"), and of the same strip on the cutout's
+  other side ("far"). A callout shadow falling into the gap makes near < far. After masking the callout to its
+  own side, every step reads near = far within 0.002 (light 0.702, dark 0.602).
+- **`--breakdowns`**: CPU, Memory and Battery breakdowns of this Mac's live processes ("Measuring…" then two
+  2 s scans, as the app does), light and dark. Each is captured as `out/r2-breakdown-<metric>-<look>.png`,
+  then again with the app that has the most processes among the top six expanded by a synthetic click in the
+  probe's own off-screen window (`-expanded-`). The log is `out/breakdowns.txt`.
+- Footnotes checked: "Each app’s share of the whole Mac" 1.00, memory 0.88, "Processor power only, not the
+  screen" 0.99 (scale needed to fit one line; ≥ 0.8 passes).

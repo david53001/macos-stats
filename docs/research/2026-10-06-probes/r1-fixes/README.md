@@ -68,3 +68,7 @@ resting in the list for 20 s). Raw output: `reviewB-probe-unpinned.txt`, `review
 
 The repo's own probe (`docs/research/2026-10-06-probes/stability/run.sh 90 Code`): top-8 order changes 7.3 / min,
 target child-set changes 0, frozen slot changes 0, scan 7.45 ms/s, probe process 0.67 % of a core.
+
+> **Note (review round 2):** `main.swift` here targets the round-1 API (`breakdownPointerProbe` returning a
+> `Bool`). Since round 2 it returns a `BreakdownPointer` (`inside`, `moved`), so this probe no longer builds
+> against HEAD; it is kept as the record of round 1. Round 2's probes: `../r2-fixes/`.

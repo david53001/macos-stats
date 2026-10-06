@@ -1,0 +1,64 @@
+MISSORT energy t=7 MacStats 0.03 W above Code 0.05 W
+MISSORT energy t=9 MacStats 0.03 W above Code 0.05 W
+MISSORT energy t=17 MacStats 0.03 W above Other processes 0.05 W
+MISSORT energy t=19 MacStats 0.03 W above Other processes 0.05 W
+MISSORT cpu t=25 BetterScreenshot 0.1% above Claude 0.3%
+MISSORT still t=25 BetterScreenshot 0.1% above Claude 0.3%
+MISSORT cpu t=27 BetterScreenshot 0.1% above Claude 0.3%
+MISSORT still t=27 BetterScreenshot 0.1% above Claude 0.3%
+MISSORT energy t=117 MacStats 0.03 W above Code 0.05 W
+MISSORT energy t=119 MacStats 0.03 W above Code 0.05 W
+MISSORT cpu t=125 Other processes 0.1% above Spotify 0.3%
+MISSORT still t=125 Other processes 0.1% above Spotify 0.3%
+MISSORT cpu t=127 Other processes 0.1% above Spotify 0.3%
+MISSORT still t=127 Other processes 0.1% above Spotify 0.3%
+run_s=150 phases: outside [0,67) inside [67,87) outside after
+card.cpu changes/min=26.8 flipbacks/min=2.8
+card.cpu held-vs-exact pp p50=0.43 p95=1.44 max=1.84
+card.mem changes/min=7.2 flipbacks/min=0.0
+card.down changes/min=6.8 flipbacks/min=1.2
+card.up changes/min=8.4 flipbacks/min=1.6
+machine_cpu_mean_last_minute=11.4
+cpu.top8_order_changes_per_min=10.6
+cpu.top8_slot_changes_per_min=33.4
+cpu.row_text_changes_per_min_top8=50.8
+cpu.row_text_flipbacks_per_min_top8=6.8
+cpu.missorted_scans=4/65 pairs=4 next_to_expanded=0
+cpu.hold_err_steps_p50_p95_max=0.44/3.38/10.48
+cpu.hold_err_rel_p95_max=0.881/1.000
+cpu.expanded_app=Google Chrome
+cpu.expanded_auto_collapses=0
+cpu.freeze_scans=10
+cpu.freeze_row_moves=0
+cpu.max_sum_vs_header_gap_pp=1.20
+memory.top8_order_changes_per_min=0.0
+memory.top8_slot_changes_per_min=0.0
+memory.row_text_changes_per_min_top8=2.4
+memory.row_text_flipbacks_per_min_top8=1.0
+memory.missorted_scans=0/66 pairs=0 next_to_expanded=0
+memory.hold_err_steps_p50_p95_max=0.36/0.49/1.86
+memory.hold_err_rel_p95_max=0.029/0.060
+memory.expanded_app=Google Chrome
+memory.expanded_auto_collapses=0
+memory.freeze_scans=10
+memory.freeze_row_moves=0
+energy.top8_order_changes_per_min=6.8
+energy.top8_slot_changes_per_min=23.7
+energy.row_text_changes_per_min_top8=27.6
+energy.row_text_flipbacks_per_min_top8=7.3
+energy.missorted_scans=8/65 pairs=8 next_to_expanded=0
+energy.hold_err_steps_p50_p95_max=0.00/0.50/1.34
+energy.hold_err_rel_p95_max=1.000/1.000
+energy.expanded_app=Google Chrome
+energy.expanded_auto_collapses=0
+energy.freeze_scans=10
+energy.freeze_row_moves=0
+still.top8_order_changes_per_min=10.5
+still.top8_slot_changes_per_min=33.2
+still.row_text_changes_per_min_top8=53.1
+still.row_text_flipbacks_per_min_top8=7.3
+still.missorted_scans=4/75 pairs=4 next_to_expanded=0
+still.hold_err_steps_p50_p95_max=0.44/3.03/9.69
+still.hold_err_rel_p95_max=0.881/1.000
+still.max_sum_vs_header_gap_pp=1.20
+probe_process_cpu_pct=0.93 (4 breakdown scans + overview)

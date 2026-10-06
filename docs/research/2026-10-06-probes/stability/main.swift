@@ -175,9 +175,8 @@ func cpuSeconds() -> Double {
         if targetPID == nil || !rows.contains(where: { $0.appPID == targetPID }) {
             targetPID = rows.filter(\.isApp).max { $0.processes.count < $1.processes.count }?.appPID
         }
-        #if !BASELINE
-        store.setBreakdownPinnedApp(targetPID)   // as if the user expanded it
-        #endif
+        // Rounds 1-2 pinned the target here (`setBreakdownPinnedApp`, as if expanded). Review round 2
+        // removed the pin: the expanded app re-ranks like any row, and only the freeze holds it still.
 
         let top8 = Array(rows.prefix(8).map(\.appPID))
         let present = Set(rows.map(\.appPID))

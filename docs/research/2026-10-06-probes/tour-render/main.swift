@@ -62,7 +62,8 @@ struct ProbePanel: View {
                  time: t)
     }
     s.setBattery(battery)
-    s.setBatteryTelemetry(BatteryTelemetry(updateTime: 0, cycleCount: 212, temperatureC: 31.4), powerWatts: 6.8,
+    s.setBatteryTelemetry(BatteryTelemetry(updateTime: 0, nominalMAh: 4_200, designMAh: 4_563, cycleCount: 212,
+                                           temperatureC: 31.4), powerWatts: 6.8,
                           averageWatts: 7.4, averageSinceUnplug: true)
     s.setCPUTemperature(47)
     s.setTrashBytes(842_000_000)
@@ -214,10 +215,30 @@ func log(_ line: String) {
         && [l.outer, r.outer, top.outer, bot.outer].allSatisfy { abs($0 - want) <= 1 }
         && !co.intersects(cut.rect)
     if !ok { failures += 1 }
+    // The dim's darkness in the 6 pt strip between callout and cutout ("near") vs. the same strip on
+    // the cutout's other side ("far"), as tour/base luminance over the callout's middle columns. A
+    // callout shadow falling into the gap makes near < far (review round 2: steps 4-5, light).
+    func strip(_ y0: CGFloat, _ y1: CGFloat) -> Double? {
+        let r0 = max(0, Int((y0 * s).rounded())), r1 = min(b.h, Int((y1 * s).rounded()))
+        guard r1 > r0 else { return nil }
+        var tb = 0.0, bb = 0.0
+        for y in r0..<r1 {
+            for x in Int((co.minX + 20) * s)..<Int((co.maxX - 20) * s) {
+                func lum(_ c: (Int, Int, Int)) -> Double { 0.299 * Double(c.0) + 0.587 * Double(c.1) + 0.114 * Double(c.2) }
+                tb += lum(t.rgb(x, y)); bb += lum(b.rgb(x, y))
+            }
+        }
+        return bb > 0 ? tb / bb : nil
+    }
+    let gap = placement == "below" ? co.minY - cut.rect.maxY : cut.rect.minY - co.maxY
+    let near = placement == "below" ? strip(cut.rect.maxY, co.minY) : strip(co.maxY, cut.rect.minY)
+    let far = placement == "below" ? strip(cut.rect.minY - gap, cut.rect.minY)
+                                   : strip(cut.rect.maxY, min(cut.rect.maxY + gap, Design.panelHeight))
+    let shadow = near.flatMap { n in far.map { f in String(format: " strip near=%.3f far=%.3f", n, f) } } ?? ""
     func f(_ r: CGRect) -> String { "(\(r.minX),\(r.minY),\(r.width),\(r.height))" }
     log("step=\(name) \(dark ? "dark" : "light") inner(px) L=\(l.inner) R=\(r.inner) T=\(top.inner) B=\(bot.inner) "
         + "outer(px) L=\(l.outer) R=\(r.outer) T=\(top.outer) B=\(bot.outer) target=\(f(target))pt "
-        + "cutout=\(f(cut.rect))pt radius=\(cut.radius) callout=\(f(co))pt placement=\(placement) \(ok ? "OK" : "FAIL")")
+        + "cutout=\(f(cut.rect))pt radius=\(cut.radius) callout=\(f(co))pt placement=\(placement)\(shadow) \(ok ? "OK" : "FAIL")")
 }
 
 // MARK: Text fit
@@ -238,8 +259,9 @@ func log(_ line: String) {
     let quit = fittingWidth(Button("Quit MacStats") {}.buttonStyle(SubtleButtonStyle(cornerRadius: Design.cardCornerRadius)))
     let room = Design.panelWidth - 2 * Design.panelInset - quit - 8 - Design.cardPadding
     let cores = ProcessInfo.processInfo.activeProcessorCount
-    for note in ["Share of the whole Mac (all \(cores) cores)", "Each app\u{2019}s memory, as in Activity Monitor",
-                 "App power: CPU only, not screen or GPU", "Right-click an app to quit it"] {
+    _ = cores
+    for note in ["Each app\u{2019}s share of the whole Mac", "Each app\u{2019}s memory, as in Activity Monitor",
+                 "Processor power only, not the screen", "Right-click an app to quit it"] {
         let w = fittingWidth(Text(note).font(.caption2))
         let scale = min(1, room / w)
         if scale < 0.8 { failures += 1 }
@@ -406,6 +428,82 @@ func dropSuite(_ name: String) {
     w.orderOut(nil); w.close()
 }
 
+// MARK: Breakdowns with real scans (--breakdowns)
+
+final class Scan {
+    let scanner = BreakdownScanner()
+    func run(_ metric: BreakdownMetric) -> BreakdownScanner.Result {
+        let anchors = attributionAnchors(NSWorkspace.shared.runningApplications.map { app in
+            RunningAppInfo(pid: Int32(app.processIdentifier), hasBundleIdentifier: app.bundleIdentifier != nil,
+                           isBackgroundOnly: app.activationPolicy == .prohibited)
+        })
+        let time = Date().timeIntervalSinceReferenceDate
+        let absTime = mach_absolute_time()
+        let ticks = readCPUTicks()
+        let raw = readRawProcesses(includeEnergy: metric == .energy)
+        return scanner.scan(raw, appPIDs: anchors.apps, fallbackAppPIDs: anchors.fallbacks,
+                            metric: metric, time: time, absTime: absTime, cpuTicks: ticks)
+    }
+}
+
+/// A synthetic click on the probe's own (off-screen) window: never the real pointer or menu bar.
+@MainActor func click(_ w: NSWindow, at p: CGPoint) {
+    guard let host = w.contentView?.subviews.first else { return }
+    let loc = NSPoint(x: p.x, y: Design.panelHeight - p.y)
+    for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+        let e = NSEvent.mouseEvent(with: type, location: loc, modifierFlags: [],
+                                   timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: w.windowNumber,
+                                   context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0)!
+        let target = host.hitTest(host.superview!.convert(loc, from: nil)) ?? host
+        if type == .leftMouseDown { target.mouseDown(with: e) } else { target.mouseUp(with: e) }
+        settle(0.08)
+    }
+}
+
+/// CPU, Memory and Battery breakdowns of this Mac's live processes (scan, "Measuring…", then two
+/// 2 s scans, as the app does), light and dark, then with the app that has the most processes
+/// among the top six expanded by a click on its row.
+@MainActor func breakdowns() {
+    let name = "MacStatsTourProbe-\(UUID().uuidString)"
+    defer { dropSuite(name) }
+    let d = suite(name, audience: .existing)
+    d.set(true, forKey: TourKey.breakdownMenuUsed)   // the footnote, not the quit hint
+    for dark in [false, true] {
+        NSApp.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        let look = dark ? "dark" : "light"
+        for metric in [BreakdownMetric.cpu, .memory, .energy] {
+            let store = makeStore()
+            store.beginBreakdown(metric: metric)
+            let scan = Scan()
+            var r = scan.run(metric)
+            store.setBreakdown(r.apps, measuring: r.measuring, totalCPU: r.totalCPUPercent)
+            for _ in 0..<2 {
+                settle(2)
+                r = scan.run(metric)
+                store.setBreakdown(r.apps, measuring: r.measuring, totalCPU: r.totalCPUPercent)
+            }
+            let w = makeWindow(BreakdownView(store: store, metric: metric, onBack: {})
+                .background(PanelBackdrop()).defaultAppStorage(d))
+            settle(1)
+            save(capture(w), "r2-breakdown-\(metric)-\(look)")
+            if let target = store.breakdown.prefix(6).filter({ $0.isApp }).max(by: { $0.processes.count < $1.processes.count }),
+               target.processes.count > 1,
+               let index = store.breakdown.firstIndex(where: { $0.appPID == target.appPID }) {
+                var top: CGFloat = 36 + 6
+                if metric == .memory { top += NSHostingView(rootView: MemoryPartsCard(store: store).frame(width: 304)).fittingSize.height + 6 }
+                if metric == .energy { top += NSHostingView(rootView: BatteryDetailsCard(store: store).frame(width: 304)).fittingSize.height + 6 }
+                click(w, at: CGPoint(x: 120, y: top + 4 + 36 * CGFloat(index) + 18))
+                settle(0.8)
+                log("breakdown \(metric) \(look) expanded \(NSRunningApplication(processIdentifier: target.appPID)?.localizedName ?? "?") "
+                    + "(\(target.processes.count) processes) at row \(index)")
+                save(capture(w), "r2-breakdown-\(metric)-expanded-\(look)")
+            }
+            w.orderOut(nil); w.close()
+        }
+    }
+    try? (report.joined(separator: "\n") + "\n").write(toFile: "\(outDir)/breakdowns.txt", atomically: true, encoding: .utf8)
+}
+
 MainActor.assumeIsolated {
     let app = NSApplication.shared
     app.setActivationPolicy(.accessory)
@@ -413,6 +511,7 @@ MainActor.assumeIsolated {
     switch mode {
     case "--cost": cost(noTour: false)
     case "--no-tour": cost(noTour: true)
+    case "--breakdowns": breakdowns()
     default: render()
     }
     print("done")
