@@ -1,0 +1,18 @@
+build=baseline
+run_seconds=60 counted_breakdown_seconds=37 cores=8
+breakdown_scan_interval_s=1.0 rate_window_s=1.0
+target_app=Code
+top8_order_changes=60.0
+slot_changes=296.8
+row_text_changes=408.6
+target_moves=32.4
+target_child_set_changes=55.1
+frozen_slot_changes=98   # baseline: nothing freezes; same 20 s window, total
+card_cpu_changes=98.0
+card_net_down_changes=89.0
+card_mem_changes=39.0
+scan_ms_mean=12.02 scan_ms_max=16.87 scans_per_s=1.02 scan_ms_per_s=12.22
+scan_parts_ms_mean apps_list=8.32 process_read=3.21 scanner=0.48 store_setBreakdown=0.04
+process_cpu_pct=0.95
+max_sum_gap_pp=0.00
+whole_mac_cpu_mean=18.0
