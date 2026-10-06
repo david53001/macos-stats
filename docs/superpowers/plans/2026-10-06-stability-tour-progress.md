@@ -418,16 +418,83 @@ is off (no new timers or observers). `./Scripts/test.sh` **366/366**; `swift bui
 - CPU breakdown: loginwindow, Dock, WindowManager are no longer rows; expand "Other processes" and right-click
   loginwindow: no Quit / Force Quit.
 
-## Review round 5 (2026-10-07) — IN PROGRESS
-Scores: reviewer A 8.1, reviewer B 8.2 (reports `docs/reviews/2026-10-06-stability-tour-review-r5-A.md`, `-B.md`).
-Done so far (commits e277f5d, f4263a0, 486d45e, 70a1d77): fast release; partial freeze through the hovered app;
-process rows 10 s dwell + promotion floor; Finished processes only when > 0; BreakdownList in Core; ended "N more…"
-kept disabled; copy (footnotes, hint, step 1, welcome); chip 18 pt; ↑ line 20 % hold; design note
-`docs/design/breakdown-stability.md`. `./Scripts/test.sh` 372/372.
-Next: r5 probe folder `docs/research/2026-10-06-probes/r5-fixes/` (record/replay incl. burst fall, child order),
-render probe captures, then the full "Review round 5" section below.
+## Review round 5 (2026-10-07) — fixed, verified, committed
+**Scores:** reviewer A **8.1** (Stability 8.0, Interaction 8.0, Intuitiveness 8.0, Copy 8.3, Visual 8.5, Tour 9.0,
+**Code 7.5**, Resource 8.0); reviewer B **8.2** (Stability 7.8, Interaction 8.2, Intuitiveness 8.4, Copy 8.2, Visual
+8.7, Tour 8.9, Code 7.8, Resource 8.7). Bar: both > 9.0 and no area < 8.5. Reports:
+`docs/reviews/2026-10-06-stability-tour-review-r5-A.md`, `docs/reviews/2026-10-06-stability-tour-review-r5-B.md`.
+
+Terms: **partial freeze** = with the pointer on a known app's rows, only the apps down to and including that app keep
+their places; the apps below still re-sort (never past it). **Fast release** = the breakdown window also restarts
+when an app used ≥ ¾ of a core *less* over the latest scan than over the rest of the window. **Promotion floor** =
+process rows printed under 0.5 % (0.05 W) pass a neighbour only by the ranking margins, not by the inversion timeout.
+All rules, constants and tests are now in one place: **`docs/design/breakdown-stability.md`**. Probe folder for this
+round: `docs/research/2026-10-06-probes/r5-fixes/` (README defines the measures and has the exact commands).
+
+### Fixed (commits `e277f5d`, `f4263a0`, `486d45e`, `70a1d77`, `a3abcc7`, probes `5b8306a`)
+| Finding (severity) | Verified? | Fix | Evidence |
+|---|---|---|---|
+| A S1 (Medium): rows and header take ~8 s to come down after a load ends | Yes: "Falls still average" (`ProcessScan.swift`) | Fast release (`BreakdownScanner`, same `breakdownFastAttackCores`) | Replay: header 30 → **12** % 2 s after a one-core load stops (card 32 → 17 %); without it 30 → 25 → 23 %. Test `aLoadThatEndsRestartsTheWindow` |
+| B S1 (Medium), A S3 (Low–Med): expanded app's visible process rows reshuffle every ~6 s; "Finished processes" jumps to the top | Yes | Process rows: own dwell `breakdownProcessReorderDwell` 10 s; `RankHysteresis.promotionFloor` (0.5 % / 0.05 W); "Finished processes" always the app's last row and hidden while it prints 0 (unless frozen) | Replay under a bursty load: visible top-5 order changes 10.1 → **5.1**/min, set changes 0.8/min, Finished in the top 2: 13 → **0** scans, first 14 rows' slot changes 33.0 → 17.2/min. Trade-off: child inversion scans 67 → 79/149 (CPU), 35 → 25 (Battery). Tests `processRowsReorderAtMostOncePerTheirDwell`, `tinyProcessRowsDontSwapByTheInversionTimeout`, `exitedRowIsAlwaysLast`, `exitedRowShowsOnlyWhileItHasSomethingToShow` |
+| A S2 (Low–Med), B S2 (Low): a resting pointer freezes the whole order | Yes | Partial freeze (`BreakdownFreeze.through`, `BreakdownPointer.app` from the rows' hover events, `RowHover`); unknown row / menu / unfreeze delay still freeze all | Tests `aPointerOnAnAppFreezesOnlyDownToIt`, property test `frozenKeepsTheShownRowsAsAPrefix` (random partial freezes, 3 metrics); replay: 135 frozen scans, 0 rows at or above the pointer moved |
+| A C1 (Medium), B C1/C3 (Medium/Low): stabiliser hard to maintain; `apply` 90 lines; inline hold literals | Yes | Design note `docs/design/breakdown-stability.md` (23 rules: constant + test each); `apply` split into `ListRanking` (order + lagging + dwell, no `inout` pairs) and `processRows`; `RowHold` names the hold bands next to `RankHysteresis`; history prose out of the constants' docs | Build + 373 tests |
+| B I1 (Low): an ended expanded app's "N more…" vanished while frozen (rows below jumped ~25 pt) | Yes | Kept, disabled and dimmed, until the unfreeze (`BreakdownList`, moved to MacStatsCore and tested) | `r5-fixes/out/r5-breakdown-cpu-expanded-app-ended-light.png`: BetterScreenshot row stays at the same y; test `anEndedAppKeepsItsMoreRowDisabled` |
+| B I2 (Low): ended process placeholders printed the full name | Yes | `processDisplayName` as for live rows | Same capture ("Helper (Renderer)") |
+| A I1, B I3 (Low): scroll without pointer motion doesn't freeze | Yes | `PointerProbe` local monitor (only while a breakdown is shown): scroll or click in the list = moved; a scroll forgets the hovered row until the next hover (full freeze) | Build; needs the real panel to see live |
+| A T2 (Low): Memory footnote at 0.88× | Yes (and Battery's at 0.91×) | "Per app, as in Activity Monitor", "Processor power, not the screen" | Render probe fit: all footnotes and the hint 1.00 (`r5-fixes/out/insets.txt`) |
+| A D1 (Low): expanding isn't taught | Yes | Hint "Click to expand · Right-click to quit" (fits at 1.00) | `r5-fixes/out/r5-breakdown-cpu-hint-light.png` |
+| A T1 (Low): "Finished processes 0.0 %" | Yes | Hidden while it prints 0 (see B S1 row) | Replay: 0 scans printing 0 |
+| B T1, T2 (Low): step 1 and welcome copy | Yes | "The number is right now; the graph shows the last minute. Click to see which apps use it." / "…live in your menu bar. Click its icon any time." | Lint + fit (2 lines); `r5-fixes/out/step1-light.png`, `welcome-light.png` |
+| B T3 (Low): "pid" on row tooltips | Yes | Tooltip = full name; pid only in the menu header | Build |
+| B V1 (Low): offer chip 3 pt above the CPU card | Yes | Chip 18 pt (gap ≈ 4 pt) | `r5-fixes/out/chip-light.png` |
+| A S5 (Low): Network ↑ jitter | Yes | The card's ↑ line holds 20 % (↓ stays 15 %) | Test `rateHoldsSmallWobble` |
+| A C3, C4, C5; B C4, C5 (Low) | Yes | Probe closure set once in `makeNSView`; unreadable process names cached as nil; `BreakdownList` in Core; `noThanks` folded into `skip` (`engaged` documented as per-breakdown); old stability probe marked superseded by `r5-fixes` (agents, pointer probe, child order, flattened rows, inversions) | — |
+
+Accuracy: unchanged (stored readings, graphs, bars and alerts exact; fast release makes rows/header *more* current;
+the ↑ card hold is display-only, ≤ 20 % of the shown value). Cost: no new timers; nothing new runs while the panel is
+closed; the scroll/click monitor and row hover handlers exist only while a breakdown is shown; scan work unchanged
+(the release check reuses the attack's per-app sums). `./Scripts/test.sh` **373/373**; `swift build` green; render
+probe `failures=0` (centring unchanged: inner 2/2/2/2 px, outer 6/6/6/6 px every step, light + dark).
+
+### Rejected or deferred (with the reason)
+- **A R1 / B side note (Medium, operational): install HEAD and check the closed-panel CPU live.** The hard rules for
+  this work forbid installing `~/Applications/MacStats.app` and driving the real menu bar; running a second,
+  uninstalled copy would put another icon (and, as a "new user", an auto-opening welcome panel) in front of the
+  owner. The fix itself (window-aware open/closed) was verified off-screen in round 1 (`probes/visibility/`).
+  **Owner check, most important:** `./Scripts/bundle.sh && open ~/Applications/MacStats.app`, open and close the
+  panel, then `ps -o %cpu,time,rss -p $(pgrep -f MacStats.app/Contents/MacOS)`: expect < 0.5 % with the panel closed.
+- **A C1 alt.: merge the dwell and the inversion timeout into one "lead for N s" rule.** Would change every measured
+  trade-off at once; both are now one small tested function (`ListRanking.rank`). Recorded under "Considered and not
+  done" in the design note.
+- **A S2 alt.: let a row > 2× the one above pass while frozen.** It would move rows under the pointer; the partial
+  freeze re-sorts only below it.
+- **A I2 (Low): keep an app expanded when it drops to one process.** Its one process row would repeat the app row;
+  it collapses only while the pointer is away (frozen lists keep it).
+- **A D2 (Low): Memory's "Other processes" (largest) pinned last.** By design: the list answers "which app"; the
+  group is an aggregate of macOS helpers (as in rounds 3–4).
+- **A S4 (Low): CPU card 20–26 changes/min.** Both reviewers count "never ≥ 3 pp off, a load in ~2 s" as a strength;
+  a 3 s dwell would trade that away.
+- **A TR1, TR2; B D1, D2/V3, V2 (Low):** continuous-corner apex offset is the shape's nature; two accidental closes
+  ending the tour is fine since `?` replays it; Quit by right-click (hint + tooltips, as Activity Monitor); Settings
+  space waits for Milestone 4; the dim strength was tuned in round 1.
+- **A I3, B I4 (unverifiable off-screen):** NSMenu right-click, trackpad scrolling, hover in the real panel and the
+  tour hole click-through: owner checks below.
+
+### Owner checks this round adds (need `./Scripts/bundle.sh`, the owner's OK)
+- CPU breakdown, pointer resting on the 2nd row while something below gets busy: rows below re-sort, nothing at or
+  above the pointer moves.
+- Scroll the list with a trackpad without moving the pointer: the order stops changing.
+- Quit a busy app (or stop a `yes`): its row and the header drop within ~2 s, like the card.
 
 ## Next
+Review round 6 (`/reviewer`, two independent reviewers) on HEAD of `feat/stability-tour`. Probes:
+```bash
+cat docs/design/breakdown-stability.md                              # the rules, constants, tests
+cat docs/research/2026-10-06-probes/r5-fixes/README.md              # record/replay + render commands
+OUT=$PWD/docs/research/2026-10-06-probes/r5-fixes/out docs/research/2026-10-06-probes/tour-render/run.sh
+```
+
+## Older "Next" (round 5 setup, kept for the probe commands)
 Review round 5 (`/reviewer`, two independent reviewers) on HEAD of `feat/stability-tour`. Probes:
 ```bash
 docs/research/2026-10-06-probes/r3-fixes/run.sh stability 100   # live, reviewer B's measures

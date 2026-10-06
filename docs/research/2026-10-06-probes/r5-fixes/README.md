@@ -64,6 +64,7 @@ OUT=$PWD/$P/out docs/research/2026-10-06-probes/tour-render/run.sh --breakdowns 
 | Burst app's row after the start (+2 / +4 s) | 14 / 24 % (fast attack, unchanged) | 14 / 24 % |
 | Expanded app (VS Code, ~28 processes), visible top-5 process order changes /min, pointer away | 10.1 (reviewers live: 8–15) | **5.1** |
 | Same, visible set changes /min | — | 0.8 |
+| Same, scans with a visible process row printed above a higher one (CPU; Battery) | 67/149; 35/149 | 79/149; 25/149 (the trade-off of a 10 s dwell and no inversion timeout under 0.5 %: fewer moves, a held-back order a little more often) |
 | "Finished processes" in the top 2 of the expanded app | 13 of 149 scans with round 5's other fixes but ranked like any row (reviewers: often second, at 0.0 %) | **0** (always last) |
 | First 14 flattened rows, slot changes /min | 33.0 | **17.2** |
 | Top-8 app order changes /min; inversion scans | 1.6; 2/149 | 1.6; 2/149 |
