@@ -318,8 +318,8 @@ public final class ProcessSampler {
 /// One breakdown's scan pipeline: attribution + interval usage + the CPU header over the
 /// same span. Lives only while a breakdown is open (a new one per drill-in).
 ///
-/// CPU and energy rows are averaged over a trailing window (`windowSeconds`, the last four
-/// 2 s scan intervals by default), and so is the CPU header, so rows + System still add up to
+/// CPU and energy rows are averaged over a trailing window (`windowSeconds`; by default
+/// `trailingWindowSeconds` for CPU, `energyWindowSeconds` for energy), and so is the CPU header, so rows + System still add up to
 /// it. A process that started mid-window counts what it used over the whole window; one that
 /// exited mid-window keeps its earlier work in its app's "Exited processes" row while the app
 /// runs (else it falls into System). Memory rows are instantaneous.
@@ -357,7 +357,7 @@ public final class BreakdownScanner: @unchecked Sendable {
     }
 
     private let cores: Double
-    private let windowSeconds: TimeInterval
+    private let windowSeconds: TimeInterval?
     private let attributor: ProcessAttributor
     private let sampler = ProcessSampler()
     private var lastTicks: CPUTicks?
@@ -373,14 +373,15 @@ public final class BreakdownScanner: @unchecked Sendable {
     private var names: [ProcessKey: String] = [:]
     private let nameOf: (Int32) -> String?
 
-    /// `windowSeconds`: the span rows are averaged over; 0 = the latest interval only.
+    /// `windowSeconds`: the span rows are averaged over; 0 = the latest interval only, nil = the
+    /// metric's own (`trailingWindowSeconds`, `energyWindowSeconds`).
     public init(cores: Int = ProcessInfo.processInfo.activeProcessorCount,
-                windowSeconds: TimeInterval = trailingWindowSeconds,
+                windowSeconds: TimeInterval? = nil,
                 responsible: @escaping (Int32) -> Int32? = responsiblePID(for:),
                 allParents: @escaping () -> [Int32: Int32] = readAllParentPIDs,
                 nameOf: @escaping (Int32) -> String? = processName) {
         self.cores = Double(max(1, cores))
-        self.windowSeconds = max(0, windowSeconds)
+        self.windowSeconds = windowSeconds.map { max(0, $0) }
         self.attributor = ProcessAttributor(responsible: responsible, allParents: allParents)
         self.nameOf = nameOf
     }
@@ -459,7 +460,8 @@ public final class BreakdownScanner: @unchecked Sendable {
             window.append(Interval(elapsed: elapsed, busyNs: total.map { $0 * nsPerPercent }, work: work,
                                    exitedNs: exitedNs))
             // Keep the newest intervals that cover the window (10 % slack for timer jitter).
-            let span = metric == .memory ? 0 : windowSeconds
+            let span = metric == .memory ? 0
+                : windowSeconds ?? (metric == .energy ? energyWindowSeconds : trailingWindowSeconds)
             var covered = window.reduce(0) { $0 + $1.elapsed }
             while window.count > 1, covered - window[0].elapsed >= span * 0.9 {
                 covered -= window[0].elapsed

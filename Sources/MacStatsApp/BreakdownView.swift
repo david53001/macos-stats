@@ -160,16 +160,17 @@ struct BreakdownView: View {
     private var footnoteHelp: String? {
         switch metric {
         case .cpu:
-            return "All \(Self.cores) cores together are 100 %. Activity Monitor counts one core as 100 %; "
-                + "right-click a row for that figure."
+            return "Averaged over the last \(Int(trailingWindowSeconds)) seconds. All \(Self.cores) cores "
+                + "together are 100 %. Activity Monitor counts one core as 100 %; right-click a row for that figure."
         case .memory:
             // Compressed memory counts at full size (more), and macOS's own and other users'
             // processes aren't listed (less).
             return "Compressed memory counts at full size here, and macOS\u{2019}s own processes aren\u{2019}t "
                 + "listed, so the rows don\u{2019}t add up to the total above."
         case .energy:
-            return "Counts each app\u{2019}s processor use only. The screen, graphics and the rest of the Mac use "
-                + "power too, so the apps don\u{2019}t add up to Power now."
+            return "Averaged over the last \(Int(energyWindowSeconds)) seconds. Counts each app\u{2019}s processor "
+                + "use only. The screen, graphics and the rest of the Mac use power too, so the apps don\u{2019}t "
+                + "add up to Power now."
         }
     }
 

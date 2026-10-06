@@ -32,8 +32,7 @@ struct OverviewView: View {
                      onTap: { onSelect(.cpu) }) {
                 Sparkline(points: store.cpuHistory, color: .green, maxValue: 100)
             }
-            .help(store.cpuTempCelsius == nil ? "Click to see which apps use the CPU"
-                  : "Click to see which apps use the CPU. The \u{00B0}C is the chip\u{2019}s temperature.")
+            .help("Click to see which apps use the CPU")
             .tourAnchor("overview.cpu", radius: Design.cardCornerRadius)
             StatCard(label: "Memory", value: memoryValue,
                      number: Double(store.cardMemory?.usedBytes ?? 0), meta: memoryMeta,
@@ -114,7 +113,7 @@ struct OverviewView: View {
     }
     private var cpuMeta: String {
         guard let t = store.cpuTempCelsius else { return "" }   // no usable sensor on this chip
-        return "\(Int(t)) °C"   // the Battery screen's format
+        return "Chip \(Int(t)) °C"   // named, so the number isn't a riddle; the Battery screen's °C format
     }
     /// macOS's memory pressure in plain words (the tooltip names the term).
     private var memoryMeta: String {

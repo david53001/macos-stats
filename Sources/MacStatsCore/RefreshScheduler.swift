@@ -45,13 +45,16 @@ public let prewarmMinInterval: TimeInterval = 1.0
 /// (`docs/research/2026-10-06-stability-diagnosis.md` §4.1, variant D). Activity Monitor's own
 /// default refresh is 5 s.
 public let breakdownScanInterval: TimeInterval = 2.0
-/// The span breakdown CPU and energy rows (and the CPU header) are averaged over: the last four
-/// scan intervals (`BreakdownScanner`). Memory rows stay instantaneous. 8 s, not 4: replaying the
-/// same 5 min of live scans, the CPU list's top 8 reordered 5.1 → 3.6 times a minute with scans
-/// showing a lower number above a higher one 83 → 10 of 149, and each row's text changed every
-/// 35 s instead of 15 s; at idle the Battery list's rows (CPU energy, read in lumps) stopped
-/// swapping (scans with an inversion 61 → 1 of 149). Activity Monitor averages over 5 s.
+/// The span breakdown CPU rows (and the CPU header) are averaged over: the last four scan
+/// intervals (`BreakdownScanner`). Memory rows stay instantaneous. 8 s, not 4: replaying the same
+/// 5 min of live scans, the top 8 reordered 5.1 → 3.6 times a minute (with the inversion timeout),
+/// scans showing a lower number above a higher one went 83 → 10 of 149, and each row's text
+/// changed every 35 s instead of 15 s. Activity Monitor averages over 5 s.
 public let trailingWindowSeconds: TimeInterval = 8.0
+/// The Battery breakdown's rows: CPU energy is counted in lumps, so idle apps' 0.01–0.05 W
+/// readings swapped places every few seconds over 4 s (and still every ~10 s over 8 s: 36 of 149
+/// scans showed an inversion); over 16 s, 0 reorders and 0 inversions in the same replay.
+public let energyWindowSeconds: TimeInterval = 16.0
 /// A breakdown's row order stays frozen this long after the pointer leaves the list (or a
 /// context menu closes), so moving out and back in to click doesn't meet a reshuffle. Checked
 /// against scan timestamps (`MetricsStore.setBreakdown`), not with a timer.
