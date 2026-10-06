@@ -46,3 +46,25 @@ Result (177 ticks, whole Mac 13.6 % mean):
 Wider bands give little more: most remaining changes are the CPU really moving by more than a point. A
 minimum gap between changes lags real jumps by up to 8.7 pp, so it was rejected; 1.25 stays within the
 reviewers' "≤ about 1.25 pp" bound.
+
+## Re-running reviewer B's stability probe on the fixes
+
+Reviewer B's probe (`docs/reviews/2026-10-06-stability-tour/r1-B/probe-src/reviewB-main.swift`) built unchanged
+against the current sources (copy `Sources/MacStatsCore`, `CAppleSensors` and `Sources/MacStatsApp/*.swift`
+minus `MacStatsMain.swift` into a scratch package with its `Package.swift`, as in its README), then
+`ReviewBProbe out inv 60` (nothing expanded) and `ReviewBProbe out stability 70` (an app expanded, the pointer
+resting in the list for 20 s). Raw output: `reviewB-probe-unpinned.txt`, `reviewB-probe-pinned.txt`.
+
+| Measure | Round 1 (B) | Now |
+|---|---|---|
+| CPU scans with a visibly mis-sorted top 8 | 8 / 18 (worst 4.3 % under 0.4 %) | 2 / 18 and 2 / 23 (worst gap 0.64 pp) |
+| Battery scans mis-sorted | 16 / 19 (0.17 W under 0.00 W) | 2 / 19 and 2 / 19 (worst gap 0.049 W) |
+| Memory scans mis-sorted | 0 / 19 | 0 / 19 |
+| Row under a resting pointer changed (20 s) | CPU 1 + 1, Battery 1 | 0, 0, 0 |
+| "Exited processes" row toggles | 4–9 in ~35 s | 0–1 (its first appearance) |
+| CPU top-8 order changes / min | 9.4–12.2 | 2.7–5.2 |
+| CPU card changes / min | 37–74 | 27–50 (load varies; same-series comparison above) |
+| Card CPU vs raw | ≤ 0.75 pp | ≤ 1.23 pp, 0 ticks ≥ 2 pp |
+
+The repo's own probe (`docs/research/2026-10-06-probes/stability/run.sh 90 Code`): top-8 order changes 7.3 / min,
+target child-set changes 0, frozen slot changes 0, scan 7.45 ms/s, probe process 0.67 % of a core.

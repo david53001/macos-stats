@@ -17,16 +17,16 @@ import Testing
     }
 
     @Test func aSwapNeedsTwoReadings() {
-        // 1 jumps from 4 to 8 (not a 2× lead over 5, so no jump rule): held for one reading…
-        let first = stableRanking(previous: [2, 1], now: [1: 8, 2: 5], before: [1: 4, 2: 5], rule: cpu)
+        // 1 jumps from 4 to 7 (not a 1.5× lead over 5, so no jump rule): held for one reading…
+        let first = stableRanking(previous: [2, 1], now: [1: 7, 2: 5], before: [1: 4, 2: 5], rule: cpu)
         #expect(first == [2, 1])
         // …and moves when it leads on both.
-        let second = stableRanking(previous: first, now: [1: 8, 2: 5], before: [1: 8, 2: 5], rule: cpu)
+        let second = stableRanking(previous: first, now: [1: 7, 2: 5], before: [1: 7, 2: 5], rule: cpu)
         #expect(second == [1, 2])
     }
 
     @Test func jumpRuleMovesASpikeAtOnce() {
-        // 1 → 6 pp over 2's 1 pp: > 2× and > 2 pp ahead.
+        // 1 → 6 pp over 2's 1 pp: > 1.5× and > 1 pp ahead.
         let order = stableRanking(previous: [2, 1], now: [1: 6, 2: 1], before: [1: 0.5, 2: 1], rule: cpu)
         #expect(order == [1, 2])
     }
@@ -116,7 +116,7 @@ import Testing
             for (i, upper) in order.enumerated() {
                 for lower in order[(i + 1)...] {
                     let a = values[lower]!, b = values[upper]!
-                    let clearly = a > max(b * (1 + rule.rel), b + rule.abs) || (a > 2 * b && a - b > rule.jump)
+                    let clearly = a > max(b * (1 + rule.rel), b + rule.abs) || (a > 1.5 * b && a - b > rule.jump)
                     #expect(!clearly, "\(a) below \(b)")
                 }
             }

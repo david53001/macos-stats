@@ -8,15 +8,15 @@ import Foundation
 public struct RankHysteresis: Equatable, Sendable {
     public var rel: Double      // relative margin
     public var abs: Double      // absolute margin (metric units)
-    public var jump: Double     // a lead this big (and > 2×) moves at once
+    public var jump: Double     // a lead this big (and > 1.5×) moves at once, on one reading
 
     public init(rel: Double, abs: Double, jump: Double) {
         self.rel = rel; self.abs = abs; self.jump = jump
     }
 
-    public static let cpu    = RankHysteresis(rel: 0.25, abs: 0.2, jump: 2)          // pp of the whole Mac
+    public static let cpu    = RankHysteresis(rel: 0.25, abs: 0.2, jump: 1)          // pp of the whole Mac
     public static let memory = RankHysteresis(rel: 0.05, abs: 20 * 1_048_576, jump: 200 * 1_048_576)
-    public static let energy = RankHysteresis(rel: 0.25, abs: 0.02, jump: 1)         // W
+    public static let energy = RankHysteresis(rel: 0.25, abs: 0.02, jump: 0.05)      // W
 
     public static func `for`(_ metric: BreakdownMetric) -> RankHysteresis {
         switch metric {
@@ -30,7 +30,8 @@ public struct RankHysteresis: Equatable, Sendable {
 /// Re-ranks keys with hysteresis. Starts from `previous`: vanished keys are dropped, and new keys enter at
 /// their sorted place (by `now`, ties by today's `ranksBefore` rule). A key "clearly beats" a key when
 /// min(now, before) of it > max(now, before) of the other × (1 + rel) and + abs, i.e. it leads by both
-/// margins on both readings; or when it leads by > 2× AND > `jump` on `now` (moves at once).
+/// margins on both readings; or when it leads by > 1.5× AND > `jump` on `now` (moves at once: a big,
+/// clear lead isn't held back a scan, which round 1 counted as a mis-sorted list).
 /// Each key moves up past the run of keys directly above it that it outranks on `now`, as far as the
 /// highest of them it clearly beats: so a key it can't clearly beat doesn't block one further up that
 /// it can (round 1: a 4.3 % app stuck under a 0.4 % one), and it never passes a key with a higher value.
@@ -77,7 +78,7 @@ public func stableRanking(previous: [Int32], now: [Int32: Double], before: [Int3
     func climbs(_ a: Int32, over b: Int32) -> Bool {
         if groupsLast, (a < 0) != (b < 0) { return a > 0 }
         if low(a) > max(high(b) * (1 + rule.rel), high(b) + rule.abs) { return true }
-        return value(a) > 2 * value(b) && value(a) - value(b) > rule.jump
+        return value(a) > 1.5 * value(b) && value(a) - value(b) > rule.jump
     }
     if list.count > 1 {
         for i in 1..<list.count {
