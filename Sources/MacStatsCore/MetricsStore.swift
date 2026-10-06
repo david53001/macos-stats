@@ -36,6 +36,35 @@ public final class MetricsStore: ObservableObject {
     /// Whole-machine CPU % over the same interval as the breakdown's rows (nil until the
     /// second scan), so the CPU breakdown's header and rows add up.
     @Published public private(set) var breakdownTotalCPU: Double?
+    /// Bumped only when a publish changed the breakdown's app order, so the list can animate
+    /// the (rare) real reorders and nothing else.
+    @Published public private(set) var breakdownOrderRevision = 0
+    /// The Battery breakdown's bar scale (W): sticky (`stickyUpperBound`), so a bar changes
+    /// length only when its own row changes, not whenever the top row does.
+    @Published public private(set) var breakdownEnergyScale: Double = 1
+    /// The CPU breakdown's header, held like the CPU card (nil until the first measured total).
+    @Published public private(set) var breakdownShownTotalCPU: Double?
+
+    /// What the breakdown showed last, so the next scan can keep the order steady (diagnosis
+    /// §5.2–5.4): app order and values, each app's process order and values, the freeze and pin
+    /// the view reports, and the held (shown) row values. Reset by `beginBreakdown` / `clearBreakdown`.
+    private var order: [Int32] = []
+    private var lastValues: [Int32: Double] = [:]
+    private var childOrder: [Int32: [Int32]] = [:]
+    private var lastChildValues: [Int32: [Int32: Double]] = [:]
+    private var pointerFrozen = false
+    private var menuFrozen = false
+    /// After the pointer leaves (or a menu closes), the first scan at or after this time unfreezes.
+    private var unfreezeAt: TimeInterval?
+    private var pinnedApp: Int32?
+    private var energyScale: Double?
+    private var shownApps: [Int32: Double] = [:]
+    /// Keyed by app too: the "Exited processes" row's pid (-3) repeats across apps.
+    private var shownProcesses: [ProcessRowKey: Double] = [:]
+    private struct ProcessRowKey: Hashable {
+        let app: Int32
+        let pid: Int32
+    }
 
     /// Seconds of history the sparklines span (newest point at the right edge).
     public let historyWindow: TimeInterval
@@ -170,13 +199,113 @@ public final class MetricsStore: ObservableObject {
         breakdown = []
         breakdownMeasuring = (metric != .memory)
         breakdownTotalCPU = nil
+        resetBreakdownDisplay()
     }
 
-    /// Publish a fresh scan's grouped result for the active breakdown.
-    public func setBreakdown(_ apps: [AppUsage], measuring: Bool, totalCPU: Double? = nil) {
-        breakdown = apps
-        breakdownMeasuring = measuring
+    /// Publish a fresh scan's grouped result for the active breakdown, in a steady order:
+    /// apps (and each app's processes) re-rank only with a clear, two-reading lead
+    /// (`stableRanking`); the order is frozen while the pointer is in the list or a context menu
+    /// is open, and until the first scan `breakdownUnfreezeDelay` after both end; the expanded
+    /// app keeps its index. Row values stay exact (bars follow them); the text reads
+    /// `shownValue`, held within max(0.75 × the printed step, 10 % (memory 3 %) of the value).
+    public func setBreakdown(_ apps: [AppUsage], measuring: Bool, totalCPU: Double? = nil,
+                             time: TimeInterval = Date().timeIntervalSinceReferenceDate) {
         if totalCPU != breakdownTotalCPU { breakdownTotalCPU = totalCPU }
+        guard !measuring else {
+            // CPU/energy "Measuring…": every value is 0, so there's nothing to rank or hold yet.
+            breakdown = apps
+            breakdownMeasuring = true
+            return
+        }
+        let metric = activeBreakdownMetric ?? .cpu
+        if let at = unfreezeAt, time >= at { unfreezeAt = nil }
+        let frozen = pointerFrozen || menuFrozen || unfreezeAt != nil
+        let rule = RankHysteresis.for(metric)
+        let relBand = metric == .memory ? 0.03 : 0.10
+        func hold(_ shown: Double?, _ value: Double) -> Double {
+            heldValue(shown: shown, value: value, step: breakdownValueStep(metric, value), band: 0.75,
+                      relBand: relBand)
+        }
+
+        var values: [Int32: Double] = [:]
+        values.reserveCapacity(apps.count)
+        for app in apps { values[app.appPID] = app.value(for: metric) }
+        let newOrder = stableRanking(previous: order, now: values, before: lastValues, rule: rule,
+                                     pinned: pinnedApp.map { [$0] } ?? [], frozen: frozen,
+                                     groupsLast: metric == .memory)
+        let byApp = Dictionary(apps.map { ($0.appPID, $0) }, uniquingKeysWith: { a, _ in a })
+
+        var ordered: [AppUsage] = []
+        ordered.reserveCapacity(apps.count)
+        var nextChildOrder: [Int32: [Int32]] = [:], nextChildValues: [Int32: [Int32: Double]] = [:]
+        var nextShownApps: [Int32: Double] = [:], nextShownProcesses: [ProcessRowKey: Double] = [:]
+        for key in newOrder {
+            guard let app = byApp[key] else { continue }
+            var childValues: [Int32: Double] = [:]
+            childValues.reserveCapacity(app.processes.count)
+            for p in app.processes { childValues[p.pid] = p.value(for: metric) }
+            let kids = stableRanking(previous: childOrder[key] ?? [], now: childValues,
+                                     before: lastChildValues[key] ?? [:], rule: rule, frozen: frozen)
+            let byPID = Dictionary(app.processes.map { ($0.pid, $0) }, uniquingKeysWith: { a, _ in a })
+            let processes = kids.compactMap { byPID[$0] }
+            nextChildOrder[key] = kids
+            nextChildValues[key] = childValues
+            nextShownApps[key] = hold(shownApps[key], values[key] ?? 0)
+            for p in processes {
+                let rowKey = ProcessRowKey(app: key, pid: p.pid)
+                nextShownProcesses[rowKey] = hold(shownProcesses[rowKey], p.value(for: metric))
+            }
+            ordered.append(AppUsage(appPID: app.appPID, processes: processes, cpuPercent: app.cpuPercent,
+                                    memoryBytes: app.memoryBytes, watts: app.watts))
+        }
+        if newOrder != order { breakdownOrderRevision &+= 1 }
+        order = newOrder
+        lastValues = values
+        childOrder = nextChildOrder
+        lastChildValues = nextChildValues
+        shownApps = nextShownApps
+        shownProcesses = nextShownProcesses
+
+        if metric == .cpu, let totalCPU {
+            let shown = heldValue(shown: breakdownShownTotalCPU, value: totalCPU, step: 1, band: 0.75)
+            if shown != breakdownShownTotalCPU { breakdownShownTotalCPU = shown }
+        }
+        if metric == .energy {
+            let scale = stickyUpperBound(previous: energyScale, peak: apps.map(\.watts).max() ?? 0)
+            energyScale = scale
+            if scale != breakdownEnergyScale { breakdownEnergyScale = scale }
+        }
+        breakdown = ordered
+        breakdownMeasuring = false
+    }
+
+    /// The pointer entered (true) or left (false) the breakdown's list: the order freezes while
+    /// it is inside, and until the first scan `breakdownUnfreezeDelay` after it leaves.
+    public func setBreakdownPointerInside(_ inside: Bool,
+                                          time: TimeInterval = Date().timeIntervalSinceReferenceDate) {
+        guard inside != pointerFrozen else { return }
+        pointerFrozen = inside
+        if !pointerFrozen, !menuFrozen { unfreezeAt = time + breakdownUnfreezeDelay }
+    }
+
+    /// A context menu opened (true) or closed (false): frozen like the pointer, so the menu's
+    /// actions always apply to the row it was opened on.
+    public func setBreakdownMenuOpen(_ open: Bool, time: TimeInterval = Date().timeIntervalSinceReferenceDate) {
+        guard open != menuFrozen else { return }
+        menuFrozen = open
+        if !pointerFrozen, !menuFrozen { unfreezeAt = time + breakdownUnfreezeDelay }
+    }
+
+    /// The expanded app (nil = none): it keeps its index while the other rows reorder.
+    public func setBreakdownPinnedApp(_ appPID: Int32?) {
+        pinnedApp = appPID
+    }
+
+    /// The held value to print for an app row, or for one of its process rows (`pid`). nil
+    /// before the row's first real reading.
+    public func shownValue(app: Int32, pid: Int32? = nil) -> Double? {
+        guard let pid else { return shownApps[app] }
+        return shownProcesses[ProcessRowKey(app: app, pid: pid)]
     }
 
     /// Leave the drill-in (back button or popover closed).
@@ -185,5 +314,22 @@ public final class MetricsStore: ObservableObject {
         breakdown = []
         breakdownMeasuring = false
         breakdownTotalCPU = nil
+        resetBreakdownDisplay()
+    }
+
+    private func resetBreakdownDisplay() {
+        order = []
+        lastValues = [:]
+        childOrder = [:]
+        lastChildValues = [:]
+        pointerFrozen = false
+        menuFrozen = false
+        unfreezeAt = nil
+        pinnedApp = nil
+        energyScale = nil
+        shownApps = [:]
+        shownProcesses = [:]
+        if breakdownEnergyScale != 1 { breakdownEnergyScale = 1 }
+        if breakdownShownTotalCPU != nil { breakdownShownTotalCPU = nil }
     }
 }

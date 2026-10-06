@@ -50,6 +50,10 @@ public let breakdownScanInterval: TimeInterval = 2.0
 /// The span breakdown CPU and energy rows (and the CPU header) are averaged over: the last two
 /// scan intervals (`BreakdownScanner`). Memory rows stay instantaneous.
 public let trailingWindowSeconds: TimeInterval = 4.0
+/// A breakdown's row order stays frozen this long after the pointer leaves the list (or a
+/// context menu closes), so moving out and back in to click doesn't meet a reshuffle. Checked
+/// against scan timestamps (`MetricsStore.setBreakdown`), not with a timer.
+public let breakdownUnfreezeDelay: TimeInterval = 1.0
 
 /// Whether a tiered read last done at `last` (nil = never) is due again at `now`.
 public func isDue(last: Date?, now: Date, every interval: TimeInterval) -> Bool {
