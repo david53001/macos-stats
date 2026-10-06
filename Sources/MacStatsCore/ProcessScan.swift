@@ -385,13 +385,14 @@ public final class BreakdownScanner: @unchecked Sendable {
     /// The trailing window's intervals, oldest first. A few dictionaries of ~500 entries
     /// (~20–60 KB), freed with the scanner when the breakdown closes.
     private var window: [Interval] = []
-    /// Each live process's name, read once when it first shows up (a few new processes a scan).
-    private var names: [ProcessKey: String] = [:]
+    /// Each live process's name, read once when it first shows up (a few new processes a scan);
+    /// nil when it can't be read, so that isn't retried every scan.
+    private var names: [ProcessKey: String?] = [:]
     private let nameOf: (Int32) -> String?
 
     /// `windowSeconds`: the span rows are averaged over; 0 = the latest interval only, nil = the
     /// metric's own (`trailingWindowSeconds`, `energyWindowSeconds`). `fastAttack`: restart the window
-    /// when an app gets much busier (`breakdownFastAttackCores`).
+    /// when an app gets much busier or much idler (`breakdownFastAttackCores`).
     public init(cores: Int = ProcessInfo.processInfo.activeProcessorCount,
                 windowSeconds: TimeInterval? = nil, fastAttack: Bool = true,
                 responsible: @escaping (Int32) -> Int32? = responsiblePID(for:),
@@ -475,12 +476,9 @@ public final class BreakdownScanner: @unchecked Sendable {
                 // Exit credit's baseline: System over this interval alone, not the window.
                 lastSystemPercent = max(0, total - rowsNs / nsPerPercent)
             }
-            // Fast attack: when an app used much more CPU over this interval than over the rest of the
-            // window (a new load), the window restarts from this interval, so rows and header show the
-            // load at once instead of ramping up over the window (a one-core load read 3, 6, 9 then
-            // 12 % over 8 s while the CPU card showed it within 2 s). It regrows by one interval a scan.
-            // Per app, not the whole Mac: a build's compilers come and go inside one steady app row,
-            // and the header rose by only ~2/3 of a core for a one-core load. Falls still average.
+            // Fast attack and release (`breakdownFastAttackCores`, per app): a load that starts or
+            // ends restarts the window from this interval, so rows and header follow the CPU card
+            // within one scan instead of ramping over the window. Design note: docs/design/breakdown-stability.md.
             if fastAttack, !window.isEmpty {
                 var now: [Int32: Double] = [:], before: [Int32: Double] = [:]
                 for w in work.values { now[w.app, default: 0] += w.ns }
@@ -490,8 +488,11 @@ public final class BreakdownScanner: @unchecked Sendable {
                     for (app, credit) in interval.exitedNs { before[app, default: 0] += credit }
                 }
                 let restSpan = window.reduce(0) { $0 + $1.elapsed }
-                let rise = breakdownFastAttackCores * 1_000_000_000   // ns per second
-                if now.contains(where: { $0.value / elapsed - (before[$0.key] ?? 0) / restSpan >= rise }) {
+                let change = breakdownFastAttackCores * 1_000_000_000   // ns per second
+                func moved(_ app: Int32) -> Bool {
+                    abs((now[app] ?? 0) / elapsed - (before[app] ?? 0) / restSpan) >= change
+                }
+                if now.keys.contains(where: moved) || before.keys.contains(where: moved) {
                     window = []
                 }
             }
@@ -534,14 +535,14 @@ public final class BreakdownScanner: @unchecked Sendable {
         var usages: [ProcessUsage] = []
         usages.reserveCapacity(processes.count + exitedNs.count)
         var liveApps = Set<Int32>()
-        var liveNames: [ProcessKey: String] = [:]
+        var liveNames: [ProcessKey: String?] = [:]
         liveNames.reserveCapacity(processes.count)
         for p in processes {
             let key = ProcessKey(pid: p.pid, startTime: p.startTime)
             let app = owners[p.pid] ?? BreakdownGroup.otherProcesses
             liveApps.insert(app)
             let name = names[key] ?? nameOf(p.pid)
-            liveNames[key] = name
+            liveNames[key] = .some(name)   // keeps a nil name too
             usages.append(ProcessUsage(pid: p.pid, appPID: app, cpuPercent: (ns[key] ?? 0) * percentPerNs,
                                        memoryBytes: p.memoryBytes,
                                        watts: span > 0 ? (nj[key] ?? 0) / 1_000_000_000 / span : 0,

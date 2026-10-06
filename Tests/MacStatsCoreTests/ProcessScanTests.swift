@@ -597,8 +597,10 @@ import Testing
         RawProcess(pid: pid, ppid: ppid, cpuTimeNs: cpu, memoryBytes: mem, startTime: start)
     }
 
+    /// Without the fast attack and release: these one-core steps would restart the window.
     private func scanner(window: Double = 4) -> BreakdownScanner {
-        BreakdownScanner(cores: 4, windowSeconds: window, responsible: { _ in nil }, allParents: { [:] })
+        BreakdownScanner(cores: 4, windowSeconds: window, fastAttack: false, responsible: { _ in nil },
+                         allParents: { [:] })
     }
 
     /// Busy and idle ticks so far (cumulative), for a header of `busy` % per interval.
@@ -723,6 +725,28 @@ import Testing
         #expect(abs((fast.totalCPUPercent ?? 0) - 30) < 1e-9)
         #expect(abs(row(slow, 100) - 6.25) < 1e-9)
         #expect(abs((slow.totalCPUPercent ?? 0) - 11.25) < 1e-9)
+    }
+
+    @Test func aLoadThatEndsRestartsTheWindow() {
+        // 4 cores, app 100 runs one core (25 % of the Mac, header 30 %) for 8 s, then stops (header 5 %):
+        // rows and header drop on that scan instead of averaging the load over the window.
+        func run(fastAttack: Bool) -> BreakdownScanner.Result {
+            let s = BreakdownScanner(cores: 4, windowSeconds: 8, fastAttack: fastAttack,
+                                     responsible: { _ in nil }, allParents: { [:] })
+            var r: BreakdownScanner.Result?
+            for i in 0...5 {
+                let cpu = UInt64(min(i, 4)) * 2_000_000_000
+                let busy = UInt32(min(i, 4) * 60 + (i == 5 ? 10 : 0)), idle = UInt32(min(i, 4) * 140 + (i == 5 ? 190 : 0))
+                r = s.scan([p(100, cpu: cpu)], appPIDs: [100], metric: .cpu, time: Double(2 * i),
+                           absTime: UInt64(10 + i), cpuTicks: ticks(busy, idle))
+            }
+            return r!
+        }
+        let fast = run(fastAttack: true), slow = run(fastAttack: false)
+        #expect(row(fast, 100) < 1e-9)
+        #expect(abs((fast.totalCPUPercent ?? 0) - 5) < 1e-9)
+        #expect(abs(row(slow, 100) - 18.75) < 1e-9)
+        #expect(abs((slow.totalCPUPercent ?? 0) - 23.75) < 1e-9)
     }
 
     @Test func memoryIsUnaffected() {
