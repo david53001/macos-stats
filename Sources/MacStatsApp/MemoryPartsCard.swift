@@ -8,7 +8,7 @@ struct MemoryPartsCard: View {
     @ObservedObject var store: MetricsStore
 
     var body: some View {
-        let m = store.memory
+        let m = store.cardMemory   // held as one unit, so the parts still add up to the header
         let gb = m.map { roundedParts([$0.appBytes, $0.wiredBytes, $0.compressedBytes], unit: 1_073_741_824) }
         HStack(spacing: 8) {
             part("App Memory", gb?[0], help: "Memory in use by every process (yours, macOS's and "

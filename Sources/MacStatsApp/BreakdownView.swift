@@ -7,6 +7,9 @@ import MacStatsCore
 /// Click an app with several processes to expand it into its processes (one app at a time).
 /// Right-click a row for Quit / Force Quit (Force Quit confirms first); on a process row
 /// they act on that process only.
+/// Nothing moves under the pointer: the row order freezes while the pointer is over the list
+/// or a context menu is open, the expanded app keeps its place, and the numbers are the
+/// store's held values (`MetricsStore.setBreakdown`).
 struct BreakdownView: View {
     @ObservedObject var store: MetricsStore
     let metric: BreakdownMetric
@@ -35,16 +38,16 @@ struct BreakdownView: View {
         }
     }
 
-    /// CPU: the whole machine over the same interval as the rows (the rows, including Other
-    /// and System, add up to it); falls back to the card's value until that's measured.
-    private var cpuTotal: Double { store.breakdownTotalCPU ?? store.cpuPercent }
+    /// CPU: the whole machine over the same span as the rows (the rows, including Other
+    /// and System, add up to it), held; falls back to the card's value until that's measured.
+    private var cpuTotal: Double { store.breakdownShownTotalCPU ?? store.cardCPUPercent }
 
     private var liveTotal: String {
         switch metric {
         case .cpu:
             return "\(Int(cpuTotal.rounded()))% used"
         case .memory:
-            guard let m = store.memory else { return "—" }
+            guard let m = store.cardMemory else { return "—" }
             return "\(gb(m.usedBytes)) / \(gb(m.totalBytes)) GB used"
         case .energy:
             guard let b = store.battery else { return "—" }
@@ -55,19 +58,19 @@ struct BreakdownView: View {
     private var liveTotalNumber: Double {
         switch metric {
         case .cpu: return cpuTotal.rounded()
-        case .memory: return Double(store.memory?.usedBytes ?? 0)
+        case .memory: return Double(store.cardMemory?.usedBytes ?? 0)
         case .energy: return Double(store.battery?.percent ?? 0)
         }
     }
 
     /// The value a full bar stands for. CPU: the whole machine (100 %), the card's scale, so
     /// a bar is a true share of the Mac. Memory: all of the Mac's RAM, like the header.
-    /// Energy has no natural ceiling, so its bars are relative to the top row.
+    /// Energy has no natural ceiling, so its scale follows the top row on a sticky 1-2-5 ladder.
     private var barScale: Double {
         switch metric {
         case .cpu: return 100
         case .memory: return Double(store.memory?.totalBytes ?? ProcessInfo.processInfo.physicalMemory)
-        case .energy: return store.breakdown.first?.value(for: metric) ?? 1
+        case .energy: return store.breakdownEnergyScale
         }
     }
 
@@ -96,6 +99,7 @@ struct BreakdownView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(CardBackground())
                 .clipShape(RoundedRectangle(cornerRadius: Design.cardCornerRadius, style: .continuous))
+                .onHover { store.setBreakdownPointerInside($0) }   // freezes the row order
 
             PanelFooter {
                 Text(footnote)
@@ -106,6 +110,21 @@ struct BreakdownView: View {
         }
         .padding([.horizontal, .bottom], Design.panelInset)
         .frame(width: Design.panelWidth, height: Design.panelHeight, alignment: .top)
+        // A context menu (an NSMenu) freezes the order too, so Quit acts on the row it was opened
+        // on. Observed only while this view exists, i.e. while a breakdown is shown.
+        .onReceive(NotificationCenter.default.publisher(for: NSMenu.didBeginTrackingNotification)) { _ in
+            store.setBreakdownMenuOpen(true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSMenu.didEndTrackingNotification)) { _ in
+            store.setBreakdownMenuOpen(false)
+        }
+        .onChange(of: expanded) { _, app in store.setBreakdownPinnedApp(app) }
+        .onChange(of: store.breakdownOrderRevision) {
+            // The expanded app quit: nothing to keep open.
+            guard let app = expanded, !store.breakdown.contains(where: { $0.appPID == app }) else { return }
+            expanded = nil
+            visibleChildren = BreakdownList.initialChildren
+        }
     }
 
     /// One line that says what the numbers are measured against.
@@ -141,16 +160,28 @@ struct BreakdownView: View {
                         }
                     }
                 }
+                // The rare real reorders slide instead of teleporting; nothing moves while frozen.
+                .animation(.snappy(duration: 0.25), value: store.breakdownOrderRevision)
                 .padding(4)
             }
         }
     }
 
+    /// The held value a row prints (the bar follows the exact one).
+    private func shown(_ app: AppUsage) -> Double {
+        store.shownValue(app: app.appPID) ?? app.value(for: metric)
+    }
+
+    private func shown(_ process: ProcessUsage, in app: AppUsage) -> Double {
+        store.shownValue(app: app.appPID, pid: process.pid) ?? process.value(for: metric)
+    }
+
     private func appRow(_ app: AppUsage) -> some View {
         let info = apps.info(for: app.appPID)
         let expandable = app.processes.count > 1
-        return AppRow(app: app, info: info, metric: metric, barScale: barScale,
-                      perCore: metric == .cpu ? oneCore(app.cpuPercent) : nil,
+        let value = shown(app)
+        return AppRow(app: app, info: info, metric: metric, barScale: barScale, shown: value,
+                      perCore: metric == .cpu ? oneCore(value) : nil,
                       disclosure: expandable ? (expanded == app.appPID) : nil)
             .onTapGesture {
                 guard expandable else { return }
@@ -162,7 +193,7 @@ struct BreakdownView: View {
             .contextMenu {
                 if app.isApp {
                     Button(info.name) {}.disabled(true)   // faint header
-                    if metric == .cpu { oneCoreLine(app.cpuPercent) }
+                    if metric == .cpu { oneCoreLine(value) }
                     Divider()
                     Button("Quit") { ProcessActions.quit(appPID: app.appPID) }
                     Divider()
@@ -171,13 +202,14 @@ struct BreakdownView: View {
                     }
                 } else {
                     Button(info.detail ?? info.name) {}.disabled(true)
-                    if metric == .cpu { oneCoreLine(app.cpuPercent) }
+                    if metric == .cpu { oneCoreLine(value) }
                 }
             }
-            .tooltip(rowTooltip(app, info))
+            .tooltip(rowTooltip(value, info))
     }
 
-    /// Activity Monitor's scale (100 % = one core), for comparing with it.
+    /// Activity Monitor's scale (100 % = one core), for comparing with it. Derived from the
+    /// shown (held) value, so it always agrees with the row's main number.
     private func oneCore(_ cpuPercent: Double) -> String {
         "\(Int((cpuPercent * Double(Self.cores)).rounded()))% of one core"
     }
@@ -187,27 +219,28 @@ struct BreakdownView: View {
     }
 
     /// A group row's explanation; on CPU rows also Activity Monitor's figure (100 % = one core).
-    private func rowTooltip(_ app: AppUsage, _ info: AppInfoCache.Info) -> String? {
+    private func rowTooltip(_ cpuPercent: Double, _ info: AppInfoCache.Info) -> String? {
         guard metric == .cpu else { return info.detail }
-        return [info.detail, oneCore(app.cpuPercent)].compactMap { $0 }.joined(separator: "\n")
+        return [info.detail, oneCore(cpuPercent)].compactMap { $0 }.joined(separator: "\n")
     }
 
     @ViewBuilder private func processRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
         if process.pid == BreakdownGroup.exitedProcesses {
-            exitedRow(process)
+            exitedRow(process, in: app)
         } else {
             liveProcessRow(process, in: app)
         }
     }
 
     /// The app's CPU credited for processes that exited between scans: no process to act on.
-    private func exitedRow(_ process: ProcessUsage) -> some View {
-        ProcessRow(process: process, name: "Exited processes", metric: metric, barScale: barScale,
-                   perCore: metric == .cpu ? oneCore(process.cpuPercent) : nil)
+    private func exitedRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
+        let value = shown(process, in: app)
+        return ProcessRow(process: process, name: "Exited processes", metric: metric, barScale: barScale,
+                          shown: value, perCore: metric == .cpu ? oneCore(value) : nil)
             .transition(.opacity)
             .contextMenu {
                 Button("Exited processes") {}.disabled(true)
-                if metric == .cpu { oneCoreLine(process.cpuPercent) }
+                if metric == .cpu { oneCoreLine(value) }
             }
             .help("Work by this app's processes that ended since the last update")
     }
@@ -216,12 +249,13 @@ struct BreakdownView: View {
         let isAppItself = app.isApp && process.pid == app.appPID
         let name = isAppItself ? apps.info(for: app.appPID).name
                                : apps.name(ofProcess: process.pid, startTime: process.startTime)
-        return ProcessRow(process: process, name: name, metric: metric, barScale: barScale,
-                          perCore: metric == .cpu ? oneCore(process.cpuPercent) : nil)
+        let value = shown(process, in: app)
+        return ProcessRow(process: process, name: name, metric: metric, barScale: barScale, shown: value,
+                          perCore: metric == .cpu ? oneCore(value) : nil)
             .transition(.opacity)
             .contextMenu {
                 Button("\(name) \u{2014} pid \(process.pid)") {}.disabled(true)
-                if metric == .cpu { oneCoreLine(process.cpuPercent) }
+                if metric == .cpu { oneCoreLine(value) }
                 Divider()
                 Button("Quit") {
                     if isAppItself { ProcessActions.quit(appPID: app.appPID) }
@@ -312,6 +346,8 @@ private struct AppRow: View {
     let info: AppInfoCache.Info
     let metric: BreakdownMetric
     let barScale: Double
+    /// The held value the row prints (`MetricsStore.shownValue`); the bar follows the exact one.
+    let shown: Double
     /// CPU only: Activity Monitor's figure for the app ("415% of one core"), beside the bar.
     let perCore: String?
     /// nil = not expandable; else whether it is expanded.
@@ -347,10 +383,10 @@ private struct AppRow: View {
                 }
             }
             Spacer(minLength: 8)
-            Text(breakdownValueText(metric, app.value(for: metric)))
+            Text(breakdownValueText(metric, shown))
                 .font(.callout).fontWeight(.semibold).monospacedDigit()
                 .contentTransition(.interpolate)
-                .animation(.easeInOut(duration: 0.25), value: app.value(for: metric))
+                .animation(.easeInOut(duration: 0.25), value: shown)
                 .frame(width: 58, alignment: .trailing)
             Image(systemName: "chevron.right")
                 .font(.caption2.weight(.semibold))
@@ -381,6 +417,8 @@ private struct ProcessRow: View {
     let name: String
     let metric: BreakdownMetric
     let barScale: Double
+    /// The held value the row prints; the bar follows the exact one.
+    let shown: Double
     /// CPU only: Activity Monitor's figure for this process ("100% of one core"), under the name.
     let perCore: String?
 
@@ -406,10 +444,10 @@ private struct ProcessRow: View {
                 }
             }
             Spacer(minLength: 8)
-            Text(breakdownValueText(metric, process.value(for: metric)))
+            Text(breakdownValueText(metric, shown))
                 .font(.caption).monospacedDigit().foregroundStyle(.secondary)
                 .contentTransition(.interpolate)
-                .animation(.easeInOut(duration: 0.25), value: process.value(for: metric))
+                .animation(.easeInOut(duration: 0.25), value: shown)
                 .frame(width: 58, alignment: .trailing)
             Color.clear.frame(width: 8, height: 1)   // the app rows' chevron column
         }
