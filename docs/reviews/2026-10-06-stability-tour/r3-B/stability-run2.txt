@@ -1,0 +1,56 @@
+probe pid 71063 is under: Code (32 processes)
+t=25.0 spawned 2× sleep 9
+t=45.0 started yes (card shows 15%)
+t=51.5 killed yes
+overview: CPU card changes/min 31.8 (flip-backs 1.2); memory 1.2 (0.0); ↓ 10.8 (3.6); ↑ 12.6 (1.8)
+overview: CPU card vs exact pp p50 0.41 p95 1.53 max 2.00
+overview: one busy core started t=45.0 → card +6pp at 45.5 (0.5 s); stopped t=51.5 → card back at 53.5 (2.0 s)
+[cpu-away] counted 97 s unfrozen, 50 scans
+  top-3 order changes/min = 6.7
+  top-8 order changes/min = 8.0; top-8 row-text changes/min = 40.4 (flip-backs 4.9/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.24 p95 3.66 max 12.36
+   order t=2.5 System 8.2% | MacStats 3.8% | Code 3.5% | Finder 0.1% | loginwindow 0.0% | WindowManager 0.0% | CoreServicesUIAgent 0.0% | universalaccessd 0.0%
+   order t=4.5 System 8.2% | Code 5.0% | MacStats 3.8% | Finder 0.1% | loginwindow 0.0% | WindowManager 0.0% | CoreServicesUIAgent 0.0% | universalaccessd 0.0%
+   order t=12.5 System 3.4% | MacStats 3.8% | Code 1.7% | Finder 0.0% | loginwindow 0.0% | WindowManager 0.0% | CoreServicesUIAgent 0.0% | universalaccessd 0.0%
+   order t=26.5 System 3.5% | MacStats 3.6% | Code 2.1% | Other processes 1.4% | Spotify 0.2% | Finder 0.0% | loginwindow 0.0% | WindowManager 0.0%
+   order t=36.5 MacStats 3.6% | System 3.1% | Code 1.5% | Other processes 0.1% | Spotify 0.0% | Finder 0.1% | loginwindow 0.0% | WindowManager 0.0%
+   order t=44.5 Code 5.2% | MacStats 3.6% | System 3.1% | Other processes 0.6% | Spotify 0.0% | Finder 0.0% | loginwindow 0.0% | WindowManager 0.0%
+   order t=62.5 Code 13% | Other processes 9.0% | MacStats 3.2% | System 2.5% | Spotify 0.1% | Finder 0.0% | loginwindow 0.0% | WindowManager 0.0%
+   order t=64.5 Other processes 9.0% | Code 5.6% | System 5.8% | MacStats 3.2% | Spotify 0.1% | Finder 0.0% | loginwindow 0.0% | WindowManager 0.0%
+   order t=66.5 System 5.8% | MacStats 3.7% | Code 2.3% | Other processes 0.4% | Spotify 0.1% | Finder 0.0% | loginwindow 0.0% | WindowManager 0.0%
+   order t=72.5 MacStats 3.7% | System 2.8% | Code 1.7% | Other processes 0.1% | Spotify 0.1% | Finder 0.0% | loginwindow 0.0% | WindowManager 0.0%
+  final top 6: MacStats 3.6% · System 2.9% · Code 1.9% · Other processes 0.1% · Spotify 0.1% · Finder 0.0%
+[cpu-hover] counted 35 s unfrozen, 19 scans
+  top-3 order changes/min = 6.7
+  top-8 order changes/min = 10.0; top-8 row-text changes/min = 45.0 (flip-backs 5.0/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.18 p95 3.67 max 12.25
+  expanded app: Code; child top-5 order changes (unfrozen) = 5; child text changes 27 (flip-backs 5)
+  frozen scans=30 shifted-rows=0 inserted-mid-list=0 removed=0 collapses=0 vanished=0
+  final top 6: MacStats 3.6% · System 3.0% · Code 1.9% · Other processes 0.1% · Spotify 0.1% · Finder 0.0%
+[mem-hover] counted 36 s unfrozen, 20 scans
+  top-3 order changes/min = 0.0
+  top-8 order changes/min = 0.0; top-8 row-text changes/min = 0.0 (flip-backs 0.0/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.26 p95 0.48 max 0.54
+  expanded app: Code; child top-5 order changes (unfrozen) = 0; child text changes 5 (flip-backs 0)
+  frozen scans=30 shifted-rows=0 inserted-mid-list=0 removed=0 collapses=0 vanished=0
+  final top 6: Code 1.7 GB · Spotify 934 MB · Spotlight 151 MB · JVoice 141 MB · Dock 129 MB · Calendar 116 MB
+[energy-away] counted 97 s unfrozen, 50 scans
+  top-3 order changes/min = 4.9
+  top-8 order changes/min = 4.9; top-8 row-text changes/min = 21.4 (flip-backs 5.5/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.00 p95 0.47 max 3.97
+   order t=2.5 Code 0.07 W | MacStats 0.04 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+   order t=12.5 MacStats 0.04 W | Code 0.02 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+   order t=16.5 Code 0.05 W | MacStats 0.03 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+   order t=62.5 Code 1.8 W | Other processes 0.08 W | MacStats 0.03 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W
+   order t=66.5 Code 0.06 W | MacStats 0.03 W | Other processes <0.01 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W
+   order t=70.5 MacStats 0.03 W | Code 0.01 W | Other processes <0.01 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W
+   order t=72.5 Code 0.06 W | MacStats 0.03 W | Other processes <0.01 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W
+   order t=76.5 Code 0.02 W | MacStats 0.03 W | Spotify 0.02 W | Other processes <0.01 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W
+  final top 6: Code 0.05 W · MacStats 0.03 W · Spotify <0.01 W · Other processes <0.01 W · loginwindow <0.01 W · WindowManager <0.01 W
+[cpu-still] counted 97 s unfrozen, 50 scans
+  top-3 order changes/min = 6.7
+  top-8 order changes/min = 8.0; top-8 row-text changes/min = 40.4 (flip-backs 6.1/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.23 p95 3.68 max 11.39
+  top row changed at t = ["2.5", "36.5", "44.5", "64.5", "66.5", "72.5", "78.5", "98.5"]
+  final top 6: MacStats 3.6% · System 3.1% · Code 1.9% · Other processes 0.1% · Spotify 0.1% · Finder 0.0%
+done

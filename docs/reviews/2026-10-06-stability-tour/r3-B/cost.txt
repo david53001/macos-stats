@@ -1,0 +1,14 @@
+Current (feat/stability-tour) — probe 'cost' mode, 20 s each, 0.5 s store.record ticks, off-screen window:
+cost no tour host: 12.50 % of a core
+cost tour host, tour off: 12.47 % of a core
+cost tour on (step 1): 13.06 % of a core
+scan(.cpu) ms p50 16.8 max 20.6 → 0.84 % of a core at one scan / 2 s
+done
+
+Repeat pairs (baseline 1ed61cf overview harness vs current):
+baseline 1ed61cf overview: 13.18 % of a core
+current no tour host: 11.60 % / tour host, tour off: 6.93 % (outlier)
+baseline 1ed61cf overview: 12.91 % of a core
+current no tour host: 11.64 % / tour host, tour off: 11.60 %
+
+Installed ~/Applications/MacStats.app (built 17:49, BEFORE this branch; panel window 1992 reported not on screen) — passive ps samples, 5 s apart: 31.1 36.4 28.4 31.9 33.6 29.9 %CPU, RSS ~80 MB

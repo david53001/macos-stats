@@ -1,0 +1,24 @@
+step1 cpu light: card=(8.0,36.0,304.0x67.0) cutout=(5.0,33.0,310.0x73.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.701/0.701/0.701/0.701
+step2 memory light: card=(8.0,109.0,304.0x67.0) cutout=(5.0,106.0,310.0x73.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.701/0.701/0.701/0.701
+step3 network light: card=(8.0,182.0,304.0x67.0) cutout=(5.0,179.0,310.0x73.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.701/0.701/0.701/0.701
+step4 battery light: card=(8.0,255.0,304.0x67.0) cutout=(5.0,252.0,310.0x73.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.701/0.701/0.701/0.701
+step5 footer light: card=(234.0,372.0,78.0x24.0) cutout=(231.0,369.0,84.0x30.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.701/0.701/0.704/0.704
+after Done: phase=off seen=1
+nobattery last light: card=(234.0,372.0,78.0x24.0) cutout=(231.0,369.0,84.0x30.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.701/0.701/0.704/0.704
+nobattery progress=4 of 4
+welcome phase=welcome defers=true
+cpu light: clicked row 0 (37 processes)
+memory light: clicked row 1 (35 processes)
+energy light: clicked row 0 (36 processes)
+step1 cpu dark: card=(8.0,36.0,304.0x67.0) cutout=(5.0,33.0,310.0x73.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.604/0.604/0.605/0.605
+step2 memory dark: card=(8.0,109.0,304.0x67.0) cutout=(5.0,106.0,310.0x73.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.604/0.604/0.605/0.605
+step3 network dark: card=(8.0,182.0,304.0x67.0) cutout=(5.0,179.0,310.0x73.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.604/0.604/0.605/0.605
+step4 battery dark: card=(8.0,255.0,304.0x67.0) cutout=(5.0,252.0,310.0x73.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.604/0.604/0.605/0.605
+step5 footer dark: card=(234.0,372.0,78.0x24.0) cutout=(231.0,369.0,84.0x30.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.604/0.604/0.608/0.608
+after Done: phase=off seen=1
+nobattery last dark: card=(234.0,372.0,78.0x24.0) cutout=(231.0,369.0,84.0x30.0) r=11.0 geom insets L/R/T/B=3.0/3.0/3.0/3.0pt | pixels clear-gap L/R/T/B=1.0/1.0/1.0/1.0pt ring L/R/T/B=2.0/2.0/2.0/2.0pt -> hole edge L/R/T/B=3.0/3.0/3.0/3.0pt | dim strip T/B/L/R=0.604/0.604/0.608/0.608
+nobattery progress=4 of 4
+welcome phase=welcome defers=true
+cpu dark: clicked row 3 (319 processes)
+memory dark: clicked row 1 (34 processes)
+energy dark: clicked row 0 (320 processes)
