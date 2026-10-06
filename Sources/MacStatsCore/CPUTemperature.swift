@@ -5,7 +5,8 @@
 /// rather than a prefix. Adjust here if a dump on another chip shows different CPU names.
 public let cpuSensorMatches = ["tdie"]
 
-/// Average CPU temperature (°C, rounded) from a set of named thermal sensors, or nil if no
+/// Average CPU temperature (°C, not rounded: `MetricsStore` holds the shown whole degree until
+/// the average moves a full degree from it) from a set of named thermal sensors, or nil if no
 /// CPU-cluster sensor reports a physically sane value.
 public func cpuTemperature(from sensors: [(name: String, celsius: Double)]) -> Double? {
     let cpu = sensors.filter { sensor in
@@ -14,5 +15,5 @@ public func cpuTemperature(from sensors: [(name: String, celsius: Double)]) -> D
     let valid = cpu.filter { $0.celsius > 0 && $0.celsius < 150 }
     guard !valid.isEmpty else { return nil }
     let avg = valid.map(\.celsius).reduce(0, +) / Double(valid.count)
-    return avg.rounded()
+    return avg
 }

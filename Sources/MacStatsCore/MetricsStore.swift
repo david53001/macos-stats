@@ -22,6 +22,13 @@ public final class MetricsStore: ObservableObject {
     /// False when MacStats started on battery, so the average only covers the time since then.
     @Published public private(set) var batteryAverageSinceUnplug = false
 
+    /// What the overview cards print: the readings above, held (`heldValue` step 1 %,
+    /// `heldMemory`, `heldRate`) so a value on a rounding boundary doesn't flip every tick.
+    /// The readings, histories and alerts keep the exact values. Set only when they change.
+    @Published public private(set) var cardCPUPercent: Double = 0
+    @Published public private(set) var cardMemory: MemorySample?
+    @Published public private(set) var cardNetwork: NetworkSample?
+
     @Published public private(set) var cpuHistory: [SamplePoint] = []      // percent 0...100
     @Published public private(set) var memHistory: [SamplePoint] = []      // used fraction 0...1
     @Published public private(set) var netDownHistory: [SamplePoint] = []  // bytes/sec
@@ -125,6 +132,10 @@ public final class MetricsStore: ObservableObject {
                                 averageSinceUnplug: p.batteryAverageSinceUnplug ?? false)
         }
         if let v = p.cpuTempCelsius { setCPUTemperature(v) }
+        // The cards restart their hold from the latest reading.
+        if let memory, let network {
+            updateCards(cpuPercent: cpuPercent, memory: memory, network: network, restart: true)
+        }
     }
 
     /// Records one sample of the cheap, every-tick metrics (latest values + history).
@@ -149,12 +160,38 @@ public final class MetricsStore: ObservableObject {
         cpuHistory = appending(cpuHistory, cpuPoint)
         memHistory = appending(memHistory, memPoint)
         netDownHistory = appending(netDownHistory, netPoint)
+        updateCards(cpuPercent: cpuPercent, memory: memory, network: network, restart: false)
     }
 
-    /// `nil` means "this Mac has no battery" (not "unchanged").
+    /// Sets the held card values from a reading; `restart` drops the hold (a fresh open).
+    private func updateCards(cpuPercent: Double, memory: MemorySample, network: NetworkSample, restart: Bool) {
+        let cpu = heldValue(shown: restart ? nil : cardCPUPercent, value: cpuPercent, step: 1, band: 0.75)
+        if cpu != cardCPUPercent { cardCPUPercent = cpu }
+        let mem = heldMemory(shown: restart ? nil : cardMemory, value: memory)
+        if mem != cardMemory { cardMemory = mem }
+        let shownNet = restart ? nil : cardNetwork
+        let net = NetworkSample(
+            downBytesPerSec: heldRate(shown: shownNet?.downBytesPerSec, value: network.downBytesPerSec),
+            upBytesPerSec: heldRate(shown: shownNet?.upBytesPerSec, value: network.upBytesPerSec))
+        if net != cardNetwork { cardNetwork = net }
+    }
+
+    /// `nil` means "this Mac has no battery" (not "unchanged"). Time left and time to full are
+    /// display-only, so they are held in place (`heldTimeLeft`, `heldTimeToFull`) while the
+    /// state stays the same; a plug or unplug starts afresh.
     public func setBattery(_ battery: BatterySample?) {
         if paused { pending.battery = .some(battery); return }
-        if battery != self.battery { self.battery = battery }
+        var shown = battery
+        if var b = battery, let last = self.battery, last.state == b.state {
+            b.timeToEmptyMinutes = b.timeToEmptyMinutes.map {
+                heldTimeLeft(shown: last.timeToEmptyMinutes, minutes: $0)
+            }
+            b.timeToFullMinutes = b.timeToFullMinutes.map {
+                heldTimeToFull(shown: last.timeToFullMinutes, minutes: $0)
+            }
+            shown = b
+        }
+        if shown != self.battery { self.battery = shown }
     }
 
     public func setBatteryTelemetry(_ telemetry: BatteryTelemetry?, powerWatts: Double?, averageWatts: Double?,
@@ -172,10 +209,12 @@ public final class MetricsStore: ObservableObject {
         if averageSinceUnplug != batteryAverageSinceUnplug { batteryAverageSinceUnplug = averageSinceUnplug }
     }
 
-    /// `nil` means "no usable CPU sensor" (the card falls back to a label).
+    /// `nil` means "no usable CPU sensor" (the card falls back to a label). Shown as a whole
+    /// degree that changes only once the reading is a full degree away from it.
     public func setCPUTemperature(_ celsius: Double?) {
         if paused { pending.cpuTempCelsius = .some(celsius); return }
-        cpuTempCelsius = celsius
+        let shown = celsius.map { heldValue(shown: cpuTempCelsius, value: $0, step: 1, band: 1.0) }
+        if shown != cpuTempCelsius { cpuTempCelsius = shown }
     }
 
     private func appending(_ history: [SamplePoint], _ point: SamplePoint) -> [SamplePoint] {

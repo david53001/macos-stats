@@ -8,7 +8,7 @@ public enum Visibility: Equatable {
 
 /// The adaptive refresh interval (seconds) for a given visibility.
 /// Idle is slow & cheap (alerts + a coarse history); open is 0.5s so numbers feel live.
-/// Rates stay a 1s average regardless (see `rateWindowSeconds`), so the faster cadence
+/// Rates stay a 2s average regardless (see `rateWindowSeconds`), so the faster cadence
 /// doesn't make values flicker. The per-app drill-in runs its own scan timer in AppModel.
 public func refreshInterval(for visibility: Visibility) -> TimeInterval {
     switch visibility {
@@ -64,7 +64,11 @@ public func isDue(last: Date?, now: Date, every interval: TimeInterval) -> Bool 
 /// Rate metrics (CPU %, network throughput) are averaged over this trailing window, regardless
 /// of how fast we sample/plot. Without it, fast ticks would divide tiny sample-to-sample deltas
 /// by tiny intervals, making readings jumpy. A fixed window keeps the values stable and accurate.
-public let rateWindowSeconds: TimeInterval = 1.0
+/// 2 s, not 1 s: at 0.5 s ticks a 1 s window changed the CPU card's text 80–91 times a minute and
+/// the network card's 50–103; 2 s (with the cards' display holds) measured 56–72 and 17–26
+/// (`docs/research/2026-10-06-stability-diagnosis.md` §4.2). The closed-popover sampler's
+/// snapshots are 10 s apart, so it is unaffected.
+public let rateWindowSeconds: TimeInterval = 2.0
 
 /// Index of the snapshot a rate should diff against, given snapshot times oldest→newest, the
 /// current time, and the trailing `window`. Returns the newest snapshot still at least `window`

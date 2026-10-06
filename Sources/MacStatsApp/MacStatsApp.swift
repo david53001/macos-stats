@@ -32,7 +32,7 @@ final class AppModel: ObservableObject {
     private var scanInFlight: Int?
 
     /// Cumulative-counter snapshots, oldest→newest, covering ~`rateWindowSeconds` (just the
-    /// last two while idle). Rates diff against the snapshot ~1s back (see `rateBaselineIndex`)
+    /// last two while idle). Rates diff against the snapshot ~2s back (see `rateBaselineIndex`)
     /// so fast ticks still show a stable trailing average. Survives close/open, so the first
     /// sample after opening diffs against the idle sampler's last reading — real values on the
     /// first frame with no wait.
