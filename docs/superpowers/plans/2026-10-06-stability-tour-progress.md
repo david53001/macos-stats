@@ -162,6 +162,13 @@ the state changes. Runtime (probe `--cost` / `--no-tour`, % of one core, 20 s ea
 - Trash "Allow…" opens System Settings → Privacy & Security → Automation (only shows after a refused prompt).
 - The first open after installing this build shows the "Take the Tour" chip (the owner is classified `existing`).
 
+## Review round 1 (in progress, 2026-10-06)
+Scores: reviewer A 7.3 (lowest: Resource cost 5.5), reviewer B 7.3 (lowest: Stability 6.4). Bar: both > 9.0 and
+no area < 8.5. Reports: `docs/reviews/2026-10-06-stability-tour-review-r1-A.md`, `…-r1-B.md`.
+Fix commits so far: `478bde3` (panel open/closed follows its window), `70c97d7` (ranking), `07acc95` (frozen
+placeholders, sticky Exited row, pointer probe, a11y rows, contrast), `a748f58` (tour click-through, hint),
+`9b2b08a` (copy), `a732ac0` (first-run open). Next: re-run the render probe and the stability probes, then
+write this section in full (what was fixed, what was rejected and why).
+
 ## Next
-The orchestrator's review step: run `/reviewer` on the stability and the tour/clarity work (plan, "After both
-parts"), using the two probes for evidence. Part B is done.
+Finish "Review round 1" above, then review round 2.
