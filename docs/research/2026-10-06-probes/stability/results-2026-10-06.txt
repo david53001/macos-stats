@@ -1,0 +1,224 @@
+# Stability probe results, 2026-10-06, M3 MacBook (8 cores), owner working; other agent sessions running.
+# Command: docs/research/2026-10-06-probes/stability/run.sh 90 Code   (baseline: SRC_ROOT=<worktree at 1ed61cf> BASELINE=1 docs/research/2026-10-06-probes/stability/run.sh 90 Code)
+# current = feat/stability-tour after A5 (e95b290); run 1 predates the scan-cost split line; runs 1 and 3 had top running mid-run (spot-check).
+
+===== baseline1
+sample t=11 target=Code pid=58374 row_pct_mac=0.62 one_core_pct=5 header=6.1
+sample t=21 target=Code pid=58374 row_pct_mac=0.55 one_core_pct=4 header=13.6
+sample t=31 target=Code pid=58374 row_pct_mac=0.69 one_core_pct=6 header=7.1
+sample t=41 target=Code pid=58374 row_pct_mac=0.89 one_core_pct=7 header=6.6
+sample t=51 target=Code pid=58374 row_pct_mac=0.87 one_core_pct=7 header=11.3
+sample t=61 target=Code pid=58374 row_pct_mac=0.57 one_core_pct=5 header=11.7
+sample t=71 target=Code pid=58374 row_pct_mac=0.61 one_core_pct=5 header=7.5
+sample t=81 target=Code pid=58374 row_pct_mac=0.68 one_core_pct=5 header=18.1
+build=baseline
+run_seconds=90 counted_breakdown_seconds=67 cores=8
+breakdown_scan_interval_s=1.0 rate_window_s=1.0
+target_app=Code
+top8_order_changes=60.0
+slot_changes=311.6
+row_text_changes=360.9
+target_moves=28.7
+target_child_set_changes=26.0
+frozen_slot_changes=98   # baseline: nothing freezes; same 20 s window, total
+card_cpu_changes=87.3
+card_net_down_changes=45.3
+card_mem_changes=19.3
+scan_ms_mean=14.37 scan_ms_max=18.09 scans_per_s=1.01 scan_ms_per_s=14.53
+scan_parts_ms_mean apps_list=10.25 process_read=3.68 scanner=0.44 store_setBreakdown=0.04
+process_cpu_pct=1.11
+max_sum_gap_pp=0.00
+whole_mac_cpu_mean=12.1
+
+===== baseline2
+sample t=11 target=Code pid=58374 row_pct_mac=0.51 one_core_pct=4 header=12.0
+sample t=21 target=Code pid=58374 row_pct_mac=0.51 one_core_pct=4 header=14.2
+sample t=31 target=Code pid=58374 row_pct_mac=0.75 one_core_pct=6 header=8.0
+sample t=41 target=Code pid=58374 row_pct_mac=0.53 one_core_pct=4 header=16.8
+sample t=51 target=Code pid=58374 row_pct_mac=0.45 one_core_pct=4 header=12.2
+sample t=61 target=Code pid=58374 row_pct_mac=1.03 one_core_pct=8 header=25.0
+sample t=71 target=Code pid=58374 row_pct_mac=0.66 one_core_pct=5 header=16.3
+sample t=81 target=Code pid=58374 row_pct_mac=1.03 one_core_pct=8 header=15.8
+build=baseline
+run_seconds=90 counted_breakdown_seconds=67 cores=8
+breakdown_scan_interval_s=1.0 rate_window_s=1.0
+target_app=Code
+top8_order_changes=59.1
+slot_changes=275.8
+row_text_changes=391.4
+target_moves=40.3
+target_child_set_changes=26.0
+frozen_slot_changes=94   # baseline: nothing freezes; same 20 s window, total
+card_cpu_changes=90.7
+card_net_down_changes=48.7
+card_mem_changes=24.7
+scan_ms_mean=14.76 scan_ms_max=21.20 scans_per_s=1.01 scan_ms_per_s=14.93
+scan_parts_ms_mean apps_list=10.62 process_read=3.69 scanner=0.45 store_setBreakdown=0.04
+process_cpu_pct=1.09
+max_sum_gap_pp=0.00
+whole_mac_cpu_mean=15.4
+
+===== current1
+sample t=11 target=Code pid=58374 row_pct_mac=0.83 one_core_pct=7 header=6.9
+sample t=21 target=Code pid=58374 row_pct_mac=0.62 one_core_pct=5 header=11.6
+sample t=31 target=Code pid=58374 row_pct_mac=0.59 one_core_pct=5 header=7.2
+sample t=41 target=Code pid=58374 row_pct_mac=0.58 one_core_pct=5 header=7.3
+sample t=51 target=Code pid=58374 row_pct_mac=0.58 one_core_pct=5 header=16.2
+sample t=61 target=Code pid=58374 row_pct_mac=0.58 one_core_pct=5 header=8.2
+sample t=71 target=Code pid=58374 row_pct_mac=0.63 one_core_pct=5 header=6.8
+sample t=81 target=Code pid=58374 row_pct_mac=0.68 one_core_pct=5 header=7.9
+build=current
+run_seconds=90 counted_breakdown_seconds=66 cores=8
+breakdown_scan_interval_s=2.0 rate_window_s=2.0
+target_app=Code
+top8_order_changes=10.9
+slot_changes=22.7
+row_text_changes=66.4
+target_moves=0.0
+target_child_set_changes=0.0
+frozen_slot_changes=0   # total over the 20 s pointer-in-list window
+card_cpu_changes=38.7
+card_net_down_changes=10.7
+card_mem_changes=4.7
+scan_ms_mean=13.78 scan_ms_max=17.85 scans_per_s=0.51 scan_ms_per_s=7.04
+process_cpu_pct=0.63
+max_sum_gap_pp=1.00
+whole_mac_cpu_mean=8.8
+
+===== current2
+sample t=11 target=Code pid=58374 row_pct_mac=1.86 one_core_pct=15 header=14.9
+sample t=21 target=Code pid=58374 row_pct_mac=0.66 one_core_pct=5 header=8.2
+sample t=31 target=Code pid=58374 row_pct_mac=0.64 one_core_pct=5 header=9.7
+sample t=41 target=Code pid=58374 row_pct_mac=0.55 one_core_pct=4 header=7.7
+sample t=51 target=Code pid=58374 row_pct_mac=0.63 one_core_pct=5 header=7.3
+sample t=61 target=Code pid=58374 row_pct_mac=0.61 one_core_pct=5 header=8.4
+sample t=71 target=Code pid=58374 row_pct_mac=0.45 one_core_pct=4 header=17.4
+sample t=81 target=Code pid=58374 row_pct_mac=0.60 one_core_pct=5 header=7.2
+build=current
+run_seconds=90 counted_breakdown_seconds=66 cores=8
+breakdown_scan_interval_s=2.0 rate_window_s=2.0
+target_app=Code
+top8_order_changes=10.0
+slot_changes=30.9
+row_text_changes=68.2
+target_moves=0.0
+target_child_set_changes=1.8
+frozen_slot_changes=0   # total over the 20 s pointer-in-list window
+card_cpu_changes=44.7
+card_net_down_changes=14.0
+card_mem_changes=4.7
+scan_ms_mean=12.42 scan_ms_max=16.96 scans_per_s=0.51 scan_ms_per_s=6.35
+scan_parts_ms_mean apps_list=8.75 process_read=3.08 scanner=0.58 store_setBreakdown=0.38
+process_cpu_pct=0.56
+max_sum_gap_pp=1.00
+whole_mac_cpu_mean=9.2
+
+===== current3
+sample t=11 target=Code pid=58374 row_pct_mac=0.77 one_core_pct=6 header=16.1
+sample t=21 target=Code pid=58374 row_pct_mac=0.71 one_core_pct=6 header=13.9
+sample t=31 target=Code pid=58374 row_pct_mac=0.72 one_core_pct=6 header=17.8
+sample t=41 target=Code pid=58374 row_pct_mac=1.77 one_core_pct=14 header=13.3
+sample t=51 target=Code pid=58374 row_pct_mac=0.79 one_core_pct=6 header=8.0
+sample t=61 target=Code pid=58374 row_pct_mac=0.76 one_core_pct=6 header=23.0
+sample t=71 target=Code pid=58374 row_pct_mac=3.57 one_core_pct=29 header=24.1
+sample t=81 target=Code pid=58374 row_pct_mac=0.77 one_core_pct=6 header=24.0
+build=current
+run_seconds=90 counted_breakdown_seconds=66 cores=8
+breakdown_scan_interval_s=2.0 rate_window_s=2.0
+target_app=Code
+top8_order_changes=14.5
+slot_changes=41.8
+row_text_changes=121.8
+target_moves=0.0
+target_child_set_changes=1.8
+frozen_slot_changes=0   # total over the 20 s pointer-in-list window
+card_cpu_changes=65.3
+card_net_down_changes=22.7
+card_mem_changes=20.0
+scan_ms_mean=13.87 scan_ms_max=18.10 scans_per_s=0.51 scan_ms_per_s=7.09
+scan_parts_ms_mean apps_list=9.63 process_read=3.59 scanner=0.65 store_setBreakdown=0.46
+process_cpu_pct=0.64
+max_sum_gap_pp=1.10
+whole_mac_cpu_mean=16.8
+
+===== current4
+sample t=11 target=Code pid=58374 row_pct_mac=0.52 one_core_pct=4 header=11.0
+sample t=21 target=Code pid=58374 row_pct_mac=0.48 one_core_pct=4 header=15.0
+sample t=31 target=Code pid=58374 row_pct_mac=1.03 one_core_pct=8 header=9.5
+sample t=41 target=Code pid=58374 row_pct_mac=0.50 one_core_pct=4 header=9.5
+sample t=51 target=Code pid=58374 row_pct_mac=0.63 one_core_pct=5 header=20.8
+sample t=61 target=Code pid=58374 row_pct_mac=0.56 one_core_pct=4 header=13.6
+sample t=71 target=Code pid=58374 row_pct_mac=0.54 one_core_pct=4 header=7.7
+sample t=81 target=Code pid=58374 row_pct_mac=1.20 one_core_pct=10 header=15.6
+build=current
+run_seconds=90 counted_breakdown_seconds=66 cores=8
+breakdown_scan_interval_s=2.0 rate_window_s=2.0
+target_app=Code
+top8_order_changes=10.0
+slot_changes=30.0
+row_text_changes=80.0
+target_moves=0.0
+target_child_set_changes=0.0
+frozen_slot_changes=0   # total over the 20 s pointer-in-list window
+card_cpu_changes=62.7
+card_net_down_changes=14.7
+card_mem_changes=10.7
+scan_ms_mean=15.04 scan_ms_max=17.89 scans_per_s=0.51 scan_ms_per_s=7.69
+scan_parts_ms_mean apps_list=10.43 process_read=3.95 scanner=0.67 store_setBreakdown=0.46
+process_cpu_pct=0.69
+max_sum_gap_pp=0.80
+whole_mac_cpu_mean=12.5
+
+===== top spot-check (top -l 3 -s 2 -o cpu -stats pid,command,cpu), samples 2-3, Code family + agent CLI + probe + top
+top1.txt:2 79265  top              4.0 
+top1.txt:2 58538  2.1.291          2.5 
+top1.txt:2 58386  Code Helper (Plu 0.5 
+top1.txt:2 58387  Code Helper      0.4 
+top1.txt:2 58379  Code Helper (Ren 0.4 
+top1.txt:2 78979  probe            0.2 
+top1.txt:2 58378  Code Helper      0.0 
+top1.txt:2 58374  Code             0.0 
+top1.txt:2 58385  Code Helper      0.0 
+top1.txt:2 58383  Code Helper      0.0 
+top1.txt:2 58384  Code Helper      0.0 
+top1.txt:2 58449  Code Helper (Plu 0.0 
+top1.txt:2 58377  Code Helper      0.0 
+top1.txt:3 79265  top              3.5 
+top1.txt:3 58538  2.1.291          1.4 
+top1.txt:3 78979  probe            0.5 
+top1.txt:3 58387  Code Helper      0.3 
+top1.txt:3 58379  Code Helper (Ren 0.3 
+top1.txt:3 58386  Code Helper (Plu 0.2 
+top1.txt:3 58374  Code             0.1 
+top1.txt:3 58385  Code Helper      0.0 
+top1.txt:3 58384  Code Helper      0.0 
+top1.txt:3 58377  Code Helper      0.0 
+top1.txt:3 58383  Code Helper      0.0 
+top1.txt:3 58378  Code Helper      0.0 
+top1.txt:3 58449  Code Helper (Plu 0.0 
+top3.txt:2 82298  top              4.0 
+top3.txt:2 58538  2.1.291          2.6 
+top3.txt:2 82074  probe            0.5 
+top3.txt:2 58387  Code Helper      0.3 
+top3.txt:2 58379  Code Helper (Ren 0.2 
+top3.txt:2 58386  Code Helper (Plu 0.2 
+top3.txt:2 58374  Code             0.0 
+top3.txt:2 58385  Code Helper      0.0 
+top3.txt:2 58377  Code Helper      0.0 
+top3.txt:2 58449  Code Helper (Plu 0.0 
+top3.txt:2 58384  Code Helper      0.0 
+top3.txt:2 58383  Code Helper      0.0 
+top3.txt:2 58378  Code Helper      0.0 
+top3.txt:3 82298  top              4.0 
+top3.txt:3 58538  2.1.291          1.2 
+top3.txt:3 82074  probe            0.6 
+top3.txt:3 58379  Code Helper (Ren 0.5 
+top3.txt:3 58387  Code Helper      0.5 
+top3.txt:3 58386  Code Helper (Plu 0.3 
+top3.txt:3 58374  Code             0.1 
+top3.txt:3 58377  Code Helper      0.0 
+top3.txt:3 58385  Code Helper      0.0 
+top3.txt:3 58383  Code Helper      0.0 
+top3.txt:3 58384  Code Helper      0.0 
+top3.txt:3 58449  Code Helper (Plu 0.0 
+top3.txt:3 58378  Code Helper      0.0 
