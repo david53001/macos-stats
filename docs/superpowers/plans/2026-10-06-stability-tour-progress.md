@@ -355,20 +355,75 @@ unchanged; nothing new runs while the panel is closed or the tour is off.
 - **A C3 / B C3, A C4, B C5 (Low):** `CardDisplay` extraction, `onKeyPress`, research citations in comments: as in
   rounds 1–2.
 
-## Review round 4 (2026-10-06) — IN PROGRESS
-Scores: reviewer A **8.3**, reviewer B **8.1** (lowest: B Intuitiveness 7.5). Reports:
+## Review round 4 (2026-10-06/07) — fixed, verified, committed
+**Scores:** reviewer A **8.3** (Stability 8.6, Interaction 8.0, Intuitiveness 7.8, Copy 8.0, Visual 8.4, Tour 8.7,
+Code 8.3, Resource 8.0); reviewer B **8.1** (Stability 8.0, Interaction 8.2, **Intuitiveness 7.5**, Copy 8.2, Visual
+8.4, Tour 8.8, Code 8.3, Resource 8.2). Bar: both > 9.0 and no area < 8.5. Reports:
 `docs/reviews/2026-10-06-stability-tour-review-r4-A.md`, `docs/reviews/2026-10-06-stability-tour-review-r4-B.md`.
-Done so far: `a4ecd46` macOS agents → Other processes, no Quit on loginwindow; `d586de9` reorder dwell (5 s),
-newcomer processes join below for one scan, fast-attack window restart, frozen memory insertion.
-Next: view fixes (ended expanded app collapse, hide "more" for ended apps), tour callout hugs content + fades
-between steps, step 1 copy, occlusion ≠ close, Exited/Finished naming; then probes, docs, final section here.
-Probe sources for this round: scratchpad `r4/` (record/replay copied from `r3-fixes/replay` + burst + synthetic).
+
+Terms: **macOS agent** = a running "app" that is part of macOS (not a regular Dock app, installed under
+`/System/` or `/usr/` but not `/usr/local/`: loginwindow, Dock, WindowManager, universalaccessd…). **Reorder
+dwell** = apart from a big jump, a list reorders at most once per `breakdownReorderDwell` (5 s). **Fast attack**
+= the breakdown window restarts when an app used ¾ of a core more over the latest scan than over the rest of the
+window. Probe folder for this round: `docs/research/2026-10-06-probes/r4-fixes/` (README defines the measures).
+
+### Fixed (commits `a4ecd46`, `d586de9`, `7cd1b91`, `7643496`, `60f7a76`, `bdb38e9`, `21e6fc1`, probes `a888153`)
+| Finding (severity) | Verified? | Fix | Evidence |
+|---|---|---|---|
+| A I1/U1/T1/V2, B D1 (Medium): macOS agents listed as apps with internal names, blank icons and Quit/Force Quit (Force Quit on loginwindow = logout) | Yes: 30 such agents on this Mac (`NSWorkspace` lists them as accessory/background apps) | `isMacOSAgent` (ProcessScan.swift): not an attribution anchor, so their processes go to "Other processes" (tooltip now "macOS helpers and background tasks…"). Finder/Mail/System Settings (regular) and third-party menu-bar apps stay apps. `canQuitProcess`: loginwindow's process row has no Quit / Force Quit ("Part of macOS: quitting it would log you out") | Tests `macOSAgentsAreNotApps`, `macOSAgentsAreTheSystemsNonRegularApps`, `loginwindowCantBeQuit`; real-scan captures `r4-fixes/out/breakdown-cpu-light.png`, `breakdown-energy-dark.png`: only real apps + Other + System |
+| A S1 (Medium): expanded app's visible process rows changed on 41/53 scans | Yes, and the cause: short-lived processes (a build's, a terminal's) ranked in at their place and vanished a scan later | A process new to a listed app joins below its known ones for one scan, then climbs like any row (a big lead at once) | Replay under `load.sh`: top-5 child changes 24.9 → 10.9/min, first 14 rows' slot changes 69.3 → 28.6/min; test `aNewProcessJoinsBelowItsAppsKnownOnesForOneScan` |
+| B S1 (Medium): close, bursty apps reorder 15–23/min with the pointer away | Yes: synthetic 23.7 / 14.2 reorders/min | Reorder dwell 5 s for apps and each app's processes (`BreakdownDisplay.rank`); a jump (> 1.5× and > 1 pp / 0.05 W) still moves at once and doesn't restart the dwell | Synthetic: 23.7 → 14.3 (CV 0.6), 14.2 → 9.4 (CV 0.3) reorders/min; trade-off: inversion scans 46 → 68 % / 33 → 55 %, longest 1 → 3 scans. Live: 2.5/min, 0/49 inversion scans. Test `theListReordersAtMostOncePerDwell` |
+| A S2 (Low): rows take 8 s to reach a new load | Yes (3.1 / 6.2 / 9.4 / 12 %) | Fast attack per app (`BreakdownScanner`, `breakdownFastAttackCores` 0.75). A first version on the machine total never fired live: a one-core `yes` raised the header by only ~⅔ of a core | Replay: burst row 12 % at +2 s (was 3.1), header 28 % (was 16 %), Battery 3.9 W at +2 s (was 0.48 W); row text changes 17.0 vs 17.2/min, inversions 2/149 either way. Test `aNewLoadRestartsTheWindow` |
+| A I2 (Low): while frozen, a new Memory app joined above the group rows | Yes (`StableRanking.swift:53`) | Frozen: new keys after every kept key | Tests `groupsStayLastForMemory`, property test `frozenKeepsTheShownRowsAsAPrefix` (all metrics, 50 random runs each) |
+| A V1/R1, B V1 (Low): stretched callout with empty bands | Yes | `calloutStretch` and `TourLayout.callout(edges:)` removed: the callout has its content's height (108 pt) | `r4-fixes/out/step1-light.png`, `step4-dark.png`; render probe `failures=0`, centring unchanged (inner 2/2/2/2 px, outer 6/6/6/6 px every step, light + dark) |
+| B V2 (Low): two callouts overlap during a step change | Yes | Each step's callout has its own identity: the old fades out (0.1 s), the new fades in (0.15 s after 0.12 s) while the hole glides | `r4-fixes/out/glide-step1to2-light.png` (0.06 / 0.12 / 0.2 / 0.3 / 0.5 s): never two callouts |
+| A T2/R2, B T1 (Low): step 1 comma splice | Yes | "The number is now, and the graph is the last minute. Click to see which apps use it." | Lint + fit (2 lines) |
+| B I1 (Low): ended expanded app can't collapse; its "N more…" adds dead rows | Yes | It can collapse (not expand); ended apps get no "more" row (`BreakdownList.rows(ended:)`) | Build |
+| B I3/C4 (Low): occlusion treated as a panel close | Yes | Close = SwiftUI hid the content or the window is ordered out (`isVisible`): only then `tour.panelClosed()` + `exitBreakdown()`. Occlusion still stops every timer incl. breakdown scans; uncovered with a breakdown open, it scans afresh | Build; owner check below |
+| A T3 (Low): "% of one core" on every CPU row tooltip | Yes | Right-click menu only (the footnote tooltip already says so) | Build |
+| B T3/C3 (Low): "Exited" vs "Finished" | Yes | Code comments say "Finished processes" | — |
+
+Accuracy: unchanged (stored readings, graphs, bars and alerts exact; grouping only moves macOS agents into Other
+processes; fast attack makes rows/header *more* current). Cost (`r4-fixes/cost.txt`): CPU scan p50 17.1 ms (was
+17.6); open overview 11.9–12.1 % tour off (was 12.0–12.2); nothing new runs while the panel is closed or the tour
+is off (no new timers or observers). `./Scripts/test.sh` **366/366**; `swift build` green.
+
+### Rejected or deferred (with the reason)
+- **A P2, B R1 (Medium, verification): install the branch and confirm the closed-panel CPU is ~0.** The hard rules
+  forbid installing `~/Applications/MacStats.app` and driving the menu bar; a second, uninstalled copy would put
+  another icon and panel in front of the owner. Owner check (unchanged, most important).
+- **B T2 (Low): keep the stripped child name only when unique.** Identical full names are the norm (VS Code runs
+  ~10 "Code Helper"), so un-stripping can't make them unique; it would only bring back round 2's truncation
+  ("Google Chrome He…(Renderer)") and mix "Code Helper" with "Helper (GPU)". Full name + pid are in the tooltip.
+- **B S3 (Low): let a ≥ 3 pp card move bypass the dwell only once per 2 s.** It would let the card sit > 3 pp off
+  for up to 2 s; both reviewers count "never ≥ 3 pp off" as a strength.
+- **A S3, B S2 (Low): frozen order vs live numbers.** By design: nothing moves under the pointer.
+- **B S4 (Low): first ~10 s settle.** The dwell now limits it to one reorder per 5 s; no extra rule.
+- **B S5 (Low): held text vs exact value.** Within each hold's documented bound; unchanged.
+- **B I2 (Low): pin the expanded app's position.** Round 2 removed that pin (30 of 31 mis-sorts sat next to it);
+  the dwell limits its moves (0.4/min in the replay).
+- **A U2, B D2 (Low): Quit only on right-click.** As rounds 2–3 (hint footnote + tooltips; Activity Monitor does
+  the same).
+- **A U3 (Low): flat Memory graph.** Steady memory is a flat line; rescaling would exaggerate noise.
+- **A V3 (Low): "AccessibilityVisualsAg…" truncates.** Gone with the agent fix.
+- **A R3 (Low): "under this icon".** The panel hangs directly under the menu-bar icon the welcome shows.
+- **A P1 (Low): open-overview cost vs 1ed61cf.** Pre-existing (rounds 1–3); the probe can't build at 1ed61cf
+  (no tour API). Unchanged this round.
+- **A C2 / B C1, C2 (Low):** comment history trimmed where touched; `CardDisplay` extraction deferred as before.
+- **A I3, B I4:** right-click menus, scrolling and hover need the real panel: owner checks.
+
+### Owner checks this round adds (need `./Scripts/bundle.sh`, the owner's OK)
+- Lock the screen with the panel open on a CPU breakdown, unlock: the breakdown is still there ("Measuring…" for
+  about 2 s); the tour, if running, is still on its step.
+- CPU breakdown: loginwindow, Dock, WindowManager are no longer rows; expand "Other processes" and right-click
+  loginwindow: no Quit / Force Quit.
 
 ## Next
-Review round 4 (`/reviewer`, two independent reviewers) on HEAD of `feat/stability-tour`. Probes:
+Review round 5 (`/reviewer`, two independent reviewers) on HEAD of `feat/stability-tour`. Probes:
 ```bash
 docs/research/2026-10-06-probes/r3-fixes/run.sh stability 100   # live, reviewer B's measures
 docs/research/2026-10-06-probes/r3-fixes/run.sh synthetic
 docs/research/2026-10-06-probes/tour-render/run.sh               # tour captures + insets, 128 GB overview
 docs/research/2026-10-06-probes/tour-render/run.sh --breakdowns  # real-scan breakdowns
+# round 4 record/replay + synthetic contention: docs/research/2026-10-06-probes/r4-fixes/README.md
 ```
