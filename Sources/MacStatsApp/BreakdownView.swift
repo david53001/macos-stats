@@ -187,7 +187,8 @@ struct BreakdownView: View {
         } else {
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(BreakdownList.rows(store.breakdown, expanded: expanded, visible: visibleChildren)) { row in
+                    ForEach(BreakdownList.rows(store.breakdown, expanded: expanded, visible: visibleChildren,
+                                                ended: { store.isEnded(app: $0) })) { row in
                         switch row.kind {
                         case .app(let app): appRow(app)
                         case .process(let process, let app): processRow(process, in: app)
@@ -214,8 +215,9 @@ struct BreakdownView: View {
     private func appRow(_ app: AppUsage) -> some View {
         let info = apps.info(for: app.appPID)
         let ended = store.isEnded(app: app.appPID)
-        let expandable = app.processes.count > 1 && !ended
         let isExpanded = expanded == app.appPID
+        // An app that ended while frozen can still be collapsed, not expanded.
+        let expandable = app.processes.count > 1 && (!ended || isExpanded)
         let value = shown(app)
         return Button {
             guard expandable else { return }
@@ -384,7 +386,8 @@ enum BreakdownList {
         let kind: Kind
     }
 
-    static func rows(_ apps: [AppUsage], expanded: Int32?, visible: Int) -> [Row] {
+    /// `ended`: an app kept as a placeholder while frozen gets no "N more…" row (its processes are gone).
+    static func rows(_ apps: [AppUsage], expanded: Int32?, visible: Int, ended: (Int32) -> Bool = { _ in false }) -> [Row] {
         var rows: [Row] = []
         rows.reserveCapacity(apps.count + visible + 1)
         for app in apps {
@@ -393,7 +396,7 @@ enum BreakdownList {
             for p in app.processes.prefix(visible) {
                 rows.append(Row(id: "p\(p.pid)", kind: .process(p, app)))
             }
-            if app.processes.count > visible {
+            if app.processes.count > visible, !ended(app.appPID) {
                 rows.append(Row(id: "m\(app.appPID)", kind: .more(app.processes.count - visible)))
             }
         }

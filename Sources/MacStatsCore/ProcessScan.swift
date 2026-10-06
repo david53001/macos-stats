@@ -336,7 +336,7 @@ public final class ProcessSampler {
 /// CPU and energy rows are averaged over a trailing window (`windowSeconds`; by default
 /// `trailingWindowSeconds` for CPU, `energyWindowSeconds` for energy), and so is the CPU header, so rows + System still add up to
 /// it. A process that started mid-window counts what it used over the whole window; one that
-/// exited mid-window keeps its earlier work in its app's "Exited processes" row while the app
+/// exited mid-window keeps its earlier work in its app's "Finished processes" row while the app
 /// runs (else it falls into System). Memory rows are instantaneous.
 /// Not thread-safe: `@unchecked Sendable` so it can be handed to the app's serial scan queue,
 /// which is the only place it is used.
@@ -498,7 +498,7 @@ public final class BreakdownScanner: @unchecked Sendable {
             window = []
         }
 
-        // Sums over the window. Processes that exited mid-window go to their app's "Exited
+        // Sums over the window. Processes that exited mid-window go to their app's "Finished
         // processes" row while that app still has processes; otherwise they fall into System.
         let span = window.reduce(0) { $0 + $1.elapsed }
         let alive = window.last?.work ?? [:]
@@ -566,7 +566,7 @@ public final class BreakdownScanner: @unchecked Sendable {
 /// - `orphans`: vanished pid with no surviving ancestor → candidate work, credited to the app
 ///   it belonged to (`previousOwners`), keyed by the app's main process, if that is still `alive`.
 /// Returns surviving pid → ns credited on its behalf. `BreakdownScanner` shows it in that
-/// process's app as an "Exited processes" child row, not on the process itself.
+/// process's app as an "Finished processes" child row, not on the process itself.
 public func exitWorkCredit(unexplained: [Int32: UInt64], orphans: [Int32: UInt64],
                            previousOwners: [Int32: Int32], alive: (Int32) -> Bool,
                            budgetNs: Double) -> [Int32: UInt64] {
