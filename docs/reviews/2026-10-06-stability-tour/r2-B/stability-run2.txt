@@ -1,0 +1,91 @@
+MISSORT energy t=7 row0 MacStats shown=0.03 W (exact 0.03 W) above row1 Code shown=0.05 W (exact 0.05 W) [pinned/expanded]
+MISSORT energy t=9 row0 MacStats shown=0.03 W (exact 0.03 W) above row1 Code shown=0.05 W (exact 0.05 W) [pinned/expanded]
+MISSORT energy t=19 row0 MacStats shown=0.03 W (exact 0.03 W) above row1 Code shown=0.05 W (exact 0.05 W) [pinned/expanded]
+MISSORT energy t=21 row0 MacStats shown=0.03 W (exact 0.03 W) above row1 Code shown=0.05 W (exact 0.05 W) [pinned/expanded]
+MISSORT cpu t=27 row2 Code shown=1.0% (exact 1.0%) above row3 Google Chrome shown=4.8% (exact 4.8%) [pinned/expanded]
+MISSORT energy t=27 row2 MacStats shown=0.03 W (exact 0.04 W) above row3 Other processes shown=0.06 W (exact 0.06 W)
+MISSORT cpu t=29 row2 Code shown=1.6% (exact 1.6%) above row3 MacStats shown=3.5% (exact 3.7%) [pinned/expanded]
+MISSORT energy t=29 row2 MacStats shown=0.04 W (exact 0.04 W) above row3 Other processes shown=0.08 W (exact 0.08 W)
+MISSORT cpu t=31 row2 Code shown=1.8% (exact 1.8%) above row3 MacStats shown=3.5% (exact 3.7%) [pinned/expanded]
+MISSORT cpu t=33 row2 Code shown=1.5% (exact 1.5%) above row3 MacStats shown=3.5% (exact 3.6%) [pinned/expanded]
+MISSORT energy t=39 row0 MacStats shown=0.03 W (exact 0.03 W) above row1 Code shown=0.05 W (exact 0.05 W) [pinned/expanded]
+MISSORT energy t=41 row0 MacStats shown=0.03 W (exact 0.03 W) above row1 Code shown=0.06 W (exact 0.06 W) [pinned/expanded]
+MISSORT energy t=49 row0 MacStats shown=0.03 W (exact 0.03 W) above row1 Code shown=0.05 W (exact 0.05 W) [pinned/expanded]
+MISSORT energy t=51 row0 MacStats shown=0.03 W (exact 0.03 W) above row1 Code shown=0.06 W (exact 0.06 W) [pinned/expanded]
+MISSORT cpu t=59 row2 Code shown=1.3% (exact 1.3%) above row3 Google Chrome shown=2.4% (exact 2.4%) [pinned/expanded]
+MISSORT energy t=61 row0 MacStats shown=0.03 W (exact 0.03 W) above row1 Code shown=0.06 W (exact 0.06 W) [pinned/expanded]
+MISSORT energy t=63 row0 MacStats shown=0.03 W (exact 0.03 W) above row1 Code shown=0.06 W (exact 0.06 W) [pinned/expanded]
+MISSORT cpu t=65 row3 Google Chrome shown=0.2% (exact 0.2%) above row4 Other processes shown=0.8% (exact 0.8%)
+MISSORT cpu t=89 row3 Other processes shown=1.7% (exact 1.8%) above row4 Google Chrome shown=4.6% (exact 4.8%)
+MISSORT cpu t=97 row3 Other processes shown=0.1% (exact 0.1%) above row4 Google Chrome shown=0.8% (exact 0.8%)
+MISSORT cpu t=105 row3 Google Chrome shown=0.2% (exact 0.2%) above row4 Other processes shown=0.7% (exact 0.7%)
+MISSORT cpu t=107 row5 Claude shown=0.1% (exact 0.1%) above row6 Spotify shown=0.4% (exact 0.4%)
+MISSORT cpu t=147 row2 Code shown=1.3% (exact 1.3%) above row3 Google Chrome shown=4.6% (exact 4.6%) [pinned/expanded]
+MISSORT cpu t=149 row2 Code shown=2.3% (exact 2.3%) above row3 MacStats shown=3.6% (exact 3.5%) [pinned/expanded]
+run_s=150 phases: outside [0,67) inside [67,87) outside after
+card.cpu changes/min=37.2 flipbacks/min=4.0
+card.cpu held-vs-exact pp p50=0.42 p95=1.13 max=1.24
+card.mem changes/min=6.0 flipbacks/min=0.0
+card.down changes/min=21.6 flipbacks/min=5.2
+card.up changes/min=26.4 flipbacks/min=3.6
+cpu.counted_s=123
+cpu.top8_order_changes_per_min=5.3
+cpu.top8_slot_changes_per_min=12.6
+cpu.row_text_changes_per_min_top8=66.8
+cpu.row_text_flipbacks_per_min_top8=13.1
+cpu.missorted_scans=12/65 pairs=12 of_which_next_to_expanded=7
+cpu.hold_err_steps_p50_p95_max=0.40/2.30/4.60
+cpu.hold_err_rel_p95_max=1.584/2.973
+cpu.expanded_app=Code
+cpu.expanded_moves=0
+cpu.expanded_vanished_scans=0
+cpu.expanded_auto_collapses=0
+cpu.expanded_child_top5_order_changes=10
+cpu.freeze_scans=10
+cpu.freeze_row_moves=0
+cpu.freeze_rows_removed=0
+cpu.freeze_rows_appended_max=0
+cpu.freeze_child_moves=0
+cpu.unfreeze_3.5s_slot_changes=0
+cpu.max_sum_vs_header_gap_pp=0.80
+memory.counted_s=124
+memory.top8_order_changes_per_min=0.0
+memory.top8_slot_changes_per_min=0.0
+memory.row_text_changes_per_min_top8=3.9
+memory.row_text_flipbacks_per_min_top8=0.5
+memory.missorted_scans=0/66 pairs=0 of_which_next_to_expanded=0
+memory.hold_err_steps_p50_p95_max=0.33/0.79/0.99
+memory.hold_err_rel_p95_max=0.028/0.030
+memory.expanded_app=Code
+memory.expanded_moves=0
+memory.expanded_vanished_scans=0
+memory.expanded_auto_collapses=0
+memory.expanded_child_top5_order_changes=0
+memory.freeze_scans=10
+memory.freeze_row_moves=0
+memory.freeze_rows_removed=0
+memory.freeze_rows_appended_max=0
+memory.freeze_child_moves=0
+memory.unfreeze_3.5s_slot_changes=0
+energy.counted_s=123
+energy.top8_order_changes_per_min=1.5
+energy.top8_slot_changes_per_min=3.9
+energy.row_text_changes_per_min_top8=30.5
+energy.row_text_flipbacks_per_min_top8=8.7
+energy.missorted_scans=25/65 pairs=25 of_which_next_to_expanded=21
+energy.hold_err_steps_p50_p95_max=0.03/0.43/0.68
+energy.hold_err_rel_p95_max=1.000/1.000
+energy.expanded_app=Code
+energy.expanded_moves=0
+energy.expanded_vanished_scans=0
+energy.expanded_auto_collapses=0
+energy.expanded_child_top5_order_changes=5
+energy.freeze_scans=10
+energy.freeze_row_moves=0
+energy.freeze_rows_removed=0
+energy.freeze_rows_appended_max=0
+energy.freeze_child_moves=0
+energy.unfreeze_3.5s_slot_changes=0
+probe_process_cpu_pct=0.81 (3 breakdown scans + overview)
+
+[exited with code 0]
