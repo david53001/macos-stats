@@ -37,7 +37,7 @@ public enum TourCatalog {
 
     public static let steps: [TourStep] = [
         TourStep(.cpu, "How hard it’s working",
-                 "The number is right now, the graph shows the last minute. Click to see which apps use it."),
+                 "The number is now, and the graph is the last minute. Click to see which apps use it."),
         TourStep(.memory, "Memory in use",
                  "The dot turns yellow or red when your Mac runs short. Click to see which apps use it."),
         TourStep(.network, "Network activity",

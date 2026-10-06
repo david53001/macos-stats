@@ -81,25 +81,19 @@ import Testing
         }
     }
 
-    /// The callout starts at the neighbouring card's edge (no sliver of it between) and its far
-    /// edge stretches to the next card edge, so it never cuts a line of a card's text in half.
-    @Test func calloutMeetsCardEdges() {
-        let edges = fixtures.flatMap { [$0.rect.minY, $0.rect.maxY] }
+    /// The callout starts at the neighbouring card's edge (no sliver of it between) and hugs its content.
+    @Test func calloutStartsAtTheNeighbouringCardAndHugsItsContent() {
         let expected: [TourStepID: (CGFloat, CGFloat)] = [
-            .cpu: (109, 249), .memory: (182, 322), .network: (255, 372), .battery: (109, 249), .footer: (255, 366),
+            .cpu: (109, 217), .memory: (182, 290), .network: (255, 363), .battery: (141, 249), .footer: (258, 366),
         ]
         for scale: CGFloat in [1, 2] {
             for f in fixtures {
                 let cut = TourLayout.cutout(target: f.rect, targetRadius: cardRadius, panel: panel, scale: scale).rect
-                let others = edges.filter { $0 != f.rect.minY && $0 != f.rect.maxY }
-                let co = TourLayout.callout(cutout: cut, height: 108, panel: panel, scale: scale, edges: others)
+                let co = TourLayout.callout(cutout: cut, height: 108, panel: panel, scale: scale)
                 #expect(co.minY == expected[f.id]!.0 && co.maxY == expected[f.id]!.1, "\(f.id): \(co)")
                 #expect(!co.intersects(cut))
             }
         }
-        // No edge within reach: the callout keeps its own height.
-        let cut = TourLayout.cutout(target: fixtures[0].rect, targetRadius: cardRadius, panel: panel, scale: 2).rect
-        #expect(TourLayout.callout(cutout: cut, height: 108, panel: panel, scale: 2, edges: [300]).height == 108)
     }
 
     @Test func fallbackWhenNeitherSideFits() {
