@@ -15,9 +15,9 @@ struct MacStatsApp: App {
         // Hovering the menu-bar icon takes a fresh sample, so a click opens on current numbers.
         StatusItemHover.install { model.prewarm() }
         // A new user hasn't found the icon yet: open the panel once (the welcome card points at
-        // it), after the hover hook has found the status button (0.5 s / 2 s).
+        // it), as soon as the hover hook has found the status button.
         if TourController.welcomePending() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { StatusItemHover.openPanel() }
+            StatusItemHover.openPanelWhenFound()
         }
     }
 

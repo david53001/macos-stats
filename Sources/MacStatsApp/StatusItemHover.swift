@@ -12,6 +12,7 @@ final class StatusItemHover: NSResponder {
 
     private let onHover: () -> Void
     private weak var button: NSStatusBarButton?
+    private var opensWhenFound = false
 
     /// Installs the hover hook once. The status item is created by the `MenuBarExtra` scene
     /// after `App.init`, so attach shortly after launch, and again whenever the displays
@@ -36,6 +37,12 @@ final class StatusItemHover: NSResponder {
         shared?.button?.performClick(nil)
     }
 
+    /// `openPanel` once the button has been found (now, or when `attach` finds it).
+    static func openPanelWhenFound() {
+        guard let shared else { return }
+        if shared.button != nil { openPanel() } else { shared.opensWhenFound = true }
+    }
+
     private init(onHover: @escaping () -> Void) {
         self.onHover = onHover
         super.init()
@@ -52,6 +59,10 @@ final class StatusItemHover: NSResponder {
             options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
             owner: self, userInfo: nil))
         button = found
+        if opensWhenFound {
+            opensWhenFound = false
+            DispatchQueue.main.async { found.performClick(nil) }
+        }
     }
 
     private static func statusButton(in view: NSView) -> NSStatusBarButton? {
