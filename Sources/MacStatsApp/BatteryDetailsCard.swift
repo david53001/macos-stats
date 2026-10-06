@@ -11,13 +11,13 @@ struct BatteryDetailsCard: View {
             ForEach(rows, id: \.label) { row in
                 GridRow {
                     Text(row.label).foregroundStyle(.secondary)
-                        .rowHelp(row.help)
+                        .tooltip(row.help)
                     Text(row.value)
                         .monospacedDigit()
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .contentTransition(.interpolate)
                         .animation(.easeInOut(duration: 0.25), value: row.value)
-                        .rowHelp(row.help)
+                        .tooltip(row.help)
                 }
             }
         }
@@ -78,13 +78,6 @@ struct BatteryDetailsCard: View {
     private func aboutTimeLeft(_ minutes: Int) -> String {
         let text = formatTimeLeft(minutes)
         return text.hasPrefix("about ") ? "A" + text.dropFirst() : "About \(text)"
-    }
-}
-
-private extension View {
-    /// A tooltip only when the row has one.
-    @ViewBuilder func rowHelp(_ text: String?) -> some View {
-        if let text { help(text) } else { self }
     }
 }
 

@@ -29,3 +29,10 @@ enum Design {
     /// The footer's icon buttons (`?`, gear) share one width, so they read as a pair.
     static let footerIconWidth: CGFloat = 16
 }
+
+extension View {
+    /// A tooltip only when there is something to say (shared by the breakdown and Battery rows).
+    @ViewBuilder func tooltip(_ text: String?) -> some View {
+        if let text { help(text) } else { self }
+    }
+}

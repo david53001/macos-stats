@@ -133,12 +133,19 @@ struct BreakdownView: View {
             store.setBreakdownMenuOpen(false)
         }
         .onChange(of: expanded) { _, app in store.setBreakdownPinnedApp(app) }
-        .onChange(of: store.breakdownOrderRevision) {
-            // The expanded app quit: nothing to keep open.
-            guard let app = expanded, !store.breakdown.contains(where: { $0.appPID == app }) else { return }
+        .onChange(of: expandedProcessCount) { _, count in
+            // The expanded app quit, or is down to one process: nothing left to show under it
+            // (and it mustn't re-expand by itself if it gains processes again).
+            guard expanded != nil, count <= 1 else { return }
             expanded = nil
             visibleChildren = BreakdownList.initialChildren
         }
+    }
+
+    /// How many process rows the expanded app has now (0 if it is gone or none is expanded).
+    private var expandedProcessCount: Int {
+        guard let expanded else { return 0 }
+        return store.breakdown.first { $0.appPID == expanded }?.processes.count ?? 0
     }
 
     /// One line that says what the numbers are measured against.
@@ -278,11 +285,11 @@ struct BreakdownView: View {
     /// The app's CPU credited for processes that exited between scans: no process to act on.
     private func exitedRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
         let value = shown(process, in: app)
-        return ProcessRow(process: process, name: "Exited processes", metric: metric, barScale: barScale,
+        return ProcessRow(process: process, name: "Ended processes", metric: metric, barScale: barScale,
                           shown: value)
             .transition(.opacity)
             .contextMenu {
-                Button("Exited processes") {}.disabled(true)
+                Button("Ended processes") {}.disabled(true)
                 if metric == .cpu { oneCoreLine(value) }
             }
             .help(["Work by this app\u{2019}s processes that ended since the last update",
@@ -373,13 +380,6 @@ enum BreakdownList {
             }
         }
         return rows
-    }
-}
-
-private extension View {
-    /// A tooltip only when there is something to say.
-    @ViewBuilder func tooltip(_ text: String?) -> some View {
-        if let text { help(text) } else { self }
     }
 }
 
