@@ -104,3 +104,15 @@ public func niceUpperBound(peak: Double, headroom: Double = 1.25, minimum: Doubl
     }
     return 10 * magnitude
 }
+
+/// A bar scale that grows at once but shrinks only when `peak` falls below `shrinkBelow` of it.
+/// Uses `niceUpperBound`'s 1-2-5 ladder, and is never below `minimum`. "Grows at once" means
+/// as soon as `peak` would overflow the scale; between `shrinkBelow` of it and all of it the
+/// scale stays put, so bars change length only when their own value changes (the Battery
+/// breakdown's bars used to rescale with the top row every scan).
+public func stickyUpperBound(previous: Double?, peak: Double, shrinkBelow: Double = 0.4,
+                             minimum: Double = 0.5) -> Double {
+    let nice = niceUpperBound(peak: peak, minimum: minimum)
+    guard let previous, previous >= minimum, peak.isFinite else { return nice }
+    return peak > previous || peak < shrinkBelow * previous ? nice : previous
+}

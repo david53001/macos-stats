@@ -290,21 +290,6 @@ enum BreakdownList {
     }
 }
 
-/// How a breakdown value reads. CPU is a share of the whole machine: one decimal under 10 %
-/// so light apps don't all read "0%".
-private func formattedValue(_ metric: BreakdownMetric, cpu: Double, memory: UInt64, watts: Double) -> String {
-    switch metric {
-    case .cpu:
-        return cpu < 9.95 ? String(format: "%.1f%%", cpu) : String(format: "%.0f%%", cpu)
-    case .memory:
-        let mb = Double(memory) / 1_048_576
-        return mb >= 1024 ? String(format: "%.1f GB", mb / 1024) : String(format: "%.0f MB", mb)
-    case .energy:
-        // Most apps idle well under a watt; two decimals keep them from all reading 0.0.
-        return watts < 1 ? String(format: "%.2f W", watts) : formatWatts(watts)
-    }
-}
-
 private extension View {
     /// A tooltip only when there is something to say.
     @ViewBuilder func tooltip(_ text: String?) -> some View {
@@ -362,7 +347,7 @@ private struct AppRow: View {
                 }
             }
             Spacer(minLength: 8)
-            Text(formattedValue(metric, cpu: app.cpuPercent, memory: app.memoryBytes, watts: app.watts))
+            Text(breakdownValueText(metric, app.value(for: metric)))
                 .font(.callout).fontWeight(.semibold).monospacedDigit()
                 .contentTransition(.interpolate)
                 .animation(.easeInOut(duration: 0.25), value: app.value(for: metric))
@@ -421,8 +406,7 @@ private struct ProcessRow: View {
                 }
             }
             Spacer(minLength: 8)
-            Text(formattedValue(metric, cpu: process.cpuPercent, memory: process.memoryBytes,
-                                watts: process.watts))
+            Text(breakdownValueText(metric, process.value(for: metric)))
                 .font(.caption).monospacedDigit().foregroundStyle(.secondary)
                 .contentTransition(.interpolate)
                 .animation(.easeInOut(duration: 0.25), value: process.value(for: metric))

@@ -103,4 +103,22 @@ import CoreGraphics
         #expect(visibleSamples(pts, end: 100, window: 500).count == pts.count)
         #expect(visibleSamples([], end: 0, window: 60).isEmpty)
     }
+    @Test func stickyUpperBoundGrowsAtOnce() {
+        #expect(stickyUpperBound(previous: nil, peak: 0.3) == 0.5)       // the minimum
+        #expect(stickyUpperBound(previous: 1, peak: 1.2) == 2)           // overflow: grows now
+        #expect(stickyUpperBound(previous: 2, peak: 7) == 10)
+    }
+
+    @Test func stickyUpperBoundShrinksOnlyBelowFortyPercent() {
+        #expect(stickyUpperBound(previous: 2, peak: 0.9) == 2)           // 45 %: stays
+        #expect(stickyUpperBound(previous: 2, peak: 1.95) == 2)          // would be 5 fresh: stays
+        #expect(stickyUpperBound(previous: 2, peak: 0.7) == 1)           // 35 %: nice again
+        #expect(stickyUpperBound(previous: 10, peak: 0.1) == 0.5)
+    }
+
+    @Test func stickyUpperBoundNeverGoesBelowTheMinimum() {
+        #expect(stickyUpperBound(previous: 0.5, peak: 0) == 0.5)
+        #expect(stickyUpperBound(previous: 0.2, peak: 0.01) == 0.5)
+        #expect(stickyUpperBound(previous: 5, peak: 0, minimum: 1) == 1)
+    }
 }

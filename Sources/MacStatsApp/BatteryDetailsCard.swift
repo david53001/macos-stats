@@ -101,7 +101,3 @@ extension BatterySample {
         }
     }
 }
-
-func formatWatts(_ watts: Double) -> String {
-    String(format: watts < 10 ? "%.1f W" : "%.0f W", watts)
-}
