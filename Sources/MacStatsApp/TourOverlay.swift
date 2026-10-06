@@ -83,7 +83,7 @@ private struct TourHost: ViewModifier {
 /// The dim with a squircle hole over the current target, the accent ring inside the hole's
 /// edge, and the callout (or the welcome card). Swallows every click and hover on the dim, so
 /// nothing else can be opened by accident; the hole lets them through, so clicking the
-/// highlighted card does what the callout says (`RootView` ends the tour first).
+/// highlighted card does what the callout says (the tour waits, hidden, until the overview is back).
 private struct TourOverlay: View {
     @ObservedObject var tour: TourController
     let anchors: [String: TourAnchor]
@@ -127,8 +127,8 @@ private struct TourOverlay: View {
         ZStack(alignment: .topLeading) {
             TourDimShape(cutout: cut.rect, cutoutRadius: cut.radius)
                 .fill(Color.black.opacity(colorScheme == .dark ? 0.40 : 0.30), style: FillStyle(eoFill: true))
-                // Hover first: an `.onHover` after the content shape would cover the hole too
-                // (measured, `docs/research/2026-10-06-probes/r1-fixes`), swallowing its clicks.
+                // Hover first: an `.onHover` after the content shape would cover the hole too,
+                // swallowing its clicks.
                 .onHover { _ in }
                 .contentShape(TourDimShape(cutout: cut.rect, cutoutRadius: cut.radius), eoFill: true)
                 .onTapGesture {}
@@ -144,6 +144,7 @@ private struct TourOverlay: View {
             } else if let hole, let current = tour.currentStep, let progress = tour.progress {
                 let frame = TourLayout.callout(cutout: hole.rect, height: calloutHeight ?? 0, panel: panel,
                                                scale: scale)
+                let below = frame.minY >= hole.rect.maxY
                 ZStack(alignment: .topLeading) {
                     TourCallout(step: current.step, progress: progress,
                                 onSkip: { tour.skip() }, onBack: { tour.back() }, onNext: { tour.next() })
@@ -152,9 +153,14 @@ private struct TourOverlay: View {
                         .offset(x: frame.minX, y: frame.minY)
                 }
                 .frame(width: panel.width, height: panel.height, alignment: .topLeading)
-                // Keeps the callout's shadow off the hole, so the highlighted card's margins
-                // look the same on all four sides.
-                .mask(TourDimShape(cutout: hole.rect, cutoutRadius: hole.radius).fill(style: FillStyle(eoFill: true)))
+                // Only the callout's own side of its edge that faces the highlight: its shadow never
+                // darkens the gap or the hole, so the highlighted card's surround is even on all four
+                // sides, with the callout above it or below.
+                .mask(alignment: .topLeading) {
+                    Rectangle()
+                        .frame(width: panel.width, height: below ? panel.height - frame.minY : frame.maxY)
+                        .offset(y: below ? frame.minY : 0)
+                }
             }
 
             // Above the callout, so its shadow never tints the ring.
@@ -321,9 +327,10 @@ struct WelcomeCard: View {
                 .font(.caption).foregroundStyle(.secondary)
                 .padding(.top, 2)
             HStack(spacing: 8) {
+                // No Esc shortcut: Esc often just means "close the panel", which asks again next
+                // time; No Thanks is an answer.
                 Button(action: onNoThanks) { Text(TourCatalog.noThanks).frame(maxWidth: .infinity) }
                     .buttonStyle(SubtleButtonStyle())
-                    .keyboardShortcut(.cancelAction)
                 Button(action: onStart) { Text(TourCatalog.showMeAround).frame(maxWidth: .infinity) }
                     .buttonStyle(SubtleButtonStyle(prominent: true))
                     .keyboardShortcut(.defaultAction)

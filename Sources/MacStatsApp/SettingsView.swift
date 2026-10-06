@@ -90,11 +90,6 @@ private struct HelpCard: View {
                 Button(TourCatalog.takeTheTour, action: onTour)
                     .buttonStyle(SubtleButtonStyle())
             }
-
-            Text(TourCatalog.helpCaption)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, Design.cardPadding)
         .padding(.vertical, 10)

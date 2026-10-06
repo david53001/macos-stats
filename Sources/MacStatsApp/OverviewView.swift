@@ -33,7 +33,7 @@ struct OverviewView: View {
                 Sparkline(points: store.cpuHistory, color: .green, maxValue: 100)
             }
             .help(store.cpuTempCelsius == nil ? "Click to see which apps use the CPU"
-                  : "Click to see which apps use the CPU \u{00B7} \u{00B0}C is its temperature")
+                  : "Click to see which apps use the CPU. The \u{00B0}C is the chip\u{2019}s temperature.")
             .tourAnchor("overview.cpu", radius: Design.cardCornerRadius)
             StatCard(label: "Memory", value: memoryValue,
                      number: Double(store.cardMemory?.usedBytes ?? 0), meta: memoryMeta,

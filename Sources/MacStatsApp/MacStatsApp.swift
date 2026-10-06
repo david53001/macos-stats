@@ -160,6 +160,7 @@ final class AppModel: ObservableObject {
         visibility = newValue
         switch newValue {
         case .popoverOpen:
+            tour.panelOpened()
             stopIdleSampler()
             reliefTimer?.invalidate()
             reliefTimer = nil
@@ -172,6 +173,7 @@ final class AppModel: ObservableObject {
             tick()
             if !tour.defersPermissionPrompts { refreshTrashSize() }   // Finder asks on the first read
         case .idle:
+            tour.panelClosed()
             timer?.invalidate()
             timer = nil
             exitBreakdown()   // stop per-process scanning + clear nav state

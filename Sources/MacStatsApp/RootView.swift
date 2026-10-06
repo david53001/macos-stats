@@ -31,17 +31,15 @@ struct RootView: View {
                               onBack: { model.exitBreakdown() }, onMenuUsed: { tour.breakdownMenuUsed() })
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             } else {
+                // A click on the highlighted card or the gear (the cutout lets it through) does what
+                // the callout says; the tour stays on its step, hidden, until the overview is back.
                 OverviewView(store: store,
                              onSelect: { metric in
-                                 endTourForClick()
                                  quitHint = tour.breakdownOpened()
                                  model.enterBreakdown(metric)
                              },
                              onEmptyTrash: { model.confirmAndEmptyTrash() },
-                             onSettings: {
-                                 endTourForClick()
-                                 showingSettings = true
-                             },
+                             onSettings: { showingSettings = true },
                              offersTour: tour.offersTour,
                              onTour: startTour,
                              onDismissOffer: { tour.dismissOffer() })
@@ -55,21 +53,13 @@ struct RootView: View {
         .background(PanelWindowObserver { model.panelWindowChanged($0) })
         .animation(.snappy(duration: 0.3), value: store.activeBreakdownMetric)
         .animation(.snappy(duration: 0.3), value: showingSettings)
-        .onAppear {
-            model.setPanelAppeared(true)
-            tour.panelOpened()
-        }
+        // The tour pauses and resumes with the refresh pipeline's open/closed (`AppModel`), which
+        // also follows the window, not only these.
+        .onAppear { model.setPanelAppeared(true) }
         .onDisappear {
             model.setPanelAppeared(false)
             showingSettings = false
-            tour.panelClosed()
         }
-    }
-
-    /// A click on the highlighted card or the gear (the cutout lets it through): the user is doing
-    /// what the callout says, so the tour ends there.
-    private func endTourForClick() {
-        if tour.isActive { tour.skip() }
     }
 
     /// The overview's `?` and chip: the tour runs on the overview only.

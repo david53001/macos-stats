@@ -39,7 +39,7 @@ public enum TourCatalog {
         TourStep(.cpu, "How hard it’s working",
                  "The number is now; the graph is the last minute. Click the card to see which apps use it."),
         TourStep(.memory, "Memory in use",
-                 "How much memory apps are using. The dot turns yellow or red when your Mac runs short."),
+                 "How much memory is in use. The dot turns yellow or red when your Mac runs short."),
         TourStep(.network, "Network activity",
                  "↓ is download and ↑ is upload, right now. The graph shows downloads over the last minute."),
         TourStep(.battery, "Battery and time left",
@@ -68,9 +68,8 @@ public enum TourCatalog {
     public static let takeTheTour = "Take the Tour"
     public static let buttons = [noThanks, showMeAround, skipTour, back, next, done, takeTheTour]
 
-    /// Settings → Help.
-    public static let helpRow = "Guided tour"
-    public static let helpCaption = "A short look at what each card shows and where things are."
+    /// Settings → Help (the button beside it says Take the Tour).
+    public static let helpRow = "What each card shows"
 }
 
 /// What the app should do after a tour action.

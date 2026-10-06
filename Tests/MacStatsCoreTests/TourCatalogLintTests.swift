@@ -8,7 +8,7 @@ import Testing
         steps.flatMap { [$0.title, $0.body] } + TourCatalog.buttons + [
             TourCatalog.welcomeTitle, TourCatalog.welcomeBody, TourCatalog.alertsPermission,
             TourCatalog.finderPermission, TourCatalog.welcomeQuestion, TourCatalog.welcomeSubline,
-            TourCatalog.helpRow, TourCatalog.helpCaption,
+            TourCatalog.helpRow,
         ]
     }
 
