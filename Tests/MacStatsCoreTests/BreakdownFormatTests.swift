@@ -62,4 +62,10 @@ import Testing
             }
         }
     }
+
+    @Test func loginwindowCantBeQuit() {
+        #expect(!canQuitProcess(named: "loginwindow"))
+        #expect(canQuitProcess(named: "Dock"))
+        #expect(canQuitProcess(named: "Code Helper (Renderer)"))
+    }
 }

@@ -309,6 +309,7 @@ struct BreakdownView: View {
         let name = isAppItself ? appName
             : process.name ?? apps.name(ofProcess: process.pid, startTime: process.startTime)
         let value = shown(process, in: app)
+        let canQuit = canQuitProcess(named: name)
         // Under its own app, "Google Chrome Helper (Renderer)" reads "Helper (Renderer)": the row
         // shows the part that differs, the tooltip and menu the full name.
         return ProcessRow(process: process, name: processDisplayName(name, inApp: appName), metric: metric,
@@ -318,23 +319,29 @@ struct BreakdownView: View {
             .tooltip([name, "pid \(process.pid)", metric == .cpu ? oneCore(value) : nil].compactMap { $0 }
                 .joined(separator: "\n"))
             .accessibilityActions {
-                Button("Quit") {
-                    if isAppItself { ProcessActions.quit(appPID: app.appPID) }
-                    else { ProcessActions.quit(pid: process.pid, startTime: process.startTime) }
+                if canQuit {
+                    Button("Quit") {
+                        if isAppItself { ProcessActions.quit(appPID: app.appPID) }
+                        else { ProcessActions.quit(pid: process.pid, startTime: process.startTime) }
+                    }
                 }
             }
             .contextMenu {
                 Button("\(name) \u{2014} pid \(process.pid)") {}.disabled(true)
                 if metric == .cpu { oneCoreLine(value) }
                 Divider()
-                Button("Quit") {
-                    if isAppItself { ProcessActions.quit(appPID: app.appPID) }
-                    else { ProcessActions.quit(pid: process.pid, startTime: process.startTime) }
-                }
-                Divider()
-                Button("Force Quit\u{2026}", role: .destructive) {
-                    if isAppItself { ProcessActions.confirmForceQuit(appPID: app.appPID, name: name) }
-                    else { ProcessActions.confirmForceQuit(pid: process.pid, startTime: process.startTime, name: name) }
+                if canQuit {
+                    Button("Quit") {
+                        if isAppItself { ProcessActions.quit(appPID: app.appPID) }
+                        else { ProcessActions.quit(pid: process.pid, startTime: process.startTime) }
+                    }
+                    Divider()
+                    Button("Force Quit\u{2026}", role: .destructive) {
+                        if isAppItself { ProcessActions.confirmForceQuit(appPID: app.appPID, name: name) }
+                        else { ProcessActions.confirmForceQuit(pid: process.pid, startTime: process.startTime, name: name) }
+                    }
+                } else {
+                    Button("Part of macOS: quitting it would log you out") {}.disabled(true)
                 }
             }
     }
@@ -588,7 +595,7 @@ final class AppInfoCache: ObservableObject {
         switch appPID {
         case BreakdownGroup.otherProcesses:
             info = Info(name: "Other processes", icon: nil, symbol: "gearshape.2",
-                        detail: "Background tasks that don\u{2019}t belong to an open app")
+                        detail: "macOS helpers and background tasks that don\u{2019}t belong to an open app")
         case BreakdownGroup.system:
             info = Info(name: "System", icon: nil, symbol: "apple.logo",
                         detail: "macOS itself: the kernel, WindowServer and other system work")

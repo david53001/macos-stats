@@ -43,3 +43,9 @@ public func processDisplayName(_ name: String, inApp app: String) -> String {
 public func formatWatts(_ watts: Double) -> String {
     String(format: watts < 10 ? "%.1f W" : "%.0f W", watts)
 }
+
+/// Whether a process row offers Quit / Force Quit. Not for loginwindow: quitting it logs the user
+/// out. (Other macOS agents, such as the Dock, relaunch by themselves.)
+public func canQuitProcess(named name: String) -> Bool {
+    name != "loginwindow"
+}

@@ -92,6 +92,32 @@ import Testing
         #expect(anchors.fallbacks == [120, 130, 140])
     }
 
+    @Test func macOSAgentsAreNotApps() {
+        // loginwindow, WindowManager (accessory, /System) and universalaccessd (background-only,
+        // /usr/sbin) are neither apps nor fallbacks, so their processes go to "Other processes".
+        let anchors = attributionAnchors([
+            RunningAppInfo(pid: 100, hasBundleIdentifier: true, isBackgroundOnly: false),
+            RunningAppInfo(pid: 420, hasBundleIdentifier: true, isBackgroundOnly: false, isMacOSAgent: true),
+            RunningAppInfo(pid: 624, hasBundleIdentifier: false, isBackgroundOnly: true, isMacOSAgent: true),
+        ])
+        #expect(anchors.apps == [100])
+        #expect(anchors.fallbacks.isEmpty)
+        #expect(owningAppPID(for: 420, parent: { _ in 1 }, responsible: { $0 }, appPIDs: anchors.apps,
+                             fallbackAppPIDs: anchors.fallbacks) == nil)
+    }
+
+    @Test func macOSAgentsAreTheSystemsNonRegularApps() {
+        #expect(isMacOSAgent(path: "/System/Library/CoreServices/loginwindow.app", isRegularApp: false))
+        #expect(isMacOSAgent(path: "/usr/sbin/universalaccessd", isRegularApp: false))
+        #expect(isMacOSAgent(path: "/System/Volumes/Preboot/Cryptexes/App/usr/libexec/AuthenticationServicesAgent",
+                             isRegularApp: false))
+        #expect(!isMacOSAgent(path: "/System/Library/CoreServices/Finder.app", isRegularApp: true))
+        #expect(!isMacOSAgent(path: "/System/Applications/Mail.app", isRegularApp: true))
+        #expect(!isMacOSAgent(path: "/Applications/JVoice.app", isRegularApp: false))       // a menu-bar app
+        #expect(!isMacOSAgent(path: "/usr/local/bin/node", isRegularApp: false))            // npm exec …
+        #expect(!isMacOSAgent(path: nil, isRegularApp: false))
+    }
+
     @Test func cycleTerminates() {
         let parents: [Int32: Int32] = [10: 11, 11: 10]
         #expect(owningAppPID(for: 10, parent: { parents[$0] }, responsible: none, appPIDs: [99]) == nil)

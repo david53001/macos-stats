@@ -564,25 +564,28 @@ final class AppModel: ObservableObject {
 /// `NSRunningApplication` properties asks LaunchServices again after each main run-loop turn,
 /// ~150 µs per app (9 ms for 60 apps here). `NSWorkspace.runningApplications` and
 /// `NSRunningApplication` are documented as safe to read from background threads; the
-/// properties used here (pid, bundle id, activation policy) don't change while an app runs.
+/// properties used here (pid, bundle id and URL, activation policy) don't change while an app runs.
 private final class BreakdownScanSession: @unchecked Sendable {
     private let scanner = BreakdownScanner()
-    /// Running app pid → whether it has a bundle id (`bundleIdentifier` costs ~40 µs per app),
-    /// pruned to the running apps each scan.
-    private var appHasBundleID: [Int32: Bool] = [:]
+    /// Running app pid → whether it has a bundle id (`bundleIdentifier` costs ~40 µs per app) and
+    /// is one of macOS's own agents (`isMacOSAgent`), pruned to the running apps each scan.
+    private var appTraits: [Int32: (hasBundleID: Bool, macOSAgent: Bool)] = [:]
 
     func scan(metric: MacStatsCore.BreakdownMetric) -> BreakdownScanner.Result {
         // GUI apps the user is running = the grouping anchors. Processes no app is responsible
         // for land in "Other processes", so the rows cover all of the user's processes.
-        var hasBundleID: [Int32: Bool] = [:]
+        var traits: [Int32: (hasBundleID: Bool, macOSAgent: Bool)] = [:]
         let anchors = attributionAnchors(NSWorkspace.shared.runningApplications.map { app in
             let pid = Int32(app.processIdentifier)
-            let hasID = appHasBundleID[pid] ?? (app.bundleIdentifier != nil)
-            hasBundleID[pid] = hasID
-            return RunningAppInfo(pid: pid, hasBundleIdentifier: hasID,
-                                  isBackgroundOnly: app.activationPolicy == .prohibited)
+            let policy = app.activationPolicy
+            let known = appTraits[pid] ?? (app.bundleIdentifier != nil,
+                                           isMacOSAgent(path: (app.bundleURL ?? app.executableURL)?.path,
+                                                        isRegularApp: policy == .regular))
+            traits[pid] = known
+            return RunningAppInfo(pid: pid, hasBundleIdentifier: known.hasBundleID,
+                                  isBackgroundOnly: policy == .prohibited, isMacOSAgent: known.macOSAgent)
         })
-        appHasBundleID = hasBundleID
+        appTraits = traits
 
         // Clocks first, then the processes, so the CPU header and the rows cover one interval.
         let time = Date().timeIntervalSinceReferenceDate

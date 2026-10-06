@@ -35,19 +35,34 @@ public struct RunningAppInfo: Equatable {
     public let hasBundleIdentifier: Bool
     /// `activationPolicy == .prohibited`: no Dock icon, no menu bar, no windows of its own.
     public let isBackgroundOnly: Bool
+    /// One of macOS's own agents (`isMacOSAgent`): loginwindow, Dock, WindowManager, universalaccessd…
+    public let isMacOSAgent: Bool
 
-    public init(pid: Int32, hasBundleIdentifier: Bool, isBackgroundOnly: Bool) {
+    public init(pid: Int32, hasBundleIdentifier: Bool, isBackgroundOnly: Bool, isMacOSAgent: Bool = false) {
         self.pid = pid; self.hasBundleIdentifier = hasBundleIdentifier; self.isBackgroundOnly = isBackgroundOnly
+        self.isMacOSAgent = isMacOSAgent
     }
+}
+
+/// True for a running "app" that is part of macOS rather than something the user opened: not a
+/// regular (Dock) app, and installed with the system (`/System/…`, `/usr/…` but not `/usr/local/…`).
+/// macOS registers ~30 such agents as running apps (loginwindow, Dock, Control Centre, WindowManager,
+/// CoreServicesUIAgent, universalaccessd…); listed as apps they filled half of a quiet Mac's CPU
+/// list with internal names and blank icons, and offered Force Quit on loginwindow (a logout).
+/// Finder, Mail or System Settings are regular apps and stay apps.
+public func isMacOSAgent(path: String?, isRegularApp: Bool) -> Bool {
+    guard !isRegularApp, let path else { return false }
+    return path.hasPrefix("/System/") || (path.hasPrefix("/usr/") && !path.hasPrefix("/usr/local/"))
 }
 
 /// Splits the running applications into real apps (regular or accessory, with a bundle id),
 /// which always end an attribution walk, and the rest, which are only a fallback
 /// (`owningAppPID`'s `fallbackAppPIDs`). macOS lists background processes such as Claude's
 /// MCP servers (`npm exec …`, a disclaimed `node`) and widget extensions as running apps too.
+/// macOS's own agents are neither, so their processes land in "Other processes".
 public func attributionAnchors(_ apps: [RunningAppInfo]) -> (apps: Set<Int32>, fallbacks: Set<Int32>) {
     var real = Set<Int32>(), fallbacks = Set<Int32>()
-    for app in apps where app.pid > 0 {
+    for app in apps where app.pid > 0 && !app.isMacOSAgent {
         if app.hasBundleIdentifier && !app.isBackgroundOnly { real.insert(app.pid) } else { fallbacks.insert(app.pid) }
     }
     return (real, fallbacks)
