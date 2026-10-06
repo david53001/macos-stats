@@ -1,0 +1,115 @@
+[20:42:08.215] scan 0: measuring (528 procs, 7.0 ms)
+[20:42:08.726] scan 1: header 76.4% rows-sum 76.40 procs 528 scan 2.7 ms
+   Code                       64%      n=59
+       - yes                            95507 12% (100% core)
+       - yes                            95501 12% (100% core)
+       - yes                            95509 12% (100% core)
+       - yes                            95503 12% (100% core)
+       - swift-driver                   95518 8.6% (69% core)
+       - swift-frontend                 95601 3.8% (30% core)
+   System                     12%      n=0
+   Other processes            0.0%     n=330
+   Claude                     0.0%     n=14
+   Spotify                    0.0%     n=13
+   Finder                     0.0%     n=6
+   Google Chrome              0.0%     n=24
+   Dock                       0.0%     n=3
+   loginwindow                0.0%     n=1
+   WindowManager              0.0%     n=1
+   CoreServicesUIAgent        0.0%     n=3
+   universalaccessd           0.0%     n=1
+[20:42:09.734] scan 2: header 66.3% rows-sum 66.29 procs 528 scan 2.4 ms
+   Code                       63%      n=59
+       - yes                            95503 12% (100% core)
+       - yes                            95507 12% (100% core)
+       - yes                            95509 12% (100% core)
+       - yes                            95501 12% (100% core)
+       - swift-driver                   95518 12% (93% core)
+       - swift-frontend                 95671 0.8% (6% core)
+   System                     3.7%     n=0
+   Claude                     0.0%     n=14
+   Other processes            0.0%     n=330
+   Spotify                    0.0%     n=13
+   Google Chrome              0.0%     n=24
+   Dock Extra                 0.0%     n=3
+   Calendar                   0.0%     n=4
+   Control Centre             0.0%     n=3
+   Notification Centre        0.0%     n=3
+   Terminal                   0.0%     n=1
+   ChatGPTHelper              0.0%     n=1
+[20:42:10.739] scan 3: header 63.0% rows-sum 62.97 procs 528 scan 2.4 ms
+   Code                       63%      n=59
+       - yes                            95501 12% (100% core)
+       - yes                            95507 12% (100% core)
+       - yes                            95509 12% (100% core)
+       - yes                            95503 12% (100% core)
+       - swift-driver                   95518 11% (85% core)
+       - swift-frontend                 95675 1.8% (14% core)
+   System                     0.3%     n=0
+   Spotify                    0.0%     n=13
+   Other processes            0.0%     n=330
+   Claude                     0.0%     n=14
+   Google Chrome              0.0%     n=24
+   coreautha                  0.0%     n=3
+   JVoice                     0.0%     n=2
+   Spotlight                  0.0%     n=4
+   BetterScreenshot           0.0%     n=3
+   ChatGPTHelper              0.0%     n=1
+   loginwindow                0.0%     n=1
+[20:42:11.748] scan 4: header 63.8% rows-sum 63.78 procs 528 scan 2.4 ms
+   Code                       63%      n=59
+       - yes                            95501 12% (100% core)
+       - yes                            95507 12% (100% core)
+       - yes                            95509 12% (100% core)
+       - yes                            95503 12% (99% core)
+       - swift-driver                   95518 8.0% (64% core)
+       - swift-frontend                 95676 4.4% (35% core)
+   System                     1.2%     n=0
+   Other processes            0.0%     n=330
+   Google Chrome              0.0%     n=24
+   Claude                     0.0%     n=14
+   Spotify                    0.0%     n=13
+   loginwindow                0.0%     n=1
+   Dock                       0.0%     n=3
+   Finder                     0.0%     n=6
+   ChatGPTHelper              0.0%     n=1
+   WindowManager              0.0%     n=1
+   CoreServicesUIAgent        0.0%     n=3
+[20:42:12.756] scan 5: header 64.3% rows-sum 64.35 procs 528 scan 2.5 ms
+   Code                       63%      n=59
+       - yes                            95503 12% (100% core)
+       - yes                            95507 12% (100% core)
+       - yes                            95509 12% (100% core)
+       - yes                            95501 12% (100% core)
+       - swift-frontend                 95679 8.9% (72% core)
+       - swift-driver                   95518 3.5% (28% core)
+   System                     1.1%     n=0
+   Other processes            0.0%     n=330
+   Claude                     0.0%     n=14
+   Spotify                    0.0%     n=13
+   MacStats                   0.0%     n=1
+   Google Chrome              0.0%     n=24
+   Finder                     0.0%     n=6
+   universalaccessd           0.0%     n=1
+   Notification Centre        0.0%     n=3
+   Dock Extra                 0.0%     n=3
+   Control Centre             0.0%     n=3
+[20:42:13.761] scan 6: header 64.0% rows-sum 64.04 procs 527 scan 2.4 ms
+   Code                       59%      n=58
+       - yes                            95507 12% (100% core)
+       - yes                            95509 12% (100% core)
+       - yes                            95501 12% (100% core)
+       - yes                            95503 12% (100% core)
+       - swift-driver                   95518 8.2% (66% core)
+       - claude                         14424 0.3% (3% core)
+   System                     5.3%     n=0
+   BetterScreenshot           0.1%     n=3
+   Google Chrome              0.0%     n=24
+   Claude                     0.0%     n=14
+   Spotify                    0.0%     n=13
+   Other processes            0.0%     n=330
+   ChatGPTHelper              0.0%     n=1
+   JVoice                     0.0%     n=2
+   Spotlight                  0.0%     n=4
+   coreautha                  0.0%     n=3
+   loginwindow                0.0%     n=1

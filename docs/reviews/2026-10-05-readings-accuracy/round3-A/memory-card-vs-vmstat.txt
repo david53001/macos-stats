@@ -1,0 +1,32 @@
+MacStats card: used 8.87 GiB / 16.0; app 4.98 wired 1.92 compressed 1.97 (data 4.73) pressure normal
+raw: VMRaw(free: 57317, active: 354492, inactive: 344350, wired: 125599, compressed: 129257, internal: 329865, purgeable: 3268, pageSize: 16384, compressedOriginal: 310062)
+user processes: 432, footprint sum 6.13 GiB
+14126 352.0177307128906
+14424 338.7053909301758
+14109 224.89181518554688
+14112 219.04925537109375
+2465 213.40714263916016
+1393 194.14369201660156
+Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                                    42184.
+Pages active:                                 354405.
+Pages inactive:                               344360.
+Pages speculative:                             15408.
+Pages throttled:                                   0.
+Pages wired down:                             125583.
+Pages purgeable:                                3269.
+"Translation faults":                      475754090.
+Pages copy-on-write:                        45848289.
+Pages zero filled:                         235352813.
+Pages reactivated:                          10076969.
+Pages purged:                                2245485.
+File-backed pages:                            384358.
+Anonymous pages:                              329815.
+Pages stored in compressor:                   310062.
+Pages occupied by compressor:                 129257.
+Decompressions:                              4340390.
+Compressions:                                7430088.
+Pageins:                                    10656017.
+Pageouts:                                      79480.
+Swapins:                                        3232.
+Swapouts:                                      12480.

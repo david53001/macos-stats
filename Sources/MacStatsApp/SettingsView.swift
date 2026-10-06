@@ -45,8 +45,7 @@ private struct AppearanceCard: View {
                 Text("Opacity").font(.callout)
                 Spacer()
                 Button("Default") { opacity = UIOpacity.defaultValue }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(SubtleButtonStyle())
                     .disabled(UIOpacity.isDefault(opacity))
             }
 

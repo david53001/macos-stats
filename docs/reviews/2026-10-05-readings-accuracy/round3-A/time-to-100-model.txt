@@ -1,0 +1,7 @@
+raw 20% at 2100 mA -> to 100: 154 min | to 85: 95 min
+raw 50% at 1900 mA -> to 100: 110 min | to 85: 53 min
+raw 79% at 1500 mA -> to 100: 70 min | to 85: 10 min
+raw 85% at 1100 mA -> to 100: 58 min | to 85: nil
+raw 90% at 800 mA -> to 100: 43 min | to 85: nil
+raw 95% at 500 mA -> to 100: 22 min | to 85: nil
+raw 98% at 300 mA -> to 100: 5 min | to 85: nil

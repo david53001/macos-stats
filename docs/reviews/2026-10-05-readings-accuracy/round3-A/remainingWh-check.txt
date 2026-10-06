@@ -1,0 +1,8 @@
+09-28 00:10 raw 3697->2009 mAh, V 12568->11504: delivered 20.0 Wh, model difference 20.5 Wh (+2.6%), model remaining at start 42.6 Wh
+09-29 07:25 raw 3687->933 mAh, V 12575->11133: delivered 32.0 Wh, model difference 32.4 Wh (+1.5%), model remaining at start 42.5 Wh
+09-30 07:24 raw 3974->2800 mAh, V 12794->11847: delivered 14.5 Wh, model difference 15.0 Wh (+3.8%), model remaining at start 46.3 Wh
+09-30 15:24 raw 3718->2757 mAh, V 12613->11839: delivered 11.7 Wh, model difference 12.2 Wh (+4.3%), model remaining at start 43.0 Wh
+10-01 07:27 raw 3701->1746 mAh, V 12584->11392: delivered 23.2 Wh, model difference 23.6 Wh (+1.6%), model remaining at start 42.7 Wh
+10-02 15:11 raw 3717->1627 mAh, V 12663->11397: delivered 24.6 Wh, model difference 25.2 Wh (+2.4%), model remaining at start 43.0 Wh
+10-04 21:38 raw 3732->2266 mAh, V 12615->11591: delivered 17.6 Wh, model difference 18.1 Wh (+2.8%), model remaining at start 43.1 Wh
+10-05 18:37 raw 3233->2318 mAh, V 12672->11604: delivered 10.9 Wh, model difference 11.8 Wh (+9.0%), model remaining at start 37.5 Wh

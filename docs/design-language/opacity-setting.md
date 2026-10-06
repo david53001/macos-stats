@@ -39,7 +39,7 @@ go back to."
 **What the user sees**
 - A section/card titled **Appearance** (reuse an existing one if the app already has it) containing a row
   **Opacity** with a native `Slider` (0…1, continuous) whose ends are labelled with small `.caption`
-  `.secondary` text **"Transparent"** (left) and **"Opaque"** (right), and a small bordered **"Default"** button
+  `.secondary` text **"Transparent"** (left) and **"Opaque"** (right), and a small bordered **"Default"** button (MacStats draws it with its card-style `SubtleButtonStyle`, so it matches the panel's other squircle buttons)
   that resets it (disabled while already at the default). One-line help text under it, e.g.
   "How much of what's behind the app shows through its windows and panels."
 - Changes apply **live** to every open surface (no restart, no Apply button) and persist in `UserDefaults`.

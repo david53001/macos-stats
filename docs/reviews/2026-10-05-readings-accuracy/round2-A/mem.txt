@@ -1,0 +1,56 @@
+card used=10.29 GiB  total=16.00 GiB  pressure=normal  shown=10.3 / 16.0 GB
+vm: page=16384 free=60771 active=333706 inactive=326242 wired=105840 compressor=184557 internal=388854 purgeable=4917 compOrig=460555
+inUseAtFullSize=14.50 GiB
+rows sum=14.50 GiB  user procs=480  sum footprint=9.34 GiB
+  [0] Code pid=14106 n=30 1991 MB
+      Code Helper (Plugin) 14126 352 MB
+      claude 14424 334 MB
+      SourceKitService 26561 243 MB
+      Code Helper (Renderer) 14112 235 MB
+  [1] Google Chrome pid=52473 n=15 1034 MB
+      Google Chrome 52473 712 MB
+      Google Chrome Helper 52479 103 MB
+      Google Chrome Helper 52480 43 MB
+      MTLCompilerService 52603 40 MB
+  [2] Claude pid=84068 n=16 1033 MB
+      Claude Helper (Renderer) 84088 407 MB
+      Claude 84068 175 MB
+      Claude Helper 84073 137 MB
+      node 84103 97 MB
+  [3] Spotify pid=69346 n=13 903 MB
+      Spotify 69346 261 MB
+      Spotify Helper (Renderer) 69387 249 MB
+      Spotify Helper 69380 141 MB
+      Spotify Helper 69390 76 MB
+  [4] Dock pid=1309 n=3 243 MB
+      DockHelper 2465 193 MB
+      Dock 1309 48 MB
+      PlugInLibraryService 53494 2 MB
+  [5] Spotlight pid=1393 n=4 232 MB
+      Spotlight 1393 192 MB
+      MTLCompilerService 1401 18 MB
+      MTLCompilerService 1400 16 MB
+      StocksKitService 1482 6 MB
+  [6] BetterScreenshot pid=9268 n=3 186 MB
+      BetterScreenshot 9268 156 MB
+      MTLCompilerService 41505 17 MB
+      MTLCompilerService 41506 13 MB
+  [7] JVoice pid=12175 n=2 143 MB
+      JVoice 12175 132 MB
+      com.apple.SafariPlatformSupport 12261 12 MB
+  [8] Calendar pid=47877 n=4 136 MB
+      Calendar 47877 104 MB
+      MTLCompilerService 47879 16 MB
+      MTLCompilerService 47878 14 MB
+      com.apple.CalendarWeatherKitSer 47880 3 MB
+  [9] Finder pid=1311 n=6 134 MB
+      Finder 1311 85 MB
+      MTLCompilerService 8838 18 MB
+      MTLCompilerService 8839 17 MB
+      QuickLookUIService 1316 8 MB
+  [57] System pid=-2 n=0 5288 MB
+  [58] Other processes pid=-1 n=322 2621 MB
+      mediaanalysisd 1154 99 MB
+      TextThumbnailExtension 55465 62 MB
+      WallpaperImageExtension 1328 56 MB
+      photoanalysisd 1153 39 MB

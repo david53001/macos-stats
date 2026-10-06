@@ -1,0 +1,23 @@
+MacStats card: used 8.79 GB (app 5.02 wired 1.79 compressed 1.97) / 16.0 GB, pressure normal
+raw pages: internal=332581 purgeable=3486 wired=117502 compressed=129213 active=359576 inactive=345535 free=59268; sysctl pageable_internal=332254 purgeable=3486
+AM-formula via sysctl pageable_internal: app 5.02, used 8.78 GB
+Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                                    36097.
+Pages active:                                 359587.
+Pages inactive:                               345535.
+Pages speculative:                             23203.
+Pages throttled:                                   0.
+Pages wired down:                             117506.
+Pages purgeable:                                3486.
+"Translation faults":                      478125825.
+Pages copy-on-write:                        46043295.
+Pages zero filled:                         236221189.
+Pages reactivated:                          10077092.
+Pages purged:                                2248655.
+File-backed pages:                            395733.
+Anonymous pages:                              332592.
+Pages stored in compressor:                   309917.
+Pages occupied by compressor:                 129213.
+Decompressions:                              4340535.
+Compressions:                                7430088.
+Pageins:                                    10689299.

@@ -1,0 +1,80 @@
+Processes: 770 total, 4 running, 766 sleeping, 3470 threads 
+2026/10/05 21:42:57
+Load Avg: 2.21, 1.93, 1.85 
+CPU usage: 10.88% user, 45.96% sys, 43.14% idle 
+SharedLibs: 579M resident, 118M data, 95M linkedit.
+MemRegions: 378822 total, 4169M resident, 341M private, 1548M shared.
+PhysMem: 14G used (1655M wired, 2886M compressor), 990M unused.
+VM: 336T vsize, 6144M framework vsize, 3212(0) swapins, 12480(0) swapouts.
+Networks: packets: 7252979/7461M in, 2805838/1957M out.
+Disks: 4335344/126G read, 3382332/97G written.
+
+PID    COMMAND          %CPU PPID
+99816  XProtectPluginSe 0.0  1   
+99084  contactsdonation 0.0  1   
+98816  MTLCompilerServi 0.0  1   
+98815  MTLCompilerServi 0.0  1   
+98812  iconservicesagen 0.0  1   
+98770  dirhelper        0.0  1   
+98746  cfprefsd         0.0  1   
+98744  distnoted        0.0  1   
+Processes: 775 total, 5 running, 770 sleeping, 3474 threads 
+2026/10/05 21:42:59
+Load Avg: 2.21, 1.93, 1.85 
+CPU usage: 5.44% user, 24.56% sys, 69.99% idle 
+SharedLibs: 579M resident, 118M data, 95M linkedit.
+MemRegions: 542 total, 77M resident, 341M private, 1731M shared.
+PhysMem: 15G used (1657M wired, 2886M compressor), 904M unused.
+VM: 338T vsize, 6144M framework vsize, 3212(0) swapins, 12480(0) swapouts.
+Networks: packets: 7253021/7461M in, 2805879/1957M out.
+Disks: 4335344/126G read, 3382339/97G written.
+
+PID    COMMAND          %CPU PPID 
+37878  yes              88.4 37869
+37877  yes              88.4 37869
+14424  2.1.289          6.3  14138
+37879  top              2.6  37869
+0      kernel_task      2.4  0    
+697    com.apple.Driver 0.6  1    
+9268   BetterScreenshot 0.5  1    
+574    locationd        0.4  1    
+Processes: 775 total, 5 running, 770 sleeping, 3507 threads 
+2026/10/05 21:43:01
+Load Avg: 2.35, 1.96, 1.87 
+CPU usage: 14.39% user, 25.36% sys, 60.24% idle 
+SharedLibs: 579M resident, 118M data, 95M linkedit.
+MemRegions: 112 total, 34M resident, 341M private, 1734M shared.
+PhysMem: 15G used (1695M wired, 2886M compressor), 871M unused.
+VM: 338T vsize, 6144M framework vsize, 3212(0) swapins, 12480(0) swapouts.
+Networks: packets: 7253028/7461M in, 2805885/1957M out.
+Disks: 4335364/126G read, 3382350/97G written.
+
+PID    COMMAND          %CPU PPID 
+37877  yes              99.9 37869
+37878  yes              99.9 37869
+628    airportd         3.0  1    
+0      kernel_task      2.1  0    
+37879  top              1.9  37869
+1073   WiFiAgent        1.7  1    
+14424  2.1.289          1.2  14138
+697    com.apple.Driver 0.6  1    
+Processes: 774 total, 5 running, 769 sleeping, 3518 threads 
+2026/10/05 21:43:04
+Load Avg: 2.35, 1.96, 1.87 
+CPU usage: 14.52% user, 24.60% sys, 60.86% idle 
+SharedLibs: 579M resident, 118M data, 95M linkedit.
+MemRegions: 262 total, 90M resident, 341M private, 1736M shared.
+PhysMem: 15G used (1667M wired, 2886M compressor), 842M unused.
+VM: 337T vsize, 6144M framework vsize, 3212(0) swapins, 12480(0) swapouts.
+Networks: packets: 7253048/7461M in, 2805903/1957M out.
+Disks: 4335375/126G read, 3382354/97G written.
+
+PID    COMMAND          %CPU PPID 
+37878  yes              99.9 37869
+37877  yes              99.9 37869
+0      kernel_task      2.0  0    
+37879  top              1.9  37869
+14424  2.1.289          1.0  14138
+704    com.apple.geod   0.8  1    
+9268   BetterScreenshot 0.6  1    
+697    com.apple.Driver 0.5  1    

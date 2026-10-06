@@ -1,0 +1,27 @@
+22:59:46.32 scan0 6.0 ms measuring=true
+22:59:46.84 scan1 5.0 ms header=0.7% rowsum=0.04 W rows=53
+   Code [14106] 0.04 W procs=31
+22:59:47.85 scan2 1.3 ms header=10.8% rowsum=2.23 W rows=53
+   Code [14106] 2.23 W procs=36
+      - yes 91772 1.11 W
+      - yes 91774 1.10 W
+22:59:48.85 scan3 1.1 ms header=33.2% rowsum=8.04 W rows=53
+   Code [14106] 8.04 W procs=36
+      - yes 91772 4.01 W
+      - yes 91774 3.96 W
+22:59:49.86 scan4 1.2 ms header=26.4% rowsum=7.51 W rows=53
+   Code [14106] 7.51 W procs=36
+      - yes 91772 3.74 W
+      - yes 91774 3.69 W
+22:59:50.87 scan5 1.3 ms header=26.7% rowsum=7.45 W rows=53
+   Code [14106] 7.45 W procs=36
+      - yes 91772 3.65 W
+      - yes 91774 3.64 W
+22:59:51.88 scan6 1.0 ms header=26.1% rowsum=6.97 W rows=53
+   Code [14106] 6.97 W procs=36
+      - yes 91772 3.49 W
+      - yes 91774 3.43 W
+22:59:52.90 scan7 2.6 ms header=27.9% rowsum=7.11 W rows=53
+   Code [14106] 7.11 W procs=36
+      - yes 91772 3.41 W
+      - yes 91774 3.35 W

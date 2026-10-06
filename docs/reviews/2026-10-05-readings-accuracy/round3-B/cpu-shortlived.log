@@ -1,0 +1,56 @@
+22:54:30.02 scan0 5.7 ms measuring=true
+22:54:30.54 scan1 5.5 ms header=2.4% rowsum=2.4% rows=54
+   Code [14106] 1.7% (AM 14%) procs=37
+   System [-2] 0.7% (AM 5%) procs=0
+   System [-2] 0.7% (AM 5%) procs=0
+22:54:31.56 scan2 3.4 ms header=4.2% rowsum=4.2% rows=54
+   System [-2] 2.7% (AM 22%) procs=0
+   Code [14106] 1.4% (AM 11%) procs=38
+   System [-2] 2.7% (AM 22%) procs=0
+22:54:32.57 scan3 1.0 ms header=28.1% rowsum=28% rows=54
+   Code [14106] 25% (AM 197%) procs=42
+      - bash 85757 11% (AM 89%)
+      - bash 85756 11% (AM 89%)
+   System [-2] 3.4% (AM 27%) procs=0
+   System [-2] 3.4% (AM 27%) procs=0
+22:54:33.58 scan4 1.0 ms header=26.7% rowsum=27% rows=54
+   Code [14106] 24% (AM 195%) procs=42
+      - bash 85756 12% (AM 96%)
+      - bash 85757 12% (AM 95%)
+   System [-2] 2.0% (AM 16%) procs=0
+   System [-2] 2.0% (AM 16%) procs=0
+22:54:34.59 scan5 1.0 ms header=27.1% rowsum=27% rows=54
+   Code [14106] 24% (AM 195%) procs=42
+      - bash 85756 12% (AM 95%)
+      - bash 85757 12% (AM 95%)
+      - bash 86256 0.1% (AM 1%)
+   System [-2] 2.6% (AM 21%) procs=0
+   System [-2] 2.6% (AM 21%) procs=0
+22:54:35.59 scan6 1.0 ms header=27.4% rowsum=27% rows=54
+   Code [14106] 25% (AM 200%) procs=42
+      - bash 85757 12% (AM 96%)
+      - bash 85756 12% (AM 95%)
+   System [-2] 2.5% (AM 20%) procs=0
+   System [-2] 2.5% (AM 20%) procs=0
+22:54:36.61 scan7 1.0 ms header=27.2% rowsum=27% rows=54
+   Code [14106] 25% (AM 197%) procs=42
+      - bash 85756 12% (AM 95%)
+      - bash 85757 12% (AM 95%)
+   System [-2] 2.5% (AM 20%) procs=0
+   System [-2] 2.5% (AM 20%) procs=0
+22:54:37.61 scan8 1.0 ms header=28.0% rowsum=28% rows=54
+   Code [14106] 26% (AM 205%) procs=42
+      - bash 85757 12% (AM 95%)
+      - bash 85756 12% (AM 95%)
+      - bash 86764 0.1% (AM 1%)
+   System [-2] 2.3% (AM 19%) procs=0
+   System [-2] 2.3% (AM 19%) procs=0
+22:54:38.62 scan9 1.0 ms header=28.1% rowsum=28% rows=54
+   Code [14106] 26% (AM 207%) procs=42
+      - bash 85756 12% (AM 95%)
+      - bash 85757 12% (AM 95%)
+   System [-2] 2.0% (AM 16%) procs=0
+   System [-2] 2.0% (AM 16%) procs=0
+real 7.76
+user 11.71
+sys 2.43

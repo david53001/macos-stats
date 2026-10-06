@@ -1,0 +1,60 @@
+=== scan 0 at 21:45:04.567 procs=487 measuring=false header=-
+Memory Used (card/header) = 10.310 GiB; inUseAtFullSize = 14.522 GiB; pressure=normal
+VMRaw: VMRaw(free: 59703, active: 334215, inactive: 326135, wired: 106631, compressed: 184569, internal: 389423, purgeable: 4950, pageSize: 16384, compressedOriginal: 460581)
+    1978.8 MiB  Code [14106] n=37
+           351.4 MiB  Code Helper (Plugin) [14126]
+           327.5 MiB  claude [14424]
+           242.8 MiB  SourceKitService [26561]
+           228.3 MiB  Code Helper (Renderer) [14112]
+           135.6 MiB  sourcekit-lsp [14330]
+           105.3 MiB  Code Helper [14109]
+            90.4 MiB  Code [14106]
+            66.7 MiB  Code Helper [14123]
+            57.9 MiB  node [14509]
+            54.8 MiB  Code Helper [14125]
+            54.2 MiB  Code Helper [14124]
+    1034.4 MiB  Google Chrome [52473] n=15
+           712.0 MiB  Google Chrome [52473]
+           102.6 MiB  Google Chrome Helper [52479]
+    1032.2 MiB  Claude [84068] n=16
+           406.3 MiB  Claude Helper (Renderer) [84088]
+           174.1 MiB  Claude [84068]
+           137.0 MiB  Claude Helper [84073]
+            97.5 MiB  node [84103]
+            80.1 MiB  node [84122]
+     902.6 MiB  Spotify [69346] n=13
+           261.2 MiB  Spotify [69346]
+           248.7 MiB  Spotify Helper (Renderer) [69387]
+           141.0 MiB  Spotify Helper [69380]
+            76.1 MiB  Spotify Helper [69390]
+            57.9 MiB  Spotify Helper (Renderer) [69386]
+     242.5 MiB  Dock [1309] n=3
+           193.0 MiB  DockHelper [2465]
+     232.3 MiB  Spotlight [1393] n=4
+           192.1 MiB  Spotlight [1393]
+     186.0 MiB  BetterScreenshot [9268] n=3
+           155.8 MiB  BetterScreenshot [9268]
+     143.4 MiB  JVoice [12175] n=2
+           131.5 MiB  JVoice [12175]
+     136.3 MiB  Calendar [47877] n=4
+           103.8 MiB  Calendar [47877]
+     134.1 MiB  Finder [1311] n=6
+            85.4 MiB  Finder [1311]
+      94.0 MiB  Notification Centre [1202] n=3
+            57.2 MiB  NotificationCenter [1202]
+      91.6 MiB  Control Centre [1168] n=3
+            62.2 MiB  ControlCenter [1168]
+      53.1 MiB  Dock Extra [1342] n=3
+      48.9 MiB  Terminal [83798] n=1
+      45.3 MiB  loginwindow [602] n=1
+      44.2 MiB  coreautha [29110] n=3
+      43.4 MiB  chronod [1203] n=3
+      29.3 MiB  photolibraryd [995] n=3
+      22.9 MiB  WebThumbnailExtension Graphics and Media [55467] n=1
+      20.8 MiB  SoftwareUpdateNotificationManager [1427] n=2
+      18.6 MiB  ChatGPTHelper [1419] n=1
+      18.1 MiB  Wallpaper [1315] n=1
+      17.9 MiB  CalendarWidgetExtension [1296] n=1
+      17.3 MiB  Accessibility [1081] n=1
+      15.9 MiB  ShortcutsWidgetExtension [1286] n=1
+      15.4 MiB  CursorUIViewService [1332] n=1

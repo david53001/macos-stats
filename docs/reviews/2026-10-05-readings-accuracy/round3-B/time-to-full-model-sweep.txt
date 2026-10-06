@@ -1,0 +1,11 @@
+raw 20% at 2100 mA: to100=154 to85=95 to80=86
+raw 50% at 2000 mA: to100=107 to85=50 to80=41
+raw 70% at 1950 mA: to100=75 to85=20 to80=13
+raw 79% at 1900 mA: to100=62 to85=8 to80=1
+raw 85% at 1500 mA: to100=51 to85=nil to80=nil
+raw 90% at 1000 mA: to100=40 to85=nil to80=nil
+raw 93% at 700 mA: to100=31 to85=nil to80=nil
+raw 95% at 500 mA: to100=22 to85=nil to80=nil
+raw 97% at 300 mA: to100=8 to85=nil to80=nil
+raw 98% at 230 mA: to100=1 to85=nil to80=nil
+resume at raw 3482 to 80: nil

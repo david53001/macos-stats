@@ -1,0 +1,5 @@
+no prior (fresh install): expected 3.20 W -> 9h11m
+prior 4.15 W / 663 s (app's persisted value now): expected 3.32 W -> 8h51m
+prior 5.5 W / 3 h: expected 3.75 W -> 7h51m
+prior 2.0 W / 3 h: expected 2.88 W -> 10h12m
+ground truth: 29.41 Wh / 3.32 W measured average = 8h51m

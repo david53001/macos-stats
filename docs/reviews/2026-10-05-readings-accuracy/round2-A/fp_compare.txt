@@ -1,0 +1,7 @@
+14126 harness=352.0 MB  footprint: Code Helper (Plugin) [14126]: 64-bit    Footprint: 352 MB (16384 bytes per page)
+14424 harness=333.6 MB  footprint: claude [14424]: 64-bit    Footprint: 334 MB (16384 bytes per page)
+52473 harness=711.8 MB  footprint: Google Chrome [52473]: 64-bit    Footprint: 712 MB (16384 bytes per page)
+84088 harness=406.7 MB  footprint: Claude Helper (Renderer) [84088]: 64-bit    Footprint: 407 MB (16384 bytes per page)
+69346 harness=261.5 MB  footprint: Spotify [69346]: 64-bit    Footprint: 261 MB (16384 bytes per page)
+1309 harness=47.6 MB  footprint: Dock [1309]: 64-bit    Footprint: 48 MB (16384 bytes per page)
+35780 harness=12.5 MB  footprint: MacStats [35780]: 64-bit    Footprint: 13 MB (16384 bytes per page)

@@ -1,0 +1,82 @@
+[22:58:07.396] scan 0 5.7 ms procs 433 rows-sum 0.00 W
+[22:58:07.910] scan 1 1.2 ms procs 433 rows-sum 8.01 W
+   Code                        8.00 W  n=38
+        yes  91083   12.5% ( 100% 1-core)       1 MiB
+        yes  91086   12.5% ( 100% 1-core)       1 MiB
+        claude  14424    0.2% (   1% 1-core)     339 MiB
+        h  91090    0.1% (   1% 1-core)       3 MiB
+        Code Helper (Renderer)  14112    0.1% (   1% 1-core)     228 MiB
+        Code Helper (Plugin)  14126    0.0% (   0% 1-core)     352 MiB
+   Other processes             0.00 W  n=314
+   Finder                      0.00 W  n=6
+   BetterScreenshot            0.00 W  n=3
+   JVoice                      0.00 W  n=2
+   loginwindow                 0.00 W  n=1
+   WindowManager               0.00 W  n=1
+   CoreServicesUIAgent         0.00 W  n=3
+   universalaccessd            0.00 W  n=1
+[22:58:08.922] scan 2 1.2 ms procs 433 rows-sum 7.42 W
+   Code                        7.41 W  n=38
+        yes  91083   12.3% (  99% 1-core)       1 MiB
+        yes  91086   12.3% (  99% 1-core)       1 MiB
+        Code Helper (Renderer)  14112    1.9% (  15% 1-core)     222 MiB
+        claude  14424    0.1% (   1% 1-core)     339 MiB
+        Code Helper  14109    0.1% (   1% 1-core)     225 MiB
+        codex  14480    0.0% (   0% 1-core)      25 MiB
+   BetterScreenshot            0.00 W  n=3
+   Other processes             0.00 W  n=314
+   Dock                        0.00 W  n=3
+   Finder                      0.00 W  n=6
+   loginwindow                 0.00 W  n=1
+   ChatGPTHelper               0.00 W  n=1
+   WindowManager               0.00 W  n=1
+   CoreServicesUIAgent         0.00 W  n=3
+[22:58:09.935] scan 3 1.7 ms procs 433 rows-sum 6.96 W
+   Code                        6.96 W  n=38
+        yes  91083   12.5% ( 100% 1-core)       1 MiB
+        yes  91086   12.5% ( 100% 1-core)       1 MiB
+        claude  14424    0.2% (   1% 1-core)     339 MiB
+        Code Helper (Renderer)  14112    0.1% (   1% 1-core)     223 MiB
+        Code Helper  14109    0.1% (   0% 1-core)     223 MiB
+        h  91090    0.0% (   0% 1-core)       4 MiB
+   Other processes             0.00 W  n=314
+   MacStats                    0.00 W  n=1
+   SoftwareUpdateNotification  0.00 W  n=2
+   Control Centre              0.00 W  n=3
+   Dock Extra                  0.00 W  n=3
+   Notification Centre         0.00 W  n=3
+   ChatGPTHelper               0.00 W  n=1
+   loginwindow                 0.00 W  n=1
+[22:58:10.947] scan 4 1.0 ms procs 433 rows-sum 7.03 W
+   Code                        7.03 W  n=38
+        yes  91086   12.5% ( 100% 1-core)       1 MiB
+        yes  91083   12.5% ( 100% 1-core)       1 MiB
+        claude  14424    0.5% (   4% 1-core)     338 MiB
+        Code Helper  14133    0.4% (   3% 1-core)      35 MiB
+        Code  14106    0.3% (   3% 1-core)      87 MiB
+        Code Helper (Renderer)  14112    0.1% (   1% 1-core)     217 MiB
+   Other processes             0.00 W  n=314
+   Spotlight                   0.00 W  n=4
+   JVoice                      0.00 W  n=2
+   BetterScreenshot            0.00 W  n=3
+   coreautha                   0.00 W  n=3
+   ChatGPTHelper               0.00 W  n=1
+   loginwindow                 0.00 W  n=1
+   WindowManager               0.00 W  n=1
+[22:58:11.951] scan 5 1.1 ms procs 433 rows-sum 6.97 W
+   Code                        6.97 W  n=38
+        yes  91083   12.5% ( 100% 1-core)       1 MiB
+        yes  91086   12.5% ( 100% 1-core)       1 MiB
+        Code  14106    0.4% (   3% 1-core)      88 MiB
+        claude  14424    0.3% (   2% 1-core)     338 MiB
+        Code Helper (Renderer)  14112    0.1% (   1% 1-core)     220 MiB
+        Code Helper  14109    0.1% (   1% 1-core)     225 MiB
+   Other processes             0.00 W  n=314
+   ChatGPTHelper               0.00 W  n=1
+   Finder                      0.00 W  n=6
+   loginwindow                 0.00 W  n=1
+   Dock                        0.00 W  n=3
+   WindowManager               0.00 W  n=1
+   CoreServicesUIAgent         0.00 W  n=3
+   universalaccessd            0.00 W  n=1
+scan cost ms: mean 1.23 max 1.65

@@ -1,0 +1,19 @@
+ut=1791225689 Power(last min)= 1.84 W  inst= 1.84  VxA= 1.97  short=- recent=- typical=3.55 expected=3.55 sessAvg=-  remWh=26.79  MacStats left=7h33m  macOS=748 min  health=99% temp=30
+ut=1791225749 Power(last min)= 4.73 W  inst= 2.13  VxA= 2.49  short=4.73 recent=4.73 typical=3.57 expected=4.29 sessAvg=4.73  remWh=26.25  MacStats left=7h22m  macOS=268 min  health=98% temp=30
+ut=1791225809 Power(last min)= 5.26 W  inst=13.52  VxA=13.95  short=5.02 recent=5.00 typical=3.60 expected=4.50 sessAvg=5.00  remWh=25.95  MacStats left=5h46m  macOS=214 min  health=98% temp=30
+ut=1791225857 Power(last min)= 4.96 W  inst=15.73  VxA=15.67  short=5.00 recent=4.99 typical=3.62 expected=4.51 sessAvg=4.99  remWh=25.86  MacStats left=5h44m  macOS=224 min  health=98% temp=30
+ut=1791225917 Power(last min)= 3.37 W  inst= 1.85  VxA= 1.99  short=4.45 recent=4.54 typical=3.61 expected=4.17 sessAvg=4.56  remWh=26.43  MacStats left=6h20m  macOS=626 min  health=99% temp=30
+ut=1791225977 Power(last min)= 4.43 W  inst= 1.95  VxA= 1.86  short=4.44 recent=4.52 typical=3.63 expected=4.18 sessAvg=4.53  remWh=26.26  MacStats left=6h17m  macOS=516 min  health=99% temp=30
+ut=1791226037 Power(last min)= 3.42 W  inst= 1.88  VxA= 1.77  short=4.17 recent=4.31 typical=3.62 expected=4.01 sessAvg=4.34  remWh=26.28  MacStats left=6h33m  macOS=599 min  health=99% temp=30
+ut=1791226097 Power(last min)= 2.79 W  inst= 9.70  VxA= 5.72  short=3.84 recent=4.07 typical=3.61 expected=3.79 sessAvg=4.11  remWh=26.07  MacStats left=6h53m  macOS=363 min  health=99% temp=30
+ut=1791226157 Power(last min)= 4.39 W  inst= 9.60  VxA= 9.34  short=3.96 recent=4.11 typical=3.62 expected=3.88 sessAvg=4.15  remWh=25.92  MacStats left=6h41m  macOS=344 min  health=99% temp=30
+ut=1791226217 Power(last min)= 3.46 W  inst= 1.77  VxA= 2.01  short=3.85 recent=4.03 typical=3.62 expected=3.81 sessAvg=4.07  remWh=26.16  MacStats left=6h52m  macOS=660 min  health=99% temp=30
+ut=1791226277 Power(last min)= 3.65 W  inst= 2.21  VxA= 1.95  short=3.81 recent=3.98 typical=3.62 expected=3.78 sessAvg=4.03  remWh=25.96  MacStats left=6h52m  macOS=510 min  health=99% temp=30
+ut=1791226337 Power(last min)= 3.49 W  inst= 2.08  VxA= 1.77  short=3.74 recent=3.93 typical=3.62 expected=3.74 sessAvg=3.98  remWh=25.97  MacStats left=6h57m  macOS=568 min  health=99% temp=30
+ut=1791226397 Power(last min)= 2.08 W  inst= 1.86  VxA= 1.86  short=3.41 recent=3.74 typical=3.59 expected=3.51 sessAvg=3.82  remWh=26.07  MacStats left=7h26m  macOS=804 min  health=99% temp=30
+ut=1791226460 Power(last min)= 3.61 W  inst= 2.73  VxA= 8.76  short=3.45 recent=3.73 typical=3.59 expected=3.53 sessAvg=3.80  remWh=25.61  MacStats left=7h15m  macOS=391 min  health=99% temp=30
+ut=1791226520 Power(last min)= 3.03 W  inst= 1.95  VxA= 1.91  short=3.37 recent=3.67 typical=3.58 expected=3.47 sessAvg=3.74  remWh=25.94  MacStats left=7h28m  macOS=756 min  health=99% temp=30
+ut=1791226580 Power(last min)= 1.95 W  inst= 1.78  VxA= 1.89  short=3.10 recent=3.52 typical=3.56 expected=3.28 sessAvg=3.62  remWh=25.95  MacStats left=7h55m  macOS=858 min  health=99% temp=30
+ut=1791226640 Power(last min)= 2.02 W  inst= 2.61  VxA= 2.60  short=2.89 recent=3.40 typical=3.54 expected=3.13 sessAvg=3.52  remWh=25.90  MacStats left=8h17m  macOS=732 min  health=99% temp=30
+WINDOW 951 s: mean SystemLoad (gauge sums) = 3.52 W; time-weighted V×A = 4.59 W; Δ remainingWh = 0.89 Wh -> 3.36 W; raw mAh 2420 -> 2343
+time left at window drain (remWh 25.90): ASL 441 min, VxA 338 min

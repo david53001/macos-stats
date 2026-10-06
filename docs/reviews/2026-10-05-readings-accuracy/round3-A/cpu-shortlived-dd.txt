@@ -1,0 +1,130 @@
+[22:55:35.089] scan 0 7.5 ms procs 435 header measuring rows-sum 0.0%
+[22:55:35.600] scan 1 1.1 ms procs 435 header 27.3% rows-sum 27.3%
+   Code                        25.2% ( 202% 1-core)  n=40
+        bash  87519   12.0% (  96% 1-core)       1 MiB
+        bash  87520   12.0% (  96% 1-core)       1 MiB
+        Code Helper  14133    0.7% (   6% 1-core)      38 MiB
+        Code Helper (Renderer)  14112    0.2% (   1% 1-core)     225 MiB
+        Code Helper  14109    0.1% (   1% 1-core)     227 MiB
+        claude  14424    0.1% (   1% 1-core)     339 MiB
+   System                       2.1% (  17% 1-core)  n=0
+   Other processes              0.0% (   0% 1-core)  n=314
+   Finder                       0.0% (   0% 1-core)  n=6
+   Dock                         0.0% (   0% 1-core)  n=3
+   loginwindow                  0.0% (   0% 1-core)  n=1
+   ChatGPTHelper                0.0% (   0% 1-core)  n=1
+   WindowManager                0.0% (   0% 1-core)  n=1
+   CoreServicesUIAgent          0.0% (   0% 1-core)  n=3
+[22:55:36.612] scan 2 1.1 ms procs 435 header 27.4% rows-sum 27.4%
+   Code                        24.8% ( 198% 1-core)  n=40
+        bash  87520   11.9% (  96% 1-core)       1 MiB
+        bash  87519   11.9% (  95% 1-core)       1 MiB
+        Code  14106    0.3% (   3% 1-core)      88 MiB
+        claude  14424    0.2% (   2% 1-core)     339 MiB
+        Code Helper (Renderer)  14112    0.1% (   1% 1-core)     228 MiB
+        Code Helper  14109    0.1% (   1% 1-core)     225 MiB
+   System                       2.6% (  21% 1-core)  n=0
+   Other processes              0.0% (   0% 1-core)  n=314
+   Control Centre               0.0% (   0% 1-core)  n=3
+   Finder                       0.0% (   0% 1-core)  n=6
+   Dock                         0.0% (   0% 1-core)  n=3
+   Dock Extra                   0.0% (   0% 1-core)  n=3
+   ChatGPTHelper                0.0% (   0% 1-core)  n=1
+   loginwindow                  0.0% (   0% 1-core)  n=1
+[22:55:37.624] scan 3 1.1 ms procs 434 header 28.8% rows-sum 28.8%
+   Code                        26.0% ( 208% 1-core)  n=39
+        bash  87520   11.8% (  95% 1-core)       1 MiB
+        bash  87519   11.8% (  95% 1-core)       1 MiB
+        Code Helper (Renderer)  14112    1.8% (  14% 1-core)     224 MiB
+        claude  14424    0.3% (   3% 1-core)     339 MiB
+        Code Helper  14109    0.1% (   1% 1-core)     225 MiB
+        Code Helper (Plugin)  14126    0.0% (   0% 1-core)     352 MiB
+   System                       2.8% (  23% 1-core)  n=0
+   Other processes              0.0% (   0% 1-core)  n=314
+   universalaccessd             0.0% (   0% 1-core)  n=1
+   coreautha                    0.0% (   0% 1-core)  n=3
+   Spotlight                    0.0% (   0% 1-core)  n=4
+   BetterScreenshot             0.0% (   0% 1-core)  n=3
+   Notification Centre          0.0% (   0% 1-core)  n=3
+   ChatGPTHelper                0.0% (   0% 1-core)  n=1
+[22:55:38.636] scan 4 1.0 ms procs 435 header 27.5% rows-sum 27.5%
+   Code                        24.6% ( 197% 1-core)  n=40
+        bash  87520   11.9% (  96% 1-core)       1 MiB
+        bash  87519   11.9% (  96% 1-core)       1 MiB
+        claude  14424    0.3% (   2% 1-core)     339 MiB
+        Code Helper (Renderer)  14112    0.1% (   1% 1-core)     218 MiB
+        Code Helper  14109    0.1% (   1% 1-core)     225 MiB
+        dd  88566    0.1% (   0% 1-core)       2 MiB
+   System                       2.7% (  22% 1-core)  n=0
+   BetterScreenshot             0.2% (   2% 1-core)  n=3
+   Other processes              0.0% (   0% 1-core)  n=314
+   ChatGPTHelper                0.0% (   0% 1-core)  n=1
+   Dock                         0.0% (   0% 1-core)  n=3
+   JVoice                       0.0% (   0% 1-core)  n=2
+   loginwindow                  0.0% (   0% 1-core)  n=1
+   WindowManager                0.0% (   0% 1-core)  n=1
+[22:55:39.641] scan 5 1.1 ms procs 436 header 29.4% rows-sum 29.4%
+   Code                        24.8% ( 198% 1-core)  n=40
+        bash  87520   12.0% (  96% 1-core)       1 MiB
+        bash  87519   12.0% (  96% 1-core)       1 MiB
+        claude  14424    0.4% (   3% 1-core)     339 MiB
+        Code Helper (Renderer)  14112    0.1% (   1% 1-core)     222 MiB
+        Code Helper  14109    0.1% (   1% 1-core)     225 MiB
+        Code Helper  14133    0.0% (   0% 1-core)      38 MiB
+   System                       3.5% (  28% 1-core)  n=0
+   Other processes              1.0% (   8% 1-core)  n=315
+   Finder                       0.0% (   0% 1-core)  n=6
+   MacStats                     0.0% (   0% 1-core)  n=1
+   Dock Extra                   0.0% (   0% 1-core)  n=3
+   Control Centre               0.0% (   0% 1-core)  n=3
+   Dock                         0.0% (   0% 1-core)  n=3
+   nbagent                      0.0% (   0% 1-core)  n=1
+[22:55:40.650] scan 6 1.1 ms procs 436 header 35.0% rows-sum 35.0%
+   Code                        24.8% ( 199% 1-core)  n=40
+        bash  87520   12.0% (  96% 1-core)       1 MiB
+        bash  87519   12.0% (  96% 1-core)       1 MiB
+        Code Helper  14133    0.4% (   3% 1-core)      38 MiB
+        claude  14424    0.3% (   2% 1-core)     339 MiB
+        Code Helper (Renderer)  14112    0.1% (   1% 1-core)     224 MiB
+        Code Helper  14109    0.1% (   1% 1-core)     225 MiB
+   System                       4.9% (  39% 1-core)  n=0
+   Other processes              3.8% (  30% 1-core)  n=315
+   Notification Centre          1.1% (   9% 1-core)  n=3
+   chronod                      0.3% (   3% 1-core)  n=3
+   UIKitSystem                  0.0% (   0% 1-core)  n=1
+   Finder                       0.0% (   0% 1-core)  n=6
+   Control Centre               0.0% (   0% 1-core)  n=3
+   coreautha                    0.0% (   0% 1-core)  n=3
+[22:55:41.654] scan 7 1.1 ms procs 438 header 41.6% rows-sum 41.6%
+   Code                        25.6% ( 205% 1-core)  n=42
+        bash  87520   12.0% (  96% 1-core)       1 MiB
+        bash  87519   12.0% (  96% 1-core)       1 MiB
+        claude  14424    1.5% (  12% 1-core)     339 MiB
+        Code Helper (Renderer)  14112    0.1% (   1% 1-core)     226 MiB
+        Code Helper  14109    0.1% (   1% 1-core)     225 MiB
+        Code Helper  14133    0.0% (   0% 1-core)      38 MiB
+   System                      12.4% (  99% 1-core)  n=0
+   Notification Centre          1.8% (  15% 1-core)  n=3
+   Other processes              1.7% (  13% 1-core)  n=315
+   chronod                      0.0% (   0% 1-core)  n=3
+   Finder                       0.0% (   0% 1-core)  n=6
+   UIKitSystem                  0.0% (   0% 1-core)  n=1
+   Dock                         0.0% (   0% 1-core)  n=3
+   JVoice                       0.0% (   0% 1-core)  n=2
+[22:55:42.660] scan 8 1.1 ms procs 438 header 27.1% rows-sum 27.1%
+   Code                        24.5% ( 196% 1-core)  n=42
+        bash  87519   12.0% (  96% 1-core)       1 MiB
+        bash  87520   12.0% (  96% 1-core)       1 MiB
+        claude  14424    0.3% (   2% 1-core)     339 MiB
+        Code Helper (Renderer)  14112    0.1% (   1% 1-core)     229 MiB
+        Code Helper  14109    0.1% (   1% 1-core)     225 MiB
+        Code Helper (Plugin)  14126    0.0% (   0% 1-core)     352 MiB
+   System                       2.5% (  20% 1-core)  n=0
+   Other processes              0.1% (   1% 1-core)  n=315
+   Notification Centre          0.0% (   0% 1-core)  n=3
+   Finder                       0.0% (   0% 1-core)  n=6
+   universalaccessd             0.0% (   0% 1-core)  n=1
+   chronod                      0.0% (   0% 1-core)  n=3
+   UIKitSystem                  0.0% (   0% 1-core)  n=1
+   Dock                         0.0% (   0% 1-core)  n=3
+scan cost ms: mean 1.07 max 1.11

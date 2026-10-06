@@ -1,0 +1,9 @@
+shown 70%  charge 2000 mA  -> to 100%: 72 min   to 85% limit: 28 min
+shown 78%  charge 2000 mA  -> to 100%: 61 min   to 85% limit: 17 min
+shown 79%  charge 2000 mA  -> to 100%: 60 min   to 85% limit: 16 min
+shown 80%  charge 2000 mA  -> to 100%: 26 min   to 85% limit: 7 min
+shown 81%  charge 1950 mA  -> to 100%: 26 min   to 85% limit: 5 min
+shown 85%  charge 1700 mA  -> to 100%: 23 min   to 85% limit: nil min
+shown 90%  charge 1200 mA  -> to 100%: 22 min   to 85% limit: nil min
+shown 95%  charge 800 mA  -> to 100%: 17 min   to 85% limit: nil min
+shown 99%  charge 400 mA  -> to 100%: 7 min   to 85% limit: nil min

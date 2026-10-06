@@ -1,0 +1,8 @@
+loop1:
+real 5.17
+user 0.32
+sys 4.68
+loop2:
+real 5.17
+user 0.32
+sys 4.68

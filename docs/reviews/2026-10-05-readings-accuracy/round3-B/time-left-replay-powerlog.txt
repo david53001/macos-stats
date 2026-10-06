@@ -1,0 +1,20 @@
+S0 09-28 00:10 1285min 85→48% n=344 shown first/last=416/386 typical=4.52 err60 bias +34% mae 58% | err120 bias +49% mae 56%
+S1 09-29 07:25 681min 85→21% n=374 shown first/last=564/78 typical=5.47 err60 bias +17% mae 40% | err120 bias +23% mae 41%
+S2 09-30 07:24 416min 95→67% n=269 shown first/last=508/335 typical=4.74 err60 bias +13% mae 26% | err120 bias +26% mae 37%
+S3 09-30 15:06 0min 85→85% n=2 shown first/last=544/543 typical=4.74 err60 bias - mae - | err120 bias - mae -
+S4 09-30 15:23 0min 85→85% n=3 shown first/last=544/543 typical=4.74 err60 bias - mae - | err120 bias - mae -
+S5 09-30 15:24 271min 85→65% n=182 shown first/last=544/621 typical=4.63 err60 bias +17% mae 28% | err120 bias +13% mae 22%
+S6 09-30 20:32 62min 85→81% n=65 shown first/last=556/683 typical=4.51 err60 bias -33% mae 33% | err120 bias - mae -
+S7 10-01 07:27 1832min 85→42% n=483 shown first/last=568/283 typical=4.06 err60 bias -0% mae 23% | err120 bias +5% mae 19%
+S8 10-02 15:04 0min 84→84% n=2 shown first/last=632/630 typical=4.06 err60 bias - mae - | err120 bias - mae -
+S9 10-02 15:04 0min 84→84% n=2 shown first/last=640/632 typical=4.06 err60 bias - mae - | err120 bias - mae -
+S10 10-02 15:11 2639min 85→38% n=413 shown first/last=637/216 typical=4.71 err60 bias +11% mae 50% | err120 bias +62% mae 67%
+S11 10-04 21:38 1226min 85→53% n=315 shown first/last=550/359 typical=4.53 err60 bias -5% mae 11% | err120 bias -4% mae 8%
+S12 10-05 18:04 0min 53→53% n=4 shown first/last=328/330 typical=4.53 err60 bias - mae - | err120 bias - mae -
+S13 10-05 18:37 206min 74→55% n=217 shown first/last=496/505 typical=4.18 err60 bias +1% mae 12% | err120 bias +6% mae 14%
+vs next 60 min: n=1937 bias +10.0% mae 31.8% p10 -34% p50 -0% p90 +74% share>+25%: 26% share<-25%: 17%
+vs next 120 min: n=1338 bias +20.4% mae 32.0% p10 -24% p50 +8% p90 +77% share>+25%: 37% share<-25%: 9%
+vs rest of session (>=30min): n=2312 bias +7.6% mae 26.2% p10 -26% p50 +3% p90 +50% share>+25%: 26% share<-25%: 13%
+baseline ours (same set): n=1338 bias +20.4% mae 32.0% p10 -24% p50 +8% p90 +77% share>+25%: 37% share<-25%: 9%
+baseline constant 4.375W hindsight: n=1338 bias +4.8% mae 26.4% p10 -28% p50 -3% p90 +56% share>+25%: 25% share<-25%: 21%
+baseline trailing 10-min: n=1293 bias +83.4% mae 96.1% p10 -28% p50 +39% p90 +134% share>+25%: 59% share<-25%: 13%

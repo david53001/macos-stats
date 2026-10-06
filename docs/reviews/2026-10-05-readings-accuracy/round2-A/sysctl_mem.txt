@@ -1,0 +1,4 @@
+vm.page_pageable_internal_count: 388450
+vm.page_purgeable_count: 4917
+hw.memsize: 17179869184
+vm.swapusage: total = 1024.00M  used = 147.00M  free = 877.00M  (encrypted)

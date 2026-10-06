@@ -1,0 +1,63 @@
+=== scan 0 at 21:44:37.621 procs=487 measuring=true header=-
+=== scan 1 at 21:44:38.140 procs=487 measuring=false header=2.7%
+    1.87% (=  15.0% of 1 core)  Code [14106] n=38
+          1.39%  bash [36173]
+    0.68% (=   5.5% of 1 core)  System [-2] n=0
+    0.03% (=   0.3% of 1 core)  Other processes [-1] n=321
+  rows sum = 2.66%
+=== scan 2 at 21:44:39.153 procs=492 measuring=false header=11.9%
+    9.62% (=  77.0% of 1 core)  Code [14106] n=43
+          3.73%  bash [39687]
+          3.72%  bash [39686]
+          0.57%  Code [14106]
+    1.30% (=  10.4% of 1 core)  System [-2] n=0
+    0.03% (=   0.3% of 1 core)  Other processes [-1] n=321
+  rows sum = 11.86%
+=== scan 3 at 21:44:40.165 procs=492 measuring=false header=26.6%
+   24.50% (= 196.0% of 1 core)  Code [14106] n=43
+         12.07%  bash [39686]
+         12.06%  bash [39687]
+    1.99% (=  15.9% of 1 core)  System [-2] n=0
+    0.03% (=   0.2% of 1 core)  Other processes [-1] n=321
+  rows sum = 26.58%
+=== scan 4 at 21:44:41.173 procs=492 measuring=false header=26.1%
+   24.42% (= 195.4% of 1 core)  Code [14106] n=43
+         12.11%  bash [39686]
+         12.10%  bash [39687]
+    1.56% (=  12.5% of 1 core)  System [-2] n=0
+    0.06% (=   0.5% of 1 core)  Other processes [-1] n=321
+  rows sum = 26.09%
+=== scan 5 at 21:44:42.185 procs=492 measuring=false header=26.4%
+   24.48% (= 195.8% of 1 core)  Code [14106] n=43
+         12.09%  bash [39687]
+         12.06%  bash [39686]
+    1.77% (=  14.2% of 1 core)  System [-2] n=0
+    0.03% (=   0.2% of 1 core)  Other processes [-1] n=321
+  rows sum = 26.36%
+=== scan 6 at 21:44:43.188 procs=492 measuring=false header=26.5%
+   24.43% (= 195.4% of 1 core)  Code [14106] n=43
+         12.09%  bash [39687]
+         12.06%  bash [39686]
+    1.94% (=  15.5% of 1 core)  System [-2] n=0
+    0.05% (=   0.4% of 1 core)  Other processes [-1] n=321
+  rows sum = 26.46%
+=== scan 7 at 21:44:44.200 procs=486 measuring=false header=21.9%
+   20.18% (= 161.4% of 1 core)  Code [14106] n=37
+    1.44% (=  11.5% of 1 core)  System [-2] n=0
+    0.03% (=   0.2% of 1 core)  Other processes [-1] n=321
+  rows sum = 21.86%
+=== scan 8 at 21:44:45.217 procs=486 measuring=false header=9.4%
+    5.83% (=  46.6% of 1 core)  Code [14106] n=37
+    3.41% (=  27.3% of 1 core)  System [-2] n=0
+    0.04% (=   0.4% of 1 core)  Other processes [-1] n=321
+  rows sum = 9.37%
+=== scan 9 at 21:44:46.235 procs=486 measuring=false header=9.5%
+    8.81% (=  70.5% of 1 core)  System [-2] n=0
+    0.50% (=   4.0% of 1 core)  Code [14106] n=37
+    0.05% (=   0.4% of 1 core)  Other processes [-1] n=321
+  rows sum = 9.48%
+=== scan 10 at 21:44:47.251 procs=486 measuring=false header=1.2%
+    0.71% (=   5.7% of 1 core)  Code [14106] n=37
+    0.38% (=   3.0% of 1 core)  System [-2] n=0
+    0.02% (=   0.1% of 1 core)  Other processes [-1] n=321
+  rows sum = 1.23%

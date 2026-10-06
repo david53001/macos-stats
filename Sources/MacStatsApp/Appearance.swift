@@ -65,9 +65,30 @@ private struct GlassTintHook: NSViewRepresentable {
         func apply() {
             DispatchQueue.main.async { [weak self] in
                 guard let self, let window = self.window else { return }
+                PanelShape.apply(to: window)
                 PopoverGlass.setTintScale(self.scale, in: window)
             }
         }
+    }
+}
+
+/// Gives the `MenuBarExtra` panel Apple's squircle outline: `Design.panelCornerRadius` with
+/// continuous corners, so the cards' radii are concentric with it. The system shapes this window
+/// with small circular corners and exposes no setting for them, so we round the window's root
+/// layer (it already clips its sublayers, the glass included) and recompute the shadow, which the
+/// window server derives from the window's alpha.
+@MainActor
+enum PanelShape {
+    static func apply(to window: NSWindow) {
+        guard let root = window.contentView?.superview?.layer ?? window.contentView?.layer,
+              root.cornerRadius != Design.panelCornerRadius || root.cornerCurve != .continuous else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        root.cornerRadius = Design.panelCornerRadius
+        root.cornerCurve = .continuous
+        root.masksToBounds = true
+        CATransaction.commit()
+        window.invalidateShadow()
     }
 }
 

@@ -1,0 +1,66 @@
+=== scan 0 at 21:43:06.866 procs=485 measuring=true header=-
+=== scan 1 at 21:43:07.377 procs=485 measuring=false header=1.9%
+    1.03% (=   8.2% of 1 core)  Code [14106] n=37
+          0.52%  claude [14424]
+          0.31%  h [38089]
+          0.06%  Code Helper (Renderer) [14112]
+          0.06%  Code Helper [14133]
+    0.76% (=   6.1% of 1 core)  System [-2] n=0
+    0.05% (=   0.4% of 1 core)  Other processes [-1] n=320
+    0.04% (=   0.3% of 1 core)  Claude [84068] n=16
+    0.03% (=   0.2% of 1 core)  Spotify [69346] n=13
+    0.01% (=   0.1% of 1 core)  Google Chrome [52473] n=15
+    0.00% (=   0.0% of 1 core)  universalaccessd [962] n=1
+  rows sum = 1.92%
+=== scan 2 at 21:43:08.395 procs=485 measuring=false header=1.8%
+    1.10% (=   8.8% of 1 core)  Code [14106] n=37
+          0.84%  claude [14424]
+          0.08%  h [38089]
+    0.42% (=   3.4% of 1 core)  System [-2] n=0
+    0.21% (=   1.7% of 1 core)  BetterScreenshot [9268] n=3
+          0.21%  BetterScreenshot [9268]
+    0.04% (=   0.3% of 1 core)  Spotify [69346] n=13
+    0.04% (=   0.3% of 1 core)  Claude [84068] n=16
+    0.02% (=   0.2% of 1 core)  Other processes [-1] n=320
+    0.01% (=   0.1% of 1 core)  Google Chrome [52473] n=15
+  rows sum = 1.84%
+=== scan 3 at 21:43:09.413 procs=485 measuring=false header=2.5%
+    1.44% (=  11.6% of 1 core)  Code [14106] n=37
+          0.65%  Code Helper [14133]
+          0.51%  claude [14424]
+          0.10%  h [38089]
+          0.09%  codex [14480]
+    0.92% (=   7.4% of 1 core)  System [-2] n=0
+    0.03% (=   0.2% of 1 core)  Other processes [-1] n=320
+    0.03% (=   0.2% of 1 core)  Spotify [69346] n=13
+    0.02% (=   0.2% of 1 core)  Claude [84068] n=16
+  rows sum = 2.45%
+=== scan 4 at 21:43:10.431 procs=485 measuring=false header=6.4%
+    6.02% (=  48.2% of 1 core)  Code [14106] n=37
+          5.12%  Code Helper (Renderer) [14112]
+          0.61%  claude [14424]
+          0.10%  Code Helper (Plugin) [14126]
+          0.10%  h [38089]
+          0.05%  Code Helper [14133]
+    0.20% (=   1.6% of 1 core)  System [-2] n=0
+    0.05% (=   0.4% of 1 core)  Spotify [69346] n=13
+    0.05% (=   0.4% of 1 core)  Google Chrome [52473] n=15
+    0.04% (=   0.4% of 1 core)  Claude [84068] n=16
+    0.04% (=   0.3% of 1 core)  Other processes [-1] n=320
+  rows sum = 6.41%
+=== scan 5 at 21:43:11.449 procs=485 measuring=false header=2.8%
+    1.12% (=   9.0% of 1 core)  System [-2] n=0
+    1.07% (=   8.6% of 1 core)  Code [14106] n=37
+          0.75%  claude [14424]
+          0.10%  Code Helper (Renderer) [14112]
+          0.09%  h [38089]
+          0.07%  Code Helper [14133]
+    0.47% (=   3.8% of 1 core)  Other processes [-1] n=320
+          0.33%  secd [953]
+    0.10% (=   0.8% of 1 core)  Claude [84068] n=16
+          0.06%  Claude Helper [84075]
+    0.04% (=   0.3% of 1 core)  Spotify [69346] n=13
+    0.01% (=   0.1% of 1 core)  Google Chrome [52473] n=15
+    0.01% (=   0.1% of 1 core)  Finder [1311] n=6
+  rows sum = 2.82%
+scan cost ms: 15.36 5.33 6.01 6.32 5.99 6.01

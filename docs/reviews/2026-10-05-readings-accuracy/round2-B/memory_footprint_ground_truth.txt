@@ -1,0 +1,8 @@
+# footprint -p <pid> at 21:45:05, right after the memory harness scan (memory_breakdown.txt, 21:45:04)
+# harness row value -> footprint tool
+Code Helper (Plugin) [14126]   351.4 MiB -> Footprint: 351 MB
+claude [14424]                 327.5 MiB -> Footprint: 327 MB
+Google Chrome [52473]          712.0 MiB -> Footprint: 713 MB
+Claude Helper (Renderer) [84088] 406.3 MiB -> Footprint: 406 MB
+Spotify [69346]                261.2 MiB -> Footprint: 261 MB
+MacStats [35780]               (not a row shown here) -> Footprint: 13 MB

@@ -1,0 +1,84 @@
+22:54:11.96 scan0 6.0 ms measuring=true
+22:54:12.47 scan1 4.3 ms header=3.1% rowsum=3.1% rows=54
+   System [-2] 1.5% (AM 12%) procs=0
+   Code [14106] 1.5% (AM 12%) procs=35
+   System [-2] 1.5% (AM 12%) procs=0
+22:54:13.49 scan2 2.2 ms header=18.6% rowsum=19% rows=54
+   Code [14106] 17% (AM 140%) procs=47
+      - yes 85544 4.0% (AM 32%)
+      - yes 85541 4.0% (AM 32%)
+      - yes 85548 4.0% (AM 32%)
+      - yes 85550 4.0% (AM 32%)
+   System [-2] 0.8% (AM 7%) procs=0
+   System [-2] 0.8% (AM 7%) procs=0
+22:54:14.49 scan3 0.9 ms header=52.8% rowsum=53% rows=54
+   Code [14106] 52% (AM 415%) procs=47
+      - yes 85541 12% (AM 99%)
+      - yes 85544 12% (AM 98%)
+      - yes 85550 12% (AM 98%)
+      - yes 85548 12% (AM 98%)
+   System [-2] 0.8% (AM 7%) procs=0
+   System [-2] 0.8% (AM 7%) procs=0
+22:54:15.50 scan4 2.1 ms header=55.6% rowsum=56% rows=54
+   Code [14106] 51% (AM 408%) procs=47
+      - yes 85541 12% (AM 100%)
+      - yes 85548 12% (AM 100%)
+      - yes 85544 12% (AM 100%)
+      - yes 85550 12% (AM 99%)
+   System [-2] 4.6% (AM 37%) procs=0
+   System [-2] 4.6% (AM 37%) procs=0
+22:54:16.51 scan5 2.1 ms header=50.9% rowsum=51% rows=54
+   Code [14106] 50% (AM 402%) procs=47
+      - yes 85550 12% (AM 100%)
+      - yes 85544 12% (AM 100%)
+      - yes 85541 12% (AM 100%)
+      - yes 85548 12% (AM 100%)
+   System [-2] 0.6% (AM 4%) procs=0
+   System [-2] 0.6% (AM 4%) procs=0
+22:54:17.52 scan6 2.0 ms header=52.0% rowsum=52% rows=54
+   Code [14106] 51% (AM 406%) procs=47
+      - yes 85544 12% (AM 100%)
+      - yes 85548 12% (AM 100%)
+      - yes 85541 12% (AM 100%)
+      - yes 85550 12% (AM 100%)
+   System [-2] 1.3% (AM 10%) procs=0
+   System [-2] 1.3% (AM 10%) procs=0
+22:54:18.54 scan7 2.0 ms header=52.0% rowsum=52% rows=54
+   Code [14106] 50% (AM 403%) procs=47
+      - yes 85541 12% (AM 100%)
+      - yes 85548 12% (AM 100%)
+      - yes 85544 12% (AM 100%)
+      - yes 85550 12% (AM 100%)
+   System [-2] 1.3% (AM 11%) procs=0
+   System [-2] 1.3% (AM 11%) procs=0
+22:54:19.55 scan8 2.0 ms header=52.0% rowsum=52% rows=54
+   Code [14106] 52% (AM 416%) procs=46
+      - yes 85541 12% (AM 100%)
+      - yes 85544 12% (AM 100%)
+      - yes 85548 12% (AM 100%)
+      - yes 85550 12% (AM 100%)
+   System [-2] 0.0% (AM 0%) procs=0
+22:54:20.56 scan9 2.0 ms header=52.8% rowsum=53% rows=54
+   Code [14106] 52% (AM 414%) procs=46
+      - yes 85548 12% (AM 99%)
+      - yes 85550 12% (AM 99%)
+      - yes 85541 12% (AM 98%)
+      - yes 85544 12% (AM 98%)
+   System [-2] 1.0% (AM 8%) procs=0
+   System [-2] 1.0% (AM 8%) procs=0
+Networks: packets: 7387310/7520M in, 3001262/2134M out.
+Disks: 4719332/133G read, 3550900/101G written.
+
+PID    COMMAND          %CPU PPID  UID
+85541  yes              99.8 85540 501
+85544  yes              99.8 85542 501
+85548  yes              99.8 85545 501
+85550  yes              99.8 85546 501
+0      kernel_task      2.3  0     0  
+14424  2.1.289          1.7  14138 501
+85554  top              1.6  85532 0  
+605    runningboardd    1.5  1     0  
+599    WindowServer     1.1  1     88 
+9268   BetterScreenshot 0.8  1     501
+574    locationd        0.7  1     205
+14112  Code Helper (Ren 0.7  14106 501

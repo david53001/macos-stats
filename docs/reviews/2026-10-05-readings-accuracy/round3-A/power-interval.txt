@@ -1,0 +1,2 @@
+gauge step 59 s: intervalWatts 2.86 W, instant SystemLoad 2547 mW, gaugeInterval Optional(59.0), count delta 59
+gauge step 60 s: intervalWatts 2.53 W, instant SystemLoad 2391 mW, gaugeInterval Optional(60.0), count delta 57

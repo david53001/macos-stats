@@ -1,0 +1,9 @@
+=== scan 0 at 21:45:40.088 procs=491 measuring=true header=-
+=== scan 1 at 21:45:40.602 procs=491 measuring=false header=13.6%
+   4.415 W  Code [14106] n=41
+=== scan 2 at 21:45:41.613 procs=491 measuring=false header=13.4%
+   4.575 W  Code [14106] n=41
+=== scan 3 at 21:45:42.625 procs=491 measuring=false header=13.3%
+   4.177 W  Code [14106] n=41
+=== scan 4 at 21:45:43.636 procs=492 measuring=false header=15.5%
+   2.924 W  Code [14106] n=42

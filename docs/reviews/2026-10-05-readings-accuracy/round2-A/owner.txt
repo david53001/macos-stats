@@ -1,0 +1,12 @@
+pid 37706 (zsh) -> Code [14106]  responsible=Optional(14106)
+pid 14424 (claude) -> Code [14106]  responsible=Optional(14106)
+pid 14138 (zsh) -> Code [14106]  responsible=Optional(14106)
+pid 14133 (Code Helper) -> Code [14106]  responsible=Optional(14106)
+pid 14112 (Code Helper (Renderer)) -> Code [14106]  responsible=Optional(14106)
+pid 83798 (Terminal) -> Terminal [83798]  responsible=Optional(83798)
+pid 14509 (node) -> Code [14106]  responsible=Optional(14106)
+pid 84103 (node) -> Claude [84068]  responsible=Optional(84103)
+pid 14700 (node) -> Code [14106]  responsible=Optional(14106)
+pid 84122 (node) -> Claude [84068]  responsible=Optional(84103)
+apps: 602=loginwindow, 959=WindowManager, 961=CoreServicesUIAgent, 969=AccessibilityVisualsAgent, 987=CoreLocationAgent, 1037=Single Sign-On, 1045=Keychain Circle Notification, 1073=Wi-Fi, 1081=Accessibility, 1168=Control Centre, 1180=talagentd, 1202=Notification Centre, 1220=BackgroundTaskManagementAgent, 1287=Universal Control, 1309=Dock, 1310=SystemUIServer, 1311=Finder, 1315=Wallpaper, 1342=Dock Extra, 1393=Spotlight, 1422=AirPlay Screen Mirroring, 1423=TextInputMenuAgent, 1427=SoftwareUpdateNotificationManager, 1431=TextInputSwitcher, 1576=Shortcuts, 1667=UserNotificationCenter, 2465=DockHelper, 9268=BetterScreenshot, 12175=JVoice, 14106=Code, 29110=coreautha, 35780=MacStats, 47877=Calendar, 52473=Google Chrome, 55045=Google Chrome Helper, 55467=WebThumbnailExtension Graphics and Media, 56084=LinkedNotesUIService, 63658=PowerChime, 64339=nbagent, 69346=Spotify, 83798=Terminal, 84068=Claude, 84108=Claude Helper
+fallbacks: 818=?, 962=universalaccessd, 995=photolibraryd, 1023=familycircled, 1203=chronod, 1205=ViewBridgeAuxiliary, 1231=UIKitSystem, 1249=?, 1286=ShortcutsWidgetExtension, 1296=CalendarWidgetExtension, 1316=QuickLookUIService, 1329=AuthenticationServicesAgent, 1332=CursorUIViewService, 1356=RemindersWidgetExtension, 1369=RemindersIntentsExtension, 1387=studentd, 1419=ChatGPTHelper, 1469=TipsWidgetExtension, 1536=nsattributedstringagent, 1754=GamePolicyAgent, 2470=PAH_Extension, 12261=com.apple.SafariPlatformSupport, 14509=node, 52515=com.apple.SafariPlatformSupport, 71559=com.apple.SafariPlatformSupport, 84103=node

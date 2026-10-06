@@ -1,0 +1,6 @@
+Mon Oct  5 23:09:22 EEST 2026
+  PID  %CPU    RSS      TIME ELAPSED
+82366   0.0  70592   0:00.31   21:05
+    phys_footprint: 13 MB
+    phys_footprint_peak: 13 MB
+82366  MacStats 0.0  3     00:00.30 13M

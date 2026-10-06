@@ -107,13 +107,17 @@ struct CardButtonStyle: ButtonStyle {
 
 /// Small secondary button (Empty, Quit) drawn in the same material language as the cards:
 /// a continuous-corner tinted surface that brightens on hover and dims when disabled.
+/// Buttons in the panel's corners pass `Design.cardCornerRadius` to stay concentric with it.
 struct SubtleButtonStyle: ButtonStyle {
+    var cornerRadius: CGFloat = 6
+
     func makeBody(configuration: Configuration) -> some View {
-        SubtleButton(configuration: configuration)
+        SubtleButton(configuration: configuration, cornerRadius: cornerRadius)
     }
 
     private struct SubtleButton: View {
         let configuration: Configuration
+        let cornerRadius: CGFloat
         @Environment(\.isEnabled) private var isEnabled
         @State private var hovering = false
 
@@ -124,9 +128,9 @@ struct SubtleButtonStyle: ButtonStyle {
                 .foregroundStyle(isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
                 .padding(.horizontal, 10)
                 .frame(height: 24)
-                .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .background(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(Color.primary.opacity(fill)))
-                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .animation(.easeOut(duration: 0.12), value: hovering)
                 .onHover { hovering = $0 }
         }

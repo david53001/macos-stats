@@ -163,7 +163,7 @@ struct PanelFooter<Trailing: View>: View {
     var body: some View {
         HStack {
             Button("Quit") { NSApplication.shared.terminate(nil) }
-                .buttonStyle(SubtleButtonStyle())
+                .buttonStyle(SubtleButtonStyle(cornerRadius: Design.cardCornerRadius))
             Spacer()
             trailing
         }

@@ -1,0 +1,33 @@
+vm pages: free 34431 active 337111 inactive 328462 wired 109095 compressed 201613 internal 411732 purgeable 7294 pageSize 16384
+card: 10.91 / 16.00 GB  pressure normal  appMem 6.17 wired 1.66 compressed 3.08
+rows: 59 sum 10.46 GB over 518 user processes
+   Other processes               2656 MB n=333
+   Code                          2133 MB n=48
+   Google Chrome                 1946 MB n=24
+   Claude                         920 MB n=14
+   Spotify                        899 MB n=13
+   Dock                           241 MB n=3
+   Spotlight                      232 MB n=4
+   BetterScreenshot               186 MB n=3
+   npm exec @modelcontextprot     178 MB n=2
+   JVoice                         144 MB n=2
+   Calendar                       136 MB n=4
+   Finder                         134 MB n=6
+   Notification Centre             94 MB n=3
+   Control Centre                  92 MB n=3
+   Dock Extra                      53 MB n=3
+Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                                    26709.
+Pages speculative:                              7910.
+Pages wired down:                             109086.
+Pages purgeable:                                7294.
+Anonymous pages:                              411710.
+Pages occupied by compressor:                 201613.
+hw.memsize: 17179869184
+System-wide memory free percentage: 69%
+14106 harness=99.7MiB | Code [14106]: 64-bit    Footprint: 100 MB (16384 bytes per page)
+14112 harness=212.2MiB | Code Helper (Renderer) [14112]: 64-bit    Footprint: 212 MB (16384 bytes per page)
+52473 harness=762.5MiB | Google Chrome [52473]: 64-bit    Footprint: 762 MB (16384 bytes per page)
+84088 harness=398.8MiB | Claude Helper (Renderer) [84088]: 64-bit    Footprint: 399 MB (16384 bytes per page)
+69387 harness=248.1MiB | Spotify Helper (Renderer) [69387]: 64-bit    Footprint: 248 MB (16384 bytes per page)
+89124 harness=12.5MiB | MacStats [89124]: 64-bit    Footprint: 12 MB (16384 bytes per page)

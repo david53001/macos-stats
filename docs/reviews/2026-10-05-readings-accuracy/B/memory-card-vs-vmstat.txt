@@ -1,0 +1,39 @@
+MacStats card: 9.47 / 16.00 GB (shown 9.5 / 16.0 GB) pressure=normal
+raw pages: internal=320400 purgeable=9769 wired=106046 compressed=203976 free=147742 active=278887 inactive=274680 pageSize=16384
+Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                                   144093.
+Pages active:                                 278861.
+Pages inactive:                               274680.
+Pages speculative:                              3611.
+Pages throttled:                                   0.
+Pages wired down:                             106041.
+Pages purgeable:                               10221.
+"Translation faults":                      400095374.
+Pages copy-on-write:                        39968722.
+Pages zero filled:                         206630096.
+Pages reactivated:                           9986725.
+Pages purged:                                2107745.
+File-backed pages:                            236779.
+Anonymous pages:                              320373.
+Pages stored in compressor:                   512751.
+Pages occupied by compressor:                 203976.
+Decompressions:                              4214595.
+Compressions:                                7374783.
+Pageins:                                     9392497.
+Pageouts:                                      78057.
+Swapins:                                        3212.
+Swapouts:                                      12480.
+hw.memsize: 17179869184
+vm.page_pageable_internal_count: 319751
+vm.page_purgeable_count: 10221
+kern.memorystatus_vm_pressure_level: 1
+Google Chrome [52473]: 64-bit    Footprint: 717 MB (16384 bytes per page)
+======================================================================
+Code Helper (Plugin) [14126]: 64-bit    Footprint: 355 MB (16384 bytes per page)
+======================================================================
+Claude Helper (Renderer) [84088]: 64-bit    Footprint: 400 MB (16384 bytes per page)
+======================================================================
+mediaanalysisd [1154]: 64-bit    Footprint: 108 MB (16384 bytes per page)
+======================================================================
+SourceKitService [26561]: 64-bit    Footprint: 442 MB (16384 bytes per page)
+======================================================================

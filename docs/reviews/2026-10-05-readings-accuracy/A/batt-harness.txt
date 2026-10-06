@@ -1,0 +1,4 @@
+IOPS: percent 62 state discharging macOS timeToEmpty 725 timeToFull nil
+gauge: update 1791223367 V 11776 mA -204 rawCur 2631 rawMax 4430 nominal 4557 design 4563 cycles 128 tempC 29.99 adapterW -1 sysLoad 2179 acc 263213463 cnt 265336
+derived: remainingWh 29.30 instantW 2.18 health 99%
+persisted typical: 3.79 W over 1310 s

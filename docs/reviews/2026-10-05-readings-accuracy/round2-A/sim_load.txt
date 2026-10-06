@@ -1,0 +1,29 @@
+  tick card=0.0% window=0.00s
+SCAN header=-1.0% userRows=0.0% system=-1.0% tickWindow≈0.00s
+  tick card=100.0% window=0.52s
+SCAN header=0.0% userRows=25.3% system=0.0% tickWindow≈0.00s
+  tick card=28.2% window=1.05s
+SCAN header=27.3% userRows=25.4% system=1.9% tickWindow≈1.57s
+  tick card=27.3% window=1.05s
+  tick card=25.9% window=1.02s
+SCAN header=26.0% userRows=25.4% system=0.5% tickWindow≈1.05s
+  tick card=26.0% window=1.05s
+  tick card=26.5% window=1.05s
+SCAN header=33.3% userRows=25.4% system=8.0% tickWindow≈0.92s
+  tick card=32.6% window=1.01s
+  tick card=32.9% window=1.04s
+SCAN header=27.4% userRows=26.6% system=0.9% tickWindow≈1.03s
+  tick card=28.0% window=1.04s
+  tick card=27.0% window=1.04s
+SCAN header=26.6% userRows=25.9% system=0.7% tickWindow≈0.99s
+  tick card=26.3% window=1.07s
+  tick card=31.9% window=1.05s
+SCAN header=32.4% userRows=31.5% system=0.9% tickWindow≈1.01s
+  tick card=32.3% window=1.03s
+  tick card=26.5% window=1.05s
+SCAN header=26.4% userRows=25.6% system=0.8% tickWindow≈1.01s
+  tick card=26.1% window=1.08s
+  tick card=26.0% window=1.06s
+SCAN header=26.0% userRows=25.5% system=0.5% tickWindow≈1.01s
+  tick card=26.1% window=1.02s
+tickCalls=19 staleTicks=1 scanCalls=10 staleScan(==last tick)=1 zeroCard=1

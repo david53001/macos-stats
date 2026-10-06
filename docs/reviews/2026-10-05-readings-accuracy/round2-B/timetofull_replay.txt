@@ -1,0 +1,72 @@
+session 09-28 21:36 48% -> stops at 85% (held on AC) after 48 min
+   09-28 21:39 50%  I=2259 mA  actual stop in  44.8 min | to 85% limit: 45 min | to full (limit unknown): 99 min
+   09-28 21:50 59%  I=2232 mA  actual stop in  34.1 min | to 85% limit: 33 min | to full (limit unknown): 86 min
+   09-28 21:56 63%  I=2188 mA  actual stop in  28.2 min | to 85% limit: 28 min | to full (limit unknown): 80 min
+   09-28 21:59 66%  I=2172 mA  actual stop in  25.5 min | to 85% limit: 25 min | to full (limit unknown): 77 min
+   09-28 22:02 68%  I=2169 mA  actual stop in  22.1 min | to 85% limit: 21 min | to full (limit unknown): 73 min
+   09-28 22:05 71%  I=2151 mA  actual stop in  19.3 min | to 85% limit: 18 min | to full (limit unknown): 70 min
+   09-28 22:08 73%  I=2132 mA  actual stop in  15.8 min | to 85% limit: 15 min | to full (limit unknown): 67 min
+   09-28 22:11 76%  I=2099 mA  actual stop in  13.0 min | to 85% limit: 12 min | to full (limit unknown): 64 min
+   09-28 22:15 78%  I=2070 mA  actual stop in   9.4 min | to 85% limit: 9 min | to full (limit unknown): 60 min
+   09-28 22:18 81%  I=2026 mA  actual stop in   6.4 min | to 85% limit: 6 min | to full (limit unknown): 58 min
+   09-28 22:22 83%  I=1996 mA  actual stop in   2.7 min | to 85% limit: 2 min | to full (limit unknown): 50 min
+session 09-29 18:46 22% -> stops at 100% (held on AC) after 711 min
+   09-29 18:50 24%  I=1972 mA  actual stop in 708.1 min | to 100% limit: 155 min | to full (limit unknown): 155 min
+   09-29 18:53 27%  I=1799 mA  actual stop in 704.7 min | to 100% limit: 161 min | to full (limit unknown): 161 min
+   09-29 18:57 29%  I=1928 mA  actual stop in 701.0 min | to 100% limit: 148 min | to full (limit unknown): 148 min
+   09-29 19:00 32%  I=1997 mA  actual stop in 697.8 min | to 100% limit: 140 min | to full (limit unknown): 140 min
+   09-29 19:04 34%  I=1961 mA  actual stop in 693.7 min | to 100% limit: 137 min | to full (limit unknown): 137 min
+   09-29 19:07 37%  I=1992 mA  actual stop in 690.7 min | to 100% limit: 131 min | to full (limit unknown): 131 min
+   09-29 19:11 39%  I=2013 mA  actual stop in 686.9 min | to 100% limit: 126 min | to full (limit unknown): 126 min
+   09-29 19:14 42%  I=1896 mA  actual stop in 683.7 min | to 100% limit: 127 min | to full (limit unknown): 127 min
+   09-29 19:18 44%  I=1944 mA  actual stop in 680.1 min | to 100% limit: 120 min | to full (limit unknown): 120 min
+   09-29 19:21 47%  I=1962 mA  actual stop in 677.1 min | to 100% limit: 115 min | to full (limit unknown): 115 min
+   09-29 19:24 49%  I=2024 mA  actual stop in 673.5 min | to 100% limit: 108 min | to full (limit unknown): 108 min
+   09-29 19:27 52%  I=2054 mA  actual stop in 670.7 min | to 100% limit: 103 min | to full (limit unknown): 103 min
+   09-29 19:30 54%  I=2064 mA  actual stop in 667.4 min | to 100% limit: 98 min | to full (limit unknown): 98 min
+session 09-30 14:21 67% -> stops at 84% (held on AC) after 31 min
+   09-30 14:26 67%  I=1566 mA  actual stop in  27.0 min | to 84% limit: 29 min | to full (limit unknown): 92 min
+   09-30 14:29 70%  I=1617 mA  actual stop in  23.6 min | to 84% limit: 24 min | to full (limit unknown): 86 min
+   09-30 14:34 72%  I=1618 mA  actual stop in  19.3 min | to 84% limit: 20 min | to full (limit unknown): 81 min
+   09-30 14:38 75%  I=1601 mA  actual stop in  15.3 min | to 84% limit: 16 min | to full (limit unknown): 77 min
+   09-30 14:42 77%  I=1633 mA  actual stop in  11.1 min | to 84% limit: 11 min | to full (limit unknown): 71 min
+   09-30 14:46 80%  I=1602 mA  actual stop in   7.1 min | to 84% limit: 7 min | to full (limit unknown): 67 min
+   09-30 14:50 82%  I=1601 mA  actual stop in   2.7 min | to 84% limit: 2 min | to full (limit unknown): 60 min
+session 09-30 14:53 84% -> stops at 85% (held on AC) after 3 min
+session 09-30 19:56 65% -> stops at 85% (held on AC) after 32 min
+   09-30 20:00 66%  I=2004 mA  actual stop in  28.0 min | to 85% limit: 27 min | to full (limit unknown): 82 min
+   09-30 20:04 68%  I=1987 mA  actual stop in  24.3 min | to 85% limit: 23 min | to full (limit unknown): 78 min
+   09-30 20:07 71%  I=1990 mA  actual stop in  21.2 min | to 85% limit: 20 min | to full (limit unknown): 74 min
+   09-30 20:11 73%  I=1989 mA  actual stop in  17.6 min | to 85% limit: 16 min | to full (limit unknown): 70 min
+   09-30 20:14 76%  I=1988 mA  actual stop in  14.5 min | to 85% limit: 13 min | to full (limit unknown): 66 min
+   09-30 20:17 78%  I=1930 mA  actual stop in  10.7 min | to 85% limit: 9 min | to full (limit unknown): 63 min
+   09-30 20:21 81%  I=1916 mA  actual stop in   7.3 min | to 85% limit: 6 min | to full (limit unknown): 60 min
+   09-30 20:25 83%  I=1702 mA  actual stop in   3.1 min | to 85% limit: 2 min | to full (limit unknown): 55 min
+session 10-01 06:51 81% -> stops at 85% (held on AC) after 14 min
+   10-01 06:55 81%  I=1812 mA  actual stop in  10.0 min | to 85% limit: 7 min | to full (limit unknown): 62 min
+   10-01 06:59 82%  I=1063 mA  actual stop in   5.8 min | to 85% limit: 7 min | to full (limit unknown): 73 min
+   10-01 07:02 84%  I=1326 mA  actual stop in   2.7 min | to 85% limit: 2 min | to full (limit unknown): 61 min
+session 10-02 14:00 42% -> stops at 84% (unplugged) after 63 min
+session 10-02 15:04 84% -> stops at 84% (unplugged) after 0 min
+session 10-02 15:06 84% -> stops at 85% (held on AC) after 1 min
+session 10-04 11:11 38% -> stops at 85% (held on AC) after 73 min
+   10-04 11:14 41%  I=2246 mA  actual stop in  69.9 min | to 85% limit: 59 min | to full (limit unknown): 114 min
+   10-04 11:19 45%  I=2116 mA  actual stop in  64.8 min | to 85% limit: 56 min | to full (limit unknown): 112 min
+   10-04 11:23 47%  I=1903 mA  actual stop in  60.7 min | to 85% limit: 58 min | to full (limit unknown): 116 min
+   10-04 11:27 50%  I=1845 mA  actual stop in  57.3 min | to 85% limit: 56 min | to full (limit unknown): 115 min
+   10-04 11:31 52%  I=1785 mA  actual stop in  53.3 min | to 85% limit: 53 min | to full (limit unknown): 112 min
+   10-04 11:34 55%  I=1801 mA  actual stop in  49.9 min | to 85% limit: 49 min | to full (limit unknown): 107 min
+   10-04 11:38 57%  I=1824 mA  actual stop in  46.0 min | to 85% limit: 43 min | to full (limit unknown): 102 min
+   10-04 11:42 60%  I=1809 mA  actual stop in  42.5 min | to 85% limit: 40 min | to full (limit unknown): 98 min
+   10-04 11:46 62%  I=1794 mA  actual stop in  38.2 min | to 85% limit: 36 min | to full (limit unknown): 94 min
+   10-04 11:50 65%  I=1711 mA  actual stop in  34.1 min | to 85% limit: 33 min | to full (limit unknown): 92 min
+   10-04 11:54 67%  I=1747 mA  actual stop in  30.0 min | to 85% limit: 28 min | to full (limit unknown): 86 min
+   10-04 11:58 70%  I=1750 mA  actual stop in  26.2 min | to 85% limit: 24 min | to full (limit unknown): 82 min
+   10-04 12:02 72%  I=1739 mA  actual stop in  22.1 min | to 85% limit: 20 min | to full (limit unknown): 77 min
+   10-04 12:06 75%  I=1717 mA  actual stop in  18.4 min | to 85% limit: 16 min | to full (limit unknown): 74 min
+   10-04 12:10 77%  I=1625 mA  actual stop in  14.2 min | to 85% limit: 13 min | to full (limit unknown): 71 min
+   10-04 12:14 80%  I=1515 mA  actual stop in  10.3 min | to 85% limit: 10 min | to full (limit unknown): 69 min
+   10-04 12:18 81%  I=1435 mA  actual stop in   6.3 min | to 85% limit: 6 min | to full (limit unknown): 66 min
+   10-04 12:22 84%  I=1502 mA  actual stop in   1.7 min | to 85% limit: 1 min | to full (limit unknown): 56 min
+session 10-05 18:05 53% -> stops at 74% (unplugged) after 31 min
+to-limit error: n=60 mean|err|=122.3 min, bias=-122.1 min, worst=569 min

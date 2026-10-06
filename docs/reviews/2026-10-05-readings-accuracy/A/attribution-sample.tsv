@@ -1,0 +1,45 @@
+95507	95504	Code	14106	12.497	yes
+95509	95508	Code	14106	12.495	yes
+95501	95500	Code	14106	12.493	yes
+95503	95502	Code	14106	12.485	yes
+14424	14138	Code	14106	0.327	claude
+14278	14123	Code	14106	0.004	copilot-runtime
+14480	14126	Code	14106	0.001	codex
+14108	1	Code	14106	0.000	chrome_crashpad_handler
+14138	14133	Code	14106	0.000	zsh
+14330	14126	Code	14106	0.000	sourcekit-lsp
+14509	14424	Code	14106	0.000	node
+14700	14509	Code	14106	0.000	node
+26538	14424	Code	14106	0.000	sourcekit-lsp
+26561	1	Code	14106	0.000	SourceKitService
+92087	14424	Code	14106	0.000	zsh
+92156	14424	Code	14106	0.000	zsh
+94753	1	Code	14106	0.000	zsh
+94812	14424	Code	14106	0.000	zsh
+94940	1	Code	14106	0.000	zsh
+95307	1	Code	14106	0.000	zsh
+95499	14424	Code	14106	0.000	zsh
+95500	95499	Code	14106	0.000	zsh
+95502	95499	Code	14106	0.000	zsh
+95504	95499	Code	14106	0.000	zsh
+95505	95500	Code	14106	0.000	sleep
+95506	95502	Code	14106	0.000	sleep
+95508	95499	Code	14106	0.000	zsh
+95516	14424	Code	14106	0.000	zsh
+95586	95499	Code	14106	0.000	zsh
+95588	95586	Code	14106	0.000	zsh
+52475	1	Google Chrome	52473	0.000	chrome_crashpad_handler
+73853	52473	Google Chrome	73853	0.000	chrome-native-host
+84072	1	Claude	84068	0.000	chrome_crashpad_handler
+84102	84068	Claude	84068	0.000	disclaimer
+69382	69346	Spotify	69346	0.005	Spotify Helper
+69387	69346	Spotify	69346	0.002	Spotify Helper (Renderer)
+69383	69346	Spotify	69346	0.001	Spotify Helper
+69378	1	Spotify	69346	0.000	Spotify Helper
+69380	69346	Spotify	69346	0.000	Spotify Helper
+69386	69346	Spotify	69346	0.000	Spotify Helper (Renderer)
+69390	69346	Spotify	69346	0.000	Spotify Helper
+15053	1	Other processes	15053	0.000	ShipIt
+84103	84102	npm exec @modelcontextprotocol/server-pdf --stdio	84103	0.000	node
+84122	84103	npm exec @modelcontextprotocol/server-pdf --stdio	84103	0.000	node
+89124	1	MacStats	89124	0.000	MacStats

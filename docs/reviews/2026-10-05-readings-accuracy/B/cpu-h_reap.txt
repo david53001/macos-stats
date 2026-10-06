@@ -1,0 +1,202 @@
+=== scan 0 at 20:41:53.033 procs=509 cost=5.19 ms measuring=true header=-
+=== scan 1 at 20:41:53.547 procs=509 cost=7.37 ms measuring=false header=10.9%
+rows sum cpu=10.95%  mem=10507 MB  rows=62
+  System                     8.8%     (70.7% core) n=0
+  Code                       1.7%     (13.8% core) n=42
+      - bash                           92088 1.2%
+      - claude                         14424 0.3%
+      - h                              95306 0.1%
+      - Code Helper (Renderer)         14112 0.0%
+      - sleep                          95344 0.0%
+      - Code Helper                    14133 0.0%
+  BetterScreenshot           0.2%     (1.4% core) n=3
+  Google Chrome              0.1%     (0.7% core) n=23
+  Claude                     0.0%     (0.4% core) n=14
+  Other processes            0.0%     (0.3% core) n=329
+  Spotify                    0.0%     (0.2% core) n=13
+  Finder                     0.0%     (0.1% core) n=6
+  Control Centre             0.0%     (0.0% core) n=3
+  Dock                       0.0%     (0.0% core) n=3
+  loginwindow                0.0%     (0.0% core) n=1
+  WindowManager              0.0%     (0.0% core) n=1
+  CoreServicesUIAgent        0.0%     (0.0% core) n=3
+  universalaccessd           0.0%     (0.0% core) n=1
+=== scan 2 at 20:41:54.562 procs=512 cost=8.61 ms measuring=false header=34.1%
+rows sum cpu=34.12%  mem=10873 MB  rows=62
+  Google Chrome              17%      (135.2% core) n=24
+      - Google Chrome Helper (Renderer 95357 14%
+      - Google Chrome                  52473 2.3%
+      - Google Chrome Helper           52479 0.1%
+      - Google Chrome Helper (Renderer 89775 0.0%
+      - Google Chrome Helper (Renderer 73859 0.0%
+      - Google Chrome Helper (Renderer 89852 0.0%
+  Code                       7.5%     (60.0% core) n=42
+      - claude                         14424 7.4%
+      - h                              95306 0.1%
+      - Code Helper                    14133 0.0%
+      - Code Helper (Renderer)         14112 0.0%
+      - Code                           14106 0.0%
+      - Code Helper (Plugin)           14126 0.0%
+  System                     5.5%     (44.2% core) n=0
+  Other processes            4.0%     (32.0% core) n=331
+      - mdworker_shared                95427 0.9%
+      - mdworker_shared                95429 0.8%
+      - mdworker_shared                95428 0.8%
+      - mdworker_shared                95430 0.8%
+      - fontd                          1183 0.2%
+      - mdworker_shared                94177 0.2%
+  Claude                     0.1%     (0.5% core) n=14
+  Spotify                    0.1%     (0.5% core) n=13
+  Finder                     0.0%     (0.2% core) n=6
+  JVoice                     0.0%     (0.1% core) n=2
+  Control Centre             0.0%     (0.1% core) n=3
+  System Events              0.0%     (0.0% core) n=1
+  FolderActionsDispatcher    0.0%     (0.0% core) n=1
+  CoreServicesUIAgent        0.0%     (0.0% core) n=3
+  CursorUIViewService        0.0%     (0.0% core) n=1
+  chronod                    0.0%     (0.0% core) n=3
+=== scan 3 at 20:41:55.572 procs=519 cost=3.52 ms measuring=false header=25.7%
+rows sum cpu=25.68%  mem=10861 MB  rows=62
+  Code                       21%      (168.7% core) n=47
+      - yes                            95433 10%
+      - yes                            95434 10%
+      - claude                         14424 0.2%
+      - h                              95306 0.1%
+      - sleep                          95435 0.0%
+      - sleep                          95436 0.0%
+  Other processes            2.1%     (17.0% core) n=333
+      - mdworker_shared                95437 1.1%
+      - mdworker_shared                95438 1.0%
+      - cfprefsd                       919 0.1%
+      - lsd                            928 0.0%
+      - duetexpertd                    1217 0.0%
+      - fileproviderd                  1054 0.0%
+  System                     1.2%     (9.7% core) n=0
+  Google Chrome              1.2%     (9.4% core) n=24
+      - Google Chrome                  52473 0.7%
+      - Google Chrome Helper (Renderer 95357 0.4%
+      - Google Chrome Helper           52479 0.0%
+      - Google Chrome Helper (Renderer 73859 0.0%
+      - Google Chrome Helper (Renderer 89852 0.0%
+      - Google Chrome Helper (Renderer 89775 0.0%
+  Claude                     0.1%     (0.4% core) n=14
+  Spotify                    0.0%     (0.1% core) n=13
+  Finder                     0.0%     (0.1% core) n=6
+  JVoice                     0.0%     (0.0% core) n=2
+  CursorUIViewService        0.0%     (0.0% core) n=1
+  coreautha                  0.0%     (0.0% core) n=3
+  Control Centre             0.0%     (0.0% core) n=3
+  Spotlight                  0.0%     (0.0% core) n=4
+  chronod                    0.0%     (0.0% core) n=3
+  BetterScreenshot           0.0%     (0.0% core) n=3
+=== scan 4 at 20:41:56.580 procs=519 cost=4.51 ms measuring=false header=26.9%
+rows sum cpu=26.92%  mem=10860 MB  rows=62
+  Code                       25%      (203.5% core) n=47
+      - yes                            95433 12%
+      - yes                            95434 12%
+      - claude                         14424 0.4%
+      - h                              95306 0.0%
+      - Code Helper (Renderer)         14112 0.0%
+      - Code Helper                    14133 0.0%
+  System                     1.2%     (9.8% core) n=0
+  Other processes            0.1%     (0.9% core) n=333
+  Claude                     0.1%     (0.8% core) n=14
+  Google Chrome              0.0%     (0.3% core) n=24
+  Spotify                    0.0%     (0.1% core) n=13
+  Finder                     0.0%     (0.0% core) n=6
+  Dock                       0.0%     (0.0% core) n=3
+  loginwindow                0.0%     (0.0% core) n=1
+  ChatGPTHelper              0.0%     (0.0% core) n=1
+  WindowManager              0.0%     (0.0% core) n=1
+  CoreServicesUIAgent        0.0%     (0.0% core) n=3
+  universalaccessd           0.0%     (0.0% core) n=1
+  AccessibilityVisualsAgent  0.0%     (0.0% core) n=1
+=== scan 5 at 20:41:57.589 procs=519 cost=3.32 ms measuring=false header=27.5%
+rows sum cpu=27.48%  mem=10863 MB  rows=62
+  Code                       27%      (215.4% core) n=47
+      - yes                            95434 12%
+      - yes                            95433 12%
+      - claude                         14424 1.4%
+      - Code Helper                    14133 0.4%
+      - h                              95306 0.0%
+      - Code Helper (Renderer)         14112 0.0%
+  System                     0.5%     (3.8% core) n=0
+  Claude                     0.0%     (0.2% core) n=14
+  Google Chrome              0.0%     (0.1% core) n=24
+  Spotify                    0.0%     (0.1% core) n=13
+  Other processes            0.0%     (0.1% core) n=333
+  universalaccessd           0.0%     (0.0% core) n=1
+  Notification Centre        0.0%     (0.0% core) n=3
+  Control Centre             0.0%     (0.0% core) n=3
+  Dock                       0.0%     (0.0% core) n=3
+  Dock Extra                 0.0%     (0.0% core) n=3
+  Calendar                   0.0%     (0.0% core) n=4
+  Terminal                   0.0%     (0.0% core) n=1
+  ChatGPTHelper              0.0%     (0.0% core) n=1
+=== scan 6 at 20:41:58.599 procs=518 cost=4.45 ms measuring=false header=26.6%
+rows sum cpu=26.55%  mem=10823 MB  rows=62
+  Code                       25%      (203.4% core) n=47
+      - yes                            95434 13%
+      - yes                            95433 13%
+      - claude                         14424 0.3%
+      - h                              95306 0.0%
+      - Code Helper (Renderer)         14112 0.0%
+      - Code Helper                    14133 0.0%
+  System                     0.7%     (5.6% core) n=0
+  Google Chrome              0.2%     (1.2% core) n=23
+  BetterScreenshot           0.1%     (1.1% core) n=3
+  Other processes            0.1%     (0.5% core) n=333
+  Claude                     0.0%     (0.3% core) n=14
+  Spotify                    0.0%     (0.2% core) n=13
+  JVoice                     0.0%     (0.0% core) n=2
+  Control Centre             0.0%     (0.0% core) n=3
+  PowerChime                 0.0%     (0.0% core) n=1
+  universalaccessd           0.0%     (0.0% core) n=1
+  Spotlight                  0.0%     (0.0% core) n=4
+  loginwindow                0.0%     (0.0% core) n=1
+  coreautha                  0.0%     (0.0% core) n=3
+=== scan 7 at 20:41:59.616 procs=509 cost=10.89 ms measuring=false header=13.2%
+rows sum cpu=13.15%  mem=10802 MB  rows=62
+  Code                       12%      (98.2% core) n=41
+      - zsh                            95305 11%
+      - claude                         14424 0.7%
+      - Code                           14106 0.4%
+      - h                              95306 0.1%
+      - Code Helper                    14133 0.0%
+      - Code Helper (Renderer)         14112 0.0%
+  System                     0.7%     (5.5% core) n=0
+  Google Chrome              0.1%     (0.6% core) n=23
+  Claude                     0.1%     (0.6% core) n=14
+  Other processes            0.0%     (0.2% core) n=330
+  Spotify                    0.0%     (0.1% core) n=13
+  Finder                     0.0%     (0.0% core) n=6
+  FolderActionsDispatcher    0.0%     (0.0% core) n=1
+  System Events              0.0%     (0.0% core) n=1
+  Dock                       0.0%     (0.0% core) n=3
+  loginwindow                0.0%     (0.0% core) n=1
+  CoreServicesUIAgent        0.0%     (0.0% core) n=3
+  ChatGPTHelper              0.0%     (0.0% core) n=1
+  WindowManager              0.0%     (0.0% core) n=1
+=== scan 8 at 20:42:00.626 procs=513 cost=3.59 ms measuring=false header=5.7%
+rows sum cpu=5.66%  mem=10726 MB  rows=62
+  System                     3.5%     (28.4% core) n=0
+  Code                       1.7%     (13.5% core) n=45
+      - claude                         14424 1.2%
+      - zsh                            95443 0.1%
+      - h                              95306 0.1%
+      - Code Helper                    14133 0.1%
+      - Code Helper (Renderer)         14112 0.0%
+      - ugrep                          95449 0.0%
+  Claude                     0.1%     (1.1% core) n=14
+  Calendar                   0.1%     (1.0% core) n=4
+  Other processes            0.1%     (0.6% core) n=330
+  Control Centre             0.1%     (0.4% core) n=3
+  Spotify                    0.0%     (0.2% core) n=13
+  Google Chrome              0.0%     (0.1% core) n=23
+  Finder                     0.0%     (0.1% core) n=6
+  chronod                    0.0%     (0.0% core) n=3
+  Dock Extra                 0.0%     (0.0% core) n=3
+  Terminal                   0.0%     (0.0% core) n=1
+  Dock                       0.0%     (0.0% core) n=3
+  Notification Centre        0.0%     (0.0% core) n=3
+scan cost ms: 5.19 7.37 8.61 3.52 4.51 3.32 4.45 10.89 3.59
