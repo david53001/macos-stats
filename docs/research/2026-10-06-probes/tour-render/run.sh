@@ -11,7 +11,8 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../../../.." && pwd)"
 B="${TMPDIR:-/tmp}/macstats-tour-probe"
 rm -rf "$B/Sources"
-mkdir -p "$B/Sources/Probe" "$HERE/out"
+OUT="${OUT:-$HERE/out}"   # where captures go (OUT=<dir> to keep another round's captures)
+mkdir -p "$B/Sources/Probe" "$OUT"
 cp "$HERE/Package.swift" "$B/"
 cp -R "$REPO/Sources/MacStatsCore" "$REPO/Sources/CAppleSensors" "$B/Sources/"
 for f in "$REPO"/Sources/MacStatsApp/*.swift; do
@@ -21,7 +22,7 @@ cp "$HERE/main.swift" "$B/Sources/Probe/"
 export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
 (cd "$B" && swift build -c release 2>&1 | grep -E "error|warning: unre|Compiling Probe|Build" || true)
 cd "$REPO"
-"$B/.build/release/Probe" "$HERE/out" "$@" &
+"$B/.build/release/Probe" "$OUT" "$@" &
 PID=$!
 ( sleep 150; kill "$PID" ) 2>/dev/null &
 WATCH=$!

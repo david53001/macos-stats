@@ -1,5 +1,11 @@
 # Stability probe (headless)
 
+> **Superseded for breakdown measures (2026-10-07).** This probe predates the macOS-agent grouping, the
+> pointer probe and expanded-app order measures: its scan copy omits `isMacOSAgent`, it never sets
+> `breakdownPointerProbe`, it counts the expanded app's processes as a set (so it can't see them reorder),
+> and it doesn't count inversions. Use `../r5-fixes/` (record/replay through the real display code and
+> `BreakdownList`) for the breakdown; this one is kept for the card measures and the earlier rounds' numbers.
+
 **What it is:** a small command-line program that runs MacStats's **real** `MacStatsCore` code with no window
 and counts how often what a user would *read* changes: the order of the CPU breakdown's rows, the row numbers,
 the expanded app's processes, and the overview cards' numbers. It measures the "jumpiness" fixed in Part A of

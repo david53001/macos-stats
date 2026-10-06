@@ -27,7 +27,7 @@ Tests are in `Tests/MacStatsCoreTests/`; run them with `./Scripts/test.sh` (or `
 | 5 | A row's printed value changes only when the reading is ≥ max(0.75 × the printed step, min(10 % of it, 2 pp)) away (Memory 3 %, no cap; Battery 10 %, 0.2 W), confirmed on two scans unless it moved twice that | `RowHold` (`StableRanking.swift`), `HeldReading` (`DisplayHold.swift`) | `heldTextValuesStayWithinTheirBound`, `rowChangesNeedTwoScansUnlessBig` |
 | 6 | The CPU header starts at the CPU card's value and is held with a 0.75 pp band | `RowHold.cpu.band` | `theHeaderStartsFromTheCardValue`, `headerIsHeldLikeTheCard` |
 | 7 | Bars use a sticky 1-2-5 scale above the top row (CPU, Battery) | `stickyUpperBound` | `cpuBarsFollowTheTopRow`, `energyScaleIsSticky` |
-| 8 | "Finished processes" shows only while it prints more than 0 (or the list is frozen) | — | `exitedRowShowsOnlyWhileItHasSomethingToShow` |
+| 8 | "Finished processes" (work of processes that are gone) is always its app's last process row, and shows only while it prints more than 0 (or the list is frozen) | — | `exitedRowIsAlwaysLast`, `exitedRowShowsOnlyWhileItHasSomethingToShow` |
 
 ## 3. Order (`stableRanking` in `StableRanking.swift`, `ListRanking` in `BreakdownDisplay.swift`)
 
@@ -37,7 +37,7 @@ Rows are ranked by their **printed** values, so the order agrees with the number
 |---|---|---|---|
 | 9 | **Hysteresis:** a row passes the one above only with a lead of both 15 % and 0.15 pp (Battery 15 % / 0.015 W, Memory 5 % / 20 MB), or at once with a **jump** (> 1.5× and > 1 pp / 0.05 W / 200 MB) | `RankHysteresis` | `StableRankingTests` |
 | 10 | **Inversion timeout:** a row printed higher than the row above on one scan passes it on the next allowed scan, margins or not | — | `aSmallInversionLastsOneScan`, `aPromotedKeyPassesWithinTheMargin` |
-| 11 | …except process rows printed under 0.5 % (0.05 W), and "Finished processes": they pass only by the margins (tiny values crossing are noise) | `RankHysteresis.promotionFloor` | `tinyProcessRowsDontSwapByTheInversionTimeout` |
+| 11 | …except process rows printed under 0.5 % (0.05 W): they pass only by the margins (tiny values crossing are noise) | `RankHysteresis.promotionFloor` | `tinyProcessRowsDontSwapByTheInversionTimeout` |
 | 12 | **Reorder dwell:** apart from a jump, the app list reorders at most once per 5 s, each app's process rows once per 10 s | `breakdownReorderDwell` = 5, `breakdownProcessReorderDwell` = 10 | `theListReordersAtMostOncePerDwell`, `processRowsReorderAtMostOncePerTheirDwell` |
 | 13 | A process new to a listed app joins below the app's known processes for one scan (most are short-lived) | — | `aNewProcessJoinsBelowItsAppsKnownOnesForOneScan` |
 | 14 | Memory's group rows (Other processes) stay after every app | `groupsLast` | `groupsStayLastForMemory`, `memoryGroupRowsStayLast` |

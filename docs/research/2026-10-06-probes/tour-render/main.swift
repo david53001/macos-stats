@@ -261,8 +261,8 @@ func log(_ line: String) {
     let room = Design.panelWidth - 2 * Design.panelInset - quit - 8 - Design.cardPadding
     let cores = ProcessInfo.processInfo.activeProcessorCount
     _ = cores
-    for note in ["Each app\u{2019}s share of the whole Mac", "Each app\u{2019}s memory, as in Activity Monitor",
-                 "Processor power only, not the screen", "Right-click an app to quit it"] {
+    for note in ["Each app\u{2019}s share of the whole Mac", "Per app, as in Activity Monitor",
+                 "Processor power, not the screen", "Click to expand \u{00B7} Right-click to quit"] {
         let w = fittingWidth(Text(note).font(.caption2))
         let scale = min(1, room / w)
         if scale < 0.8 { failures += 1 }
@@ -504,8 +504,24 @@ final class Scan {
                 log("breakdown \(metric) \(look) expanded \(NSRunningApplication(processIdentifier: target.appPID)?.localizedName ?? "?") "
                     + "(\(target.processes.count) processes) at row \(index)")
                 save(capture(w), "r2-breakdown-\(metric)-expanded-\(look)")
+                if metric == .cpu {
+                    // The expanded app quits with the pointer on the list (frozen): it stays as "Ended" with
+                    // its processes and a disabled "N more…", so the rows below don't move up.
+                    store.breakdownPointerProbe = { BreakdownPointer(inside: true, moved: true) }
+                    store.setBreakdown(r.apps.filter { $0.appPID != target.appPID }, measuring: false,
+                                       totalCPU: r.totalCPUPercent)
+                    settle(0.8)
+                    save(capture(w), "r5-breakdown-cpu-expanded-app-ended-\(look)")
+                }
             }
             w.orderOut(nil); w.close()
+            if metric == .cpu {
+                let hint = makeWindow(BreakdownView(store: store, metric: metric, quitHint: true, onBack: {})
+                    .background(PanelBackdrop()).defaultAppStorage(d))
+                settle(0.8)
+                save(capture(hint), "r5-breakdown-cpu-hint-\(look)")
+                hint.orderOut(nil); hint.close()
+            }
         }
     }
     try? (report.joined(separator: "\n") + "\n").write(toFile: "\(outDir)/breakdowns.txt", atomically: true, encoding: .utf8)
