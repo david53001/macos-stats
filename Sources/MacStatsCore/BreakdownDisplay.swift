@@ -20,7 +20,7 @@ public struct BreakdownPointer: Equatable, Sendable {
 ///
 /// Rules (`apply`): apps and each app's processes are ranked by the values their rows print
 /// (`HeldReading`, which already needs a change to show on two scans), and re-rank only with a clear
-/// lead (`stableRanking`), or when an app has printed more than the one above it for two scans
+/// lead (`stableRanking`), or when a row has printed more than the one above it for two scans
 /// (`rank`), so the order agrees with the numbers on screen. The order is frozen while
 /// the pointer is over the list (once it has moved there) or a context menu is open, and until the
 /// first scan `breakdownUnfreezeDelay` after both end.
@@ -57,6 +57,8 @@ public struct BreakdownDisplay {
         var ended: Bool
         var children: [Int32]
         var processes: [Int32: ProcessRow]
+        /// This app's processes printed above their upper neighbour on the last scan (`rank`).
+        var lagging: Set<Int32> = []
     }
 
     private struct ProcessRow {
@@ -153,8 +155,9 @@ public struct BreakdownDisplay {
             }
             let byPID = Dictionary(children.map { ($0.pid, $0) }, uniquingKeysWith: { a, _ in a })
             let childTexts = byPID.mapValues { held(old?.processes[$0.pid]?.text, $0.value(for: metric)) }
-            let kids = stableRanking(previous: old?.children ?? [], now: childTexts.mapValues(\.shown),
-                                     rule: rule, frozen: frozen)
+            var kidsLagging = old?.lagging ?? []
+            let kids = rank(old?.children ?? [], childTexts.mapValues(\.shown), rule: rule, frozen: frozen,
+                            lagging: &kidsLagging, groupsLast: false)
             let processes = kids.compactMap { byPID[$0] }
 
             var processRows: [Int32: ProcessRow] = [:]
@@ -165,7 +168,7 @@ public struct BreakdownDisplay {
                                                 name: p.name)
             }
             nextRows[key] = AppRow(text: texts[key] ?? HeldReading(0, step: 1), ended: appEnded,
-                                   children: kids, processes: processRows)
+                                   children: kids, processes: processRows, lagging: kidsLagging)
             ordered.append(AppUsage(appPID: app.appPID, processes: processes, cpuPercent: app.cpuPercent,
                                     memoryBytes: app.memoryBytes, watts: app.watts))
         }
@@ -197,11 +200,10 @@ public struct BreakdownDisplay {
         return rows[app]?.processes[pid]?.ended ?? false
     }
 
-    /// `stableRanking`, plus an inversion timeout: an app printed higher than the app above it on
+    /// `stableRanking`, plus an inversion timeout: a row printed higher than the row above it on
     /// two published scans in a row (a lead within the margins) passes it on the second, so the list
-    /// never shows "3.0 %" above "3.3 %" for longer than one scan. `lagging` holds the apps that were
-    /// printed above their upper neighbour on the last published scan. (Process rows keep the margins
-    /// only: there the timeout doubled the reorders of the block someone has just expanded.)
+    /// never shows "3.0 %" above "3.3 %" for longer than one scan. `lagging` holds the rows that were
+    /// printed above their upper neighbour on the last published scan.
     private func rank(_ previous: [Int32], _ values: [Int32: Double], rule: RankHysteresis, frozen: Bool,
                       lagging: inout Set<Int32>, groupsLast: Bool) -> [Int32] {
         let order = stableRanking(previous: previous, now: values, rule: rule, frozen: frozen,

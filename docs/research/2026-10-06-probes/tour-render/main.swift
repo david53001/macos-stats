@@ -49,12 +49,13 @@ struct ProbePanel: View {
 }
 
 @MainActor func makeStore(battery: BatterySample? = BatterySample(percent: 64, state: .discharging,
-                                                                  timeToEmptyMinutes: 245)) -> MetricsStore {
+                                                                  timeToEmptyMinutes: 245),
+                          used: UInt64 = 11_200_000_000, total: UInt64 = 17_179_869_184) -> MetricsStore {
     let s = MetricsStore()
     let now = Date().timeIntervalSinceReferenceDate
     for i in 0..<120 {
         let t = now - 60 + Double(i) * 0.5
-        let mem = MemorySample(usedBytes: 11_200_000_000, totalBytes: 17_179_869_184, pressure: .normal,
+        let mem = MemorySample(usedBytes: used, totalBytes: total, pressure: .normal,
                                appBytes: 7_100_000_000, wiredBytes: 2_300_000_000, compressedBytes: 1_800_000_000,
                                compressedDataBytes: 5_200_000_000)
         s.record(cpuPercent: 23 + 8 * sin(Double(i) / 7) + Double(i % 5), memory: mem,
@@ -369,6 +370,10 @@ func dropSuite(_ name: String) {
         shoot("settings-help-\(look)", SettingsView(onBack: {})
             .frame(width: Design.panelWidth, height: Design.panelHeight).background(PanelBackdrop())
             .defaultAppStorage(cd))
+
+        // A 128 GB Mac: the Memory value must fit its column ("103 / 128 GB").
+        shoot("overview-128gb-\(look)", ProbePanel(store: makeStore(used: 110_000_000_000, total: 137_438_953_472),
+                                                    tour: ct, defaults: cd, noTour: true))
 
         if !dark {
             let ts = makeStore()
