@@ -14,6 +14,7 @@ OUT="${TMPDIR:-/tmp}/macstats-r2-probe"
 mkdir -p "$OUT"
 FLAGS=()
 if [[ "${R2BASE:-0}" == 1 ]]; then FLAGS=(-D R2BASE); fi
+if grep -q breakdownFirstRescanDelay "$SRC/Sources/MacStatsCore/RefreshScheduler.swift"; then FLAGS+=(-D FIRST_RESCAN); fi
 # shellcheck disable=SC2046
 swiftc -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -O ${FLAGS[@]+"${FLAGS[@]}"} \
   -o "$OUT/probe" $(ls "$SRC"/Sources/MacStatsCore/*.swift | grep -v AppleSensorReader) "$HERE/main.swift"

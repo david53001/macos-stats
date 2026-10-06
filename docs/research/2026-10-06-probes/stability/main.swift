@@ -251,7 +251,7 @@ func cpuSeconds() -> Double {
         if now >= nextScan {
             scan(now, elapsed: elapsed)
             scans += 1
-            nextScan = scans == 1 ? start.addingTimeInterval(breakdownFirstRescanDelay)
+            nextScan = scans == 1 ? start.addingTimeInterval(firstRescanDelay)
                                   : nextScan.addingTimeInterval(breakdownScanInterval)
         }
         RunLoop.current.run(until: min(nextTick, nextScan))
@@ -293,3 +293,14 @@ func cpuSeconds() -> Double {
 }
 
 MainActor.assumeIsolated { runProbe() }
+
+/// The second scan's delay in the measured checkout: 0.5 s before review round 3, then one scan
+/// interval ("Measuring…" until the first full scan). run.sh sets FIRST_RESCAN from the sources.
+// Computed: a stored global at the end of main.swift would still be 0 when the code above runs.
+var firstRescanDelay: TimeInterval {
+    #if FIRST_RESCAN
+    breakdownFirstRescanDelay
+    #else
+    breakdownScanInterval
+    #endif
+}
