@@ -42,9 +42,9 @@ monitor; build/test/SDK notes in `CLAUDE.md`). **Baseline commit before this wor
 
 ### Part A: Stability (agent 1). Plan section "PART A"
 - [x] A1: pure helpers (`DisplayHold.swift`, `StableRanking.swift`, `stickyUpperBound`, `BreakdownFormat.swift`) + tests — commit `bae65e6`
-- [ ] A2: 4 s trailing window in `BreakdownScanner`; `breakdownScanInterval` = 2 s; tests
-- [ ] A3: `MetricsStore` stable order, freeze, pin and held row values; tests
-- [ ] A4: held card values; `rateWindowSeconds` = 2 s; tests
+- [x] A2: 4 s trailing window in `BreakdownScanner`; `breakdownScanInterval` = 2 s; tests — commit `4adc84b`
+- [x] A3: `MetricsStore` stable order, freeze, pin and held row values; tests — commit `83e52e4`
+- [x] A4: held card values; `rateWindowSeconds` = 2 s; tests — commit `fed3fdd` (note: `cpuTemperature()` no longer rounds, so the store's 1 °C hold has something to hold; the card still shows whole degrees)
 - [ ] A5: views (`BreakdownView` freeze/pin/held text/energy scale/reorder animation; cards read held values)
 - [ ] A6: headless stability probe `docs/research/2026-10-06-probes/stability/` + results; `CLAUDE.md` Status bullet
 
@@ -91,4 +91,4 @@ The full steps are in the plan, "Owner manual checks":
 - Closed-popover CPU and footprint vs v1.1.0.
 
 ## Next
-Part A, task A2 (plan section "A2. Trailing window in `BreakdownScanner`").
+Part A, task A5 (plan section "A5. Views").
