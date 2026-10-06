@@ -1,8 +1,10 @@
 import Foundation
 
-/// How strongly a breakdown resists re-ranking (diagnosis section 5.2). Measured on live data
-/// (`docs/research/2026-10-06-stability-diagnosis.md` §4.1): with a 4 s window these margins
-/// cut the CPU breakdown's top-8 order changes from 59 to 5–13 a minute.
+/// How strongly a breakdown resists re-ranking (diagnosis section 5.2). A row must lead by BOTH
+/// margins: `rel` of the row above's value and `abs`. `abs` is 2 printed steps of a small row
+/// (`breakdownValueStep`: 0.1 pp, 0.01 W), so a row printed clearly higher than the one above it
+/// (by more than max(25 %, 2 steps), review round 1's "visibly mis-sorted" bound) always climbs.
+/// Memory keeps its measured 5 % / 20 MB (its list was already still and sorted).
 public struct RankHysteresis: Equatable, Sendable {
     public var rel: Double      // relative margin
     public var abs: Double      // absolute margin (metric units)
@@ -12,9 +14,9 @@ public struct RankHysteresis: Equatable, Sendable {
         self.rel = rel; self.abs = abs; self.jump = jump
     }
 
-    public static let cpu    = RankHysteresis(rel: 0.25, abs: 0.3, jump: 2)          // pp of the whole Mac
+    public static let cpu    = RankHysteresis(rel: 0.25, abs: 0.2, jump: 2)          // pp of the whole Mac
     public static let memory = RankHysteresis(rel: 0.05, abs: 20 * 1_048_576, jump: 200 * 1_048_576)
-    public static let energy = RankHysteresis(rel: 0.25, abs: 0.05, jump: 1)         // W
+    public static let energy = RankHysteresis(rel: 0.25, abs: 0.02, jump: 1)         // W
 
     public static func `for`(_ metric: BreakdownMetric) -> RankHysteresis {
         switch metric {
@@ -26,13 +28,17 @@ public struct RankHysteresis: Equatable, Sendable {
 }
 
 /// Re-ranks keys with hysteresis. Starts from `previous`: vanished keys are dropped, and new keys enter at
-/// their sorted place (by `now`, ties by today's `ranksBefore` rule). A key climbs past the one above only when
-/// min(now, before) of it > max(now, before) of the one above × (1 + rel) + abs, i.e. it leads on both
-/// readings. A key that leads by > 2× AND > `jump` on `now` moves at once. `pinned` keys keep their index
-/// while the others reorder around them. `frozen` returns `previous` minus vanished keys, plus new keys
-/// appended at the end. `groupsLast` (memory) keeps negative keys (group rows) after all apps.
-/// One insertion pass, O(n²) on ~60 rows (O(n) when little changed). A key missing from `before`
-/// counts its `now` value for both readings.
+/// their sorted place (by `now`, ties by today's `ranksBefore` rule). A key "clearly beats" a key when
+/// min(now, before) of it > max(now, before) of the other × (1 + rel) and + abs, i.e. it leads by both
+/// margins on both readings; or when it leads by > 2× AND > `jump` on `now` (moves at once).
+/// Each key moves up past the run of keys directly above it that it outranks on `now`, as far as the
+/// highest of them it clearly beats: so a key it can't clearly beat doesn't block one further up that
+/// it can (round 1: a 4.3 % app stuck under a 0.4 % one), and it never passes a key with a higher value.
+/// With steady readings one pass leaves no key clearly beaten by a key below it (tested).
+/// `pinned` keys keep their index while the others reorder around them. `frozen` returns `previous`
+/// minus vanished keys, plus new keys appended at the end. `groupsLast` (memory) keeps negative keys
+/// (group rows) after all apps. One insertion pass, O(n²) on ~60 rows (O(n) when little changed).
+/// A key missing from `before` counts its `now` value for both readings.
 public func stableRanking(previous: [Int32], now: [Int32: Double], before: [Int32: Double],
                           rule: RankHysteresis, pinned: Set<Int32> = [], frozen: Bool = false,
                           groupsLast: Bool = false) -> [Int32] {
@@ -64,17 +70,26 @@ public func stableRanking(previous: [Int32], now: [Int32: Double], before: [Int3
     func value(_ key: Int32) -> Double { now[key] ?? 0 }
     func low(_ key: Int32) -> Double { min(value(key), before[key] ?? value(key)) }
     func high(_ key: Int32) -> Double { max(value(key), before[key] ?? value(key)) }
+    func outranks(_ a: Int32, _ b: Int32) -> Bool {
+        if groupsLast, (a < 0) != (b < 0) { return a > 0 }
+        return value(a) > value(b)
+    }
     func climbs(_ a: Int32, over b: Int32) -> Bool {
         if groupsLast, (a < 0) != (b < 0) { return a > 0 }
-        if low(a) > high(b) * (1 + rule.rel) + rule.abs { return true }
+        if low(a) > max(high(b) * (1 + rule.rel), high(b) + rule.abs) { return true }
         return value(a) > 2 * value(b) && value(a) - value(b) > rule.jump
     }
     if list.count > 1 {
         for i in 1..<list.count {
-            var j = i
-            while j > 0, climbs(list[j], over: list[j - 1]) {
-                list.swapAt(j, j - 1)
+            let key = list[i]
+            var j = i, target = i
+            while j > 0, outranks(key, list[j - 1]) {
                 j -= 1
+                if climbs(key, over: list[j]) { target = j }
+            }
+            if target < i {
+                list.remove(at: i)
+                list.insert(key, at: target)
             }
         }
     }
