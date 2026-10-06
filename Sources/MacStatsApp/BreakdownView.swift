@@ -15,7 +15,7 @@ import MacStatsCore
 struct BreakdownView: View {
     @ObservedObject var store: MetricsStore
     let metric: BreakdownMetric
-    /// Show "Right-click an app to quit it" in place of the footnote (the first few drill-ins).
+    /// Show "Click to expand · Right-click to quit" in place of the footnote (the first few drill-ins).
     let quitHint: Bool
     let onBack: () -> Void
     /// A row's context menu opened (the quit hint has done its job).
@@ -26,6 +26,8 @@ struct BreakdownView: View {
     /// The expanded app row (accordion: one at a time) and how many of its processes show.
     @State private var expanded: Int32?
     @State private var visibleChildren = BreakdownList.initialChildren
+    /// Which app's rows the pointer is over, from the rows' hover events (`PointerProbe` reports it).
+    @State private var hover = RowHover()
 
     private static let cores = ProcessInfo.processInfo.activeProcessorCount
 
@@ -108,10 +110,10 @@ struct BreakdownView: View {
                 .background(CardBackground())
                 .clipShape(RoundedRectangle(cornerRadius: Design.cardCornerRadius, style: .continuous))
                 .onHover { store.setBreakdownPointerInside($0) }   // freezes the row order
-                .background(PointerProbe(store: store))   // …and so does a pointer that hasn't moved
+                .background(PointerProbe(store: store, hover: hover))   // …and so does a pointer that hasn't moved
 
             PanelFooter {
-                Text(quitHint ? "Right-click an app to quit it" : footnote)
+                Text(quitHint ? "Click to expand \u{00B7} Right-click to quit" : footnote)
                     .font(.caption2).foregroundStyle(.secondary)
                     .lineLimit(1).minimumScaleFactor(0.8)
                     .tooltip(quitHint ? nil : footnoteHelp)
@@ -151,8 +153,8 @@ struct BreakdownView: View {
         switch metric {
         case .cpu: return "Each app\u{2019}s share of the whole Mac"
         // Like Activity Monitor's Memory column (footprints); why they don't add up is the tooltip.
-        case .memory: return "Each app\u{2019}s memory, as in Activity Monitor"
-        case .energy: return "Processor power only, not the screen"
+        case .memory: return "Per app, as in Activity Monitor"
+        case .energy: return "Processor power, not the screen"
         }
     }
 
@@ -189,11 +191,14 @@ struct BreakdownView: View {
                 LazyVStack(spacing: 0) {
                     ForEach(BreakdownList.rows(store.breakdown, expanded: expanded, visible: visibleChildren,
                                                 ended: { store.isEnded(app: $0) })) { row in
-                        switch row.kind {
-                        case .app(let app): appRow(app)
-                        case .process(let process, let app): processRow(process, in: app)
-                        case .more(let remaining): moreRow(remaining)
+                        Group {
+                            switch row.kind {
+                            case .app(let app): appRow(app)
+                            case .process(let process, let app): processRow(process, in: app)
+                            case .more(let remaining, let enabled): moreRow(remaining, enabled: enabled)
+                            }
                         }
+                        .onHover { hover.update(row: row.id, app: row.app, inside: $0) }
                     }
                 }
                 // The rare real reorders slide instead of teleporting; nothing moves while frozen.
@@ -281,7 +286,8 @@ struct BreakdownView: View {
             exitedRow(process, in: app)
         } else if store.isEnded(app: app.appPID, pid: process.pid) {
             // Kept in place while the list is frozen (`MetricsStore.isEnded`); gone at the unfreeze.
-            ProcessRow(process: process, name: process.name ?? apps.name(ofProcess: process.pid, startTime: process.startTime),
+            let name = process.name ?? apps.name(ofProcess: process.pid, startTime: process.startTime)
+            ProcessRow(process: process, name: processDisplayName(name, inApp: apps.info(for: app.appPID).name),
                        metric: metric, barScale: barScale, shown: 0, ended: true)
                 .transition(.opacity)
         } else {
@@ -314,8 +320,8 @@ struct BreakdownView: View {
         return ProcessRow(process: process, name: processDisplayName(name, inApp: appName), metric: metric,
                           barScale: barScale, shown: value)
             .transition(.opacity)
-            // The pid lives here and in the menu, not on the row (noise for most people).
-            .tooltip("\(name)\npid \(process.pid)")
+            // The full name (the row may show it shortened); the pid is in the menu only.
+            .tooltip(name)
             .accessibilityActions {
                 if canQuit {
                     Button("Quit") {
@@ -344,18 +350,21 @@ struct BreakdownView: View {
             }
     }
 
-    private func moreRow(_ remaining: Int) -> some View {
+    /// Disabled (dimmed) for an app that ended while frozen: kept so the rows below don't move up.
+    private func moreRow(_ remaining: Int, enabled: Bool) -> some View {
         Button {
             withAnimation(.snappy(duration: 0.25)) { visibleChildren += BreakdownList.moreChildren }
         } label: {
             Text("\(remaining) more\u{2026}")
                 .font(.caption).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, BreakdownList.childIndent)
+                .padding(.leading, childIndent)
                 .padding(.horizontal, 8).padding(.vertical, 4)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.45)
         .transition(.opacity)
     }
 
@@ -364,39 +373,28 @@ struct BreakdownView: View {
     }
 }
 
-/// Flattens the ranked apps plus the expanded app's processes into one list, so the
-/// `LazyVStack` builds only the rows on screen (an app can have hundreds of processes).
-enum BreakdownList {
-    static let initialChildren = 5
-    static let moreChildren = 25
-    /// Child rows line up with the app name column (24 pt icon + 10 pt spacing).
-    static let childIndent: CGFloat = 34
+/// Child rows line up with the app name column (24 pt icon + 10 pt spacing).
+private let childIndent: CGFloat = 34
 
-    struct Row: Identifiable {
-        enum Kind {
-            case app(AppUsage)
-            case process(ProcessUsage, AppUsage)
-            case more(Int)
+/// Which row the pointer is over, from the rows' hover events: the app whose rows it is, for the
+/// freeze (`BreakdownPointer.app`). Not observed (no redraws); read once a scan by `PointerProbe`.
+final class RowHover {
+    private var row: String?
+    private(set) var app: Int32?
+
+    func update(row id: String, app: Int32, inside: Bool) {
+        if inside {
+            row = id
+            self.app = app
+        } else if row == id {
+            forget()
         }
-        let id: String
-        let kind: Kind
     }
 
-    /// `ended`: an app kept as a placeholder while frozen gets no "N more…" row (its processes are gone).
-    static func rows(_ apps: [AppUsage], expanded: Int32?, visible: Int, ended: (Int32) -> Bool = { _ in false }) -> [Row] {
-        var rows: [Row] = []
-        rows.reserveCapacity(apps.count + visible + 1)
-        for app in apps {
-            rows.append(Row(id: "a\(app.appPID)", kind: .app(app)))
-            guard app.appPID == expanded, app.processes.count > 1 else { continue }
-            for p in app.processes.prefix(visible) {
-                rows.append(Row(id: "p\(p.pid)", kind: .process(p, app)))
-            }
-            if app.processes.count > visible, !ended(app.appPID) {
-                rows.append(Row(id: "m\(app.appPID)", kind: .more(app.processes.count - visible)))
-            }
-        }
-        return rows
+    /// Unknown until the next hover event (after a scroll moved the rows under the pointer).
+    func forget() {
+        row = nil
+        app = nil
     }
 }
 
@@ -501,7 +499,7 @@ private struct ProcessRow: View {
             Color.clear.frame(width: 8, height: 1)   // the app rows' chevron column
         }
         .opacity(ended ? 0.45 : 1)
-        .padding(.leading, BreakdownList.childIndent)
+        .padding(.leading, childIndent)
         .padding(.horizontal, 8).padding(.vertical, 4)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -513,37 +511,64 @@ private struct ProcessRow: View {
     }
 }
 
-/// Answers "is the pointer over the list, and has it moved since the list appeared?" from AppKit,
-/// for `MetricsStore` to read once a scan (`breakdownPointerProbe`): hover events miss a pointer
-/// that hasn't moved since a context menu closed, and the list appears under the pointer that
-/// clicked the card, which isn't pointing at a row yet. Never takes clicks; does nothing between scans.
+/// Answers "is the pointer over the list, has it moved since the list appeared, and over which app's
+/// rows?" from AppKit and the rows' hover events, for `MetricsStore` to read once a scan
+/// (`breakdownPointerProbe`): hover events miss a pointer that hasn't moved since a context menu closed,
+/// and the list appears under the pointer that clicked the card, which isn't pointing at a row yet. A
+/// scroll or click in the list counts as moving; a scroll also makes the row unknown until the next hover.
+/// Never takes clicks; its event monitor exists only while the breakdown is shown.
 private struct PointerProbe: NSViewRepresentable {
     let store: MetricsStore
+    let hover: RowHover
 
-    func makeNSView(context: Context) -> ProbeView { ProbeView() }
-
-    func updateNSView(_ view: ProbeView, context: Context) {
+    func makeNSView(context: Context) -> ProbeView {
+        let view = ProbeView(hover: hover)
         store.breakdownPointerProbe = { [weak view] in
             view?.reading ?? BreakdownPointer(inside: false, moved: false)
         }
+        return view
     }
 
+    func updateNSView(_ view: ProbeView, context: Context) {}
+
     final class ProbeView: NSView {
+        private let hover: RowHover
         /// The pointer's place (window coordinates) when the list appeared.
         private var start: NSPoint?
         private var moved = false
+        private var monitor: Any?
+
+        init(hover: RowHover) {
+            self.hover = hover
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             start = window?.mouseLocationOutsideOfEventStream
             moved = false
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+            guard window != nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .leftMouseDown, .rightMouseDown]) {
+                [weak self] event in
+                if let self, event.window === self.window,
+                   self.bounds.contains(self.convert(event.locationInWindow, from: nil)) {
+                    self.moved = true
+                    if event.type == .scrollWheel { self.hover.forget() }
+                }
+                return event
+            }
         }
 
         var reading: BreakdownPointer {
             guard let window, window.isVisible else { return BreakdownPointer(inside: false, moved: moved) }
             let location = window.mouseLocationOutsideOfEventStream
             if !moved, let start, hypot(location.x - start.x, location.y - start.y) > 2 { moved = true }
-            return BreakdownPointer(inside: bounds.contains(convert(location, from: nil)), moved: moved)
+            return BreakdownPointer(inside: bounds.contains(convert(location, from: nil)), moved: moved,
+                                    app: hover.app)
         }
 
         override func hitTest(_ point: NSPoint) -> NSView? { nil }

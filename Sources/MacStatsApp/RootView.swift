@@ -15,7 +15,7 @@ struct RootView: View {
     @ObservedObject var tour: TourController
     /// The in-popover Settings screen (pushed from the overview footer); reset on close.
     @State private var showingSettings = false
-    /// The open breakdown shows the "Right-click an app to quit it" hint (first few drill-ins).
+    /// The open breakdown shows the "Click to expand · Right-click to quit" hint (first few drill-ins).
     @State private var quitHint = false
 
     var body: some View {

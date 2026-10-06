@@ -37,7 +37,7 @@ public enum TourCatalog {
 
     public static let steps: [TourStep] = [
         TourStep(.cpu, "How hard it’s working",
-                 "The number is now, and the graph is the last minute. Click to see which apps use it."),
+                 "The number is right now; the graph shows the last minute. Click to see which apps use it."),
         TourStep(.memory, "Memory in use",
                  "The dot turns yellow or red when your Mac runs short. Click to see which apps use it."),
         TourStep(.network, "Network activity",
@@ -51,7 +51,7 @@ public enum TourCatalog {
 
     public static let welcomeTitle = "Welcome to MacStats"
     public static let welcomeBody =
-        "Your Mac’s CPU, memory, network and battery, live in your menu bar, under this icon."
+        "Your Mac’s CPU, memory, network and battery, live in your menu bar. Click its icon any time."
     public static let alertsPermission =
         "MacStats will ask to send alerts when your Mac stays busy or runs low on memory."
     public static let finderPermission =
@@ -172,7 +172,7 @@ public enum TourAudience: String, Sendable {
 
 /// Who sees the welcome, the offer chip and the breakdown hint.
 public enum TourRules {
-    /// The breakdown's "Right-click an app to quit it" hint shows until a row's menu has been
+    /// The breakdown’s "Click to expand · Right-click to quit" hint shows until a row's menu has been
     /// opened once, on at most this many drill-ins (then the footnote it replaces comes back).
     public static let breakdownHintLimit = 10
     /// The existing-user "Take the Tour" chip shows on this many opens.

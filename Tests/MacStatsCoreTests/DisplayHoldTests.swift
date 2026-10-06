@@ -79,6 +79,7 @@ import Testing
         #expect(heldRate(shown: 5_000, value: 7_100) == 7_000)
         #expect(heldRate(shown: 200_000, value: 225_000) == 200_000)  // < 15 %
         #expect(heldRate(shown: 200_000, value: 231_000) == 231_000)
+        #expect(heldRate(shown: 200_000, value: 231_000, relBand: 0.2) == 200_000)   // the ↑ line
     }
 
     @Test func rateUnitSwitchIsHeld() {

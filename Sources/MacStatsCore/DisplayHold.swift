@@ -68,13 +68,13 @@ public func heldMemory(shown: MemorySample?, value: MemorySample, step: UInt64 =
 
 /// Network rate hold. Step = the printed precision of the shown unit (1 KB/s, or 0.1 MB/s at
 /// ≥ 999.5 KB/s, matching `formattedRate`), band 2 (a few KB/s of background chatter, mostly ↑, stays
-/// put), relBand 0.15. The KB/s ↔ MB/s switch is held the same way.
-/// A value that passes is quantised to its own unit's precision.
-public func heldRate(shown: Double?, value: Double) -> Double {
+/// put), relBand 0.15 (the card's ↑ line uses 0.2: small uploads jitter more). The KB/s ↔ MB/s switch
+/// is held the same way. A value that passes is quantised to its own unit's precision.
+public func heldRate(shown: Double?, value: Double, relBand: Double = 0.15) -> Double {
     func step(_ bps: Double) -> Double { bps >= 999_500 ? 100_000 : 1_000 }
     let quantised = (value / step(value)).rounded() * step(value)
     guard let shown else { return quantised }
-    let threshold = max(2 * step(shown), 0.15 * abs(shown))
+    let threshold = max(2 * step(shown), relBand * abs(shown))
     return abs(value - shown) < threshold ? shown : quantised
 }
 

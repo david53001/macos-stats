@@ -107,9 +107,8 @@ final class TourController: ObservableObject {
 
     func next() { apply(state.next(isPresent: isPresent)) }
     func back() { apply(state.back(isPresent: isPresent)) }
+    /// Skip Tour, Esc, and the welcome's No Thanks.
     func skip() { apply(state.skip()) }
-    /// The welcome's No Thanks.
-    func noThanks() { apply(state.skip()) }
 
     func dismissOffer() {
         offersTour = false

@@ -137,7 +137,7 @@ private struct TourOverlay: View {
             if tour.state.phase == .welcome {
                 let frame = TourLayout.welcome(height: welcomeHeight ?? 0, panel: panel, scale: scale)
                 WelcomeCard(showsPermissions: tour.defersPermissionPrompts,
-                            onNoThanks: { tour.noThanks() }, onStart: { tour.start() })
+                            onNoThanks: { tour.skip() }, onStart: { tour.start() })
                     .frame(width: frame.width)
                     .measuredHeight($welcomeHeight)
                     .offset(x: frame.minX, y: frame.minY)
@@ -369,9 +369,9 @@ struct TourOfferChip: View {
     var body: some View {
         HStack(spacing: 4) {
             Button(action: onStart) { Text(TourCatalog.takeTheTour).font(.caption.weight(.medium)) }
-                .buttonStyle(SubtleButtonStyle(height: 20))
+                .buttonStyle(SubtleButtonStyle(height: 18))
             Button(action: onDismiss) { Image(systemName: "xmark").font(.caption2.weight(.semibold)) }
-                .buttonStyle(SubtleButtonStyle(height: 20))
+                .buttonStyle(SubtleButtonStyle(height: 18))
                 .accessibilityLabel("Dismiss")
                 .help("Dismiss")
         }

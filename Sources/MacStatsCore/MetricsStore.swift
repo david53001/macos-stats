@@ -174,15 +174,16 @@ public final class MetricsStore: ObservableObject {
         let shownNet = restart ? nil : cardNetwork
         let down = dwelledRate(shown: shownNet?.downBytesPerSec, value: network.downBytesPerSec,
                                since: &cardDownChangedAt, time: time)
-        let up = dwelledRate(shown: shownNet?.upBytesPerSec, value: network.upBytesPerSec,
+        let up = dwelledRate(shown: shownNet?.upBytesPerSec, value: network.upBytesPerSec, relBand: 0.2,
                              since: &cardUpChangedAt, time: time)
         let net = NetworkSample(downBytesPerSec: down, upBytesPerSec: up)
         if net != cardNetwork { cardNetwork = net }
     }
 
     /// `heldRate` plus the dwell; a big move (the rate doubled or halved, by 10 KB/s or more) shows at once.
-    private func dwelledRate(shown: Double?, value: Double, since: inout TimeInterval?, time: TimeInterval) -> Double {
-        let next = heldRate(shown: shown, value: value)
+    private func dwelledRate(shown: Double?, value: Double, relBand: Double = 0.15, since: inout TimeInterval?,
+                             time: TimeInterval) -> Double {
+        let next = heldRate(shown: shown, value: value, relBand: relBand)
         guard let shown, next != shown else { return next }
         let big = max(value, shown) >= 2 * min(value, shown) && abs(value - shown) >= 10_000
         guard dwellAllows(since: since, now: time, bigMove: big) else { return shown }
