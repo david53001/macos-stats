@@ -75,8 +75,8 @@ import Testing
 
     @Test func rateHoldsSmallWobble() {
         #expect(heldRate(shown: nil, value: 12_400) == 12_000)
-        #expect(heldRate(shown: 5_000, value: 6_400) == 5_000)       // < 1.5 KB/s
-        #expect(heldRate(shown: 5_000, value: 6_600) == 7_000)
+        #expect(heldRate(shown: 5_000, value: 6_600) == 5_000)       // < 2 KB/s
+        #expect(heldRate(shown: 5_000, value: 7_100) == 7_000)
         #expect(heldRate(shown: 200_000, value: 225_000) == 200_000)  // < 15 %
         #expect(heldRate(shown: 200_000, value: 231_000) == 231_000)
     }
@@ -122,5 +122,51 @@ import Testing
         #expect(heldValue(shown: 50, value: 52, step: 1, relBand: 0.10, cap: 2) == 52)
         // Small rows keep the relative band (under the cap).
         #expect(heldValue(shown: 5, value: 5.4, step: 0.1, relBand: 0.10, cap: 2) == 5)
+    }
+
+    @Test func memoryIsMeasuredFromThePrintedFigure() {
+        // Shown 10.549 GiB prints 10.5. A reading 0.1 GiB above the raw figure (10.649) is only
+        // 0.149 from the printed one and passes (prints 10.6); the swing back to 10.55 is 0.05 from
+        // the new printed figure and holds, so the text doesn't flip back.
+        let g = Double(gib)
+        let shown = sample(UInt64(10.549 * g))
+        let up = sample(UInt64(10.649 * g))
+        #expect(heldMemory(shown: shown, value: up) == up)
+        #expect(heldMemory(shown: up, value: sample(UInt64(10.55 * g))) == up)
+        // 10.56 → 10.62: 0.02 from the printed 10.6, held.
+        #expect(heldMemory(shown: sample(UInt64(10.56 * g)), value: sample(UInt64(10.62 * g))).usedBytes
+                == UInt64(10.56 * g))
+    }
+
+    // MARK: Rows read once a scan
+
+    @Test func rowChangesNeedTwoScansUnlessBig() {
+        var r = HeldReading(5.0, step: 0.1)
+        r.update(5.6, step: 0.1, relBand: 0.10)   // passes the 0.5 band once: pending
+        #expect(r.shown == 5.0)
+        r.update(5.6, step: 0.1, relBand: 0.10)   // twice: shows
+        #expect(abs(r.shown - 5.6) < 1e-9)
+        r.update(4.9, step: 0.1, relBand: 0.10)   // down once…
+        r.update(5.7, step: 0.1, relBand: 0.10)   // …then within the band: the pending move is dropped
+        r.update(4.9, step: 0.1, relBand: 0.10)
+        #expect(abs(r.shown - 5.6) < 1e-9)
+        r.update(9.0, step: 0.1, relBand: 0.10)   // ≥ 2 × the 0.56 threshold: at once
+        #expect(abs(r.shown - 9.0) < 1e-9)
+    }
+
+    @Test func aBlipThatReversesNeverPrints() {
+        var r = HeldReading(3.0, step: 0.1)
+        r.update(3.45, step: 0.1, relBand: 0.10)   // up past the 0.3 band
+        r.update(2.6, step: 0.1, relBand: 0.10)    // down past it: opposite direction, not a confirmation
+        #expect(abs(r.shown - 3.0) < 1e-9)
+    }
+
+    // MARK: Card dwell
+
+    @Test func dwellWaitsUnlessTheMoveIsBig() {
+        #expect(dwellAllows(since: nil, now: 5, bigMove: false))
+        #expect(!dwellAllows(since: 4, now: 5, bigMove: false))
+        #expect(dwellAllows(since: 4, now: 6, bigMove: false))
+        #expect(dwellAllows(since: 4, now: 4.5, bigMove: true))
     }
 }

@@ -70,6 +70,10 @@ public func isDue(last: Date?, now: Date, every interval: TimeInterval) -> Bool 
 /// snapshots are 10 s apart, so it is unaffected.
 public let rateWindowSeconds: TimeInterval = 2.0
 
+/// The overview cards' text changes at most this often (the graphs stay live), unless the reading
+/// jumps (`dwellAllows`): with only the holds, the CPU card's text changed about every 1.5 s.
+public let cardDwellSeconds: TimeInterval = 2.0
+
 /// Index of the snapshot a rate should diff against, given snapshot times oldest→newest, the
 /// current time, and the trailing `window`. Returns the newest snapshot still at least `window`
 /// old (so the rate spans ~`window` seconds), or the oldest available when there isn't yet a

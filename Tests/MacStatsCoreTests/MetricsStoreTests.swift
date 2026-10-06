@@ -160,10 +160,22 @@ import Testing
         #expect(store.cardCPUPercent == 8)
         #expect(store.cardMemory?.usedBytes == 10 * gib)
         #expect(store.cardNetwork?.downBytesPerSec == 5_000)
-        store.record(cpuPercent: 9.3, memory: memory(10 * gib + 200_000_000), network: network(9_000), time: 1)
+        store.record(cpuPercent: 9.3, memory: memory(10 * gib + 200_000_000), network: network(9_000), time: 2)
         #expect(store.cardCPUPercent == 9)
         #expect(store.cardMemory?.usedBytes == 10 * gib + 200_000_000)
         #expect(store.cardNetwork?.downBytesPerSec == 9_000)
+    }
+
+    @Test func cardTextDwellsUnlessTheReadingJumps() {
+        let store = MetricsStore()
+        store.record(cpuPercent: 8, memory: mem, network: net, time: 0)
+        store.record(cpuPercent: 9.4, memory: mem, network: net, time: 0.5)   // passes the hold, but too soon
+        #expect(store.cardCPUPercent == 8)
+        store.record(cpuPercent: 9.4, memory: mem, network: net, time: 2)
+        #expect(store.cardCPUPercent == 9)
+        store.record(cpuPercent: 30, memory: mem, network: net, time: 2.5)    // a jump never waits
+        #expect(store.cardCPUPercent == 30)
+        #expect(store.cpuPercent == 30)
     }
 
     @Test func rawValuesAndHistoryStayExact() {

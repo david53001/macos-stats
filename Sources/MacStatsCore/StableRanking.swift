@@ -1,10 +1,9 @@
 import Foundation
 
-/// How strongly a breakdown resists re-ranking (diagnosis section 5.2). A row must lead by BOTH
-/// margins: `rel` of the row above's value and `abs`. `abs` is 2 printed steps of a small row
-/// (`breakdownValueStep`: 0.1 pp, 0.01 W), so a row printed clearly higher than the one above it
-/// (by more than max(25 %, 2 steps), review round 1's "visibly mis-sorted" bound) always climbs.
-/// Memory keeps its measured 5 % / 20 MB (its list was already still and sorted).
+/// How strongly a breakdown resists re-ranking. A row must lead by BOTH margins: `rel` of the row
+/// above's value and `abs`, on two readings. `abs` is 1.5 printed steps of a small row
+/// (`breakdownValueStep`: 0.1 pp, 0.01 W): rows ranked by their printed values climb over a row
+/// 2 steps lower, not over one a single step lower. Memory keeps 5 % / 20 MB (its list is still and sorted).
 public struct RankHysteresis: Equatable, Sendable {
     public var rel: Double      // relative margin
     public var abs: Double      // absolute margin (metric units)
@@ -14,9 +13,9 @@ public struct RankHysteresis: Equatable, Sendable {
         self.rel = rel; self.abs = abs; self.jump = jump
     }
 
-    public static let cpu    = RankHysteresis(rel: 0.25, abs: 0.2, jump: 1)          // pp of the whole Mac
+    public static let cpu    = RankHysteresis(rel: 0.15, abs: 0.15, jump: 1)         // pp of the whole Mac
     public static let memory = RankHysteresis(rel: 0.05, abs: 20 * 1_048_576, jump: 200 * 1_048_576)
-    public static let energy = RankHysteresis(rel: 0.25, abs: 0.02, jump: 0.05)      // W
+    public static let energy = RankHysteresis(rel: 0.15, abs: 0.015, jump: 0.05)     // W
 
     public static func `for`(_ metric: BreakdownMetric) -> RankHysteresis {
         switch metric {
@@ -31,17 +30,16 @@ public struct RankHysteresis: Equatable, Sendable {
 /// their sorted place (by `now`, ties by today's `ranksBefore` rule). A key "clearly beats" a key when
 /// min(now, before) of it > max(now, before) of the other × (1 + rel) and + abs, i.e. it leads by both
 /// margins on both readings; or when it leads by > 1.5× AND > `jump` on `now` (moves at once: a big,
-/// clear lead isn't held back a scan, which round 1 counted as a mis-sorted list).
+/// clear lead isn't held back a scan).
 /// Each key moves up past the run of keys directly above it that it outranks on `now`, as far as the
 /// highest of them it clearly beats: so a key it can't clearly beat doesn't block one further up that
-/// it can (round 1: a 4.3 % app stuck under a 0.4 % one), and it never passes a key with a higher value.
+/// it can, and it never passes a key with a higher value.
 /// With steady readings one pass leaves no key clearly beaten by a key below it (tested).
-/// `pinned` keys keep their index while the others reorder around them. `frozen` returns `previous`
-/// minus vanished keys, plus new keys appended at the end. `groupsLast` (memory) keeps negative keys
+/// `frozen` returns `previous` minus vanished keys, plus new keys appended at the end. `groupsLast` (memory) keeps negative keys
 /// (group rows) after all apps. One insertion pass, O(n²) on ~60 rows (O(n) when little changed).
 /// A key missing from `before` counts its `now` value for both readings.
 public func stableRanking(previous: [Int32], now: [Int32: Double], before: [Int32: Double],
-                          rule: RankHysteresis, pinned: Set<Int32> = [], frozen: Bool = false,
+                          rule: RankHysteresis, frozen: Bool = false,
                           groupsLast: Bool = false) -> [Int32] {
     var seen = Set<Int32>()
     let kept = previous.filter { now[$0] != nil && seen.insert($0).inserted }
@@ -55,14 +53,11 @@ public func stableRanking(previous: [Int32], now: [Int32: Double], before: [Int3
         return kept.filter { $0 > 0 } + fresh.filter { $0 > 0 } + kept.filter { $0 < 0 } + fresh.filter { $0 < 0 }
     }
 
-    let pinnedSlots = previous.enumerated()
-        .filter { pinned.contains($0.element) && now[$0.element] != nil }
-        .map { (key: $0.element, index: $0.offset) }
-    var list = kept.filter { !pinned.contains($0) }
+    var list = kept
     if list.isEmpty {
-        list = fresh.filter { !pinned.contains($0) }
+        list = fresh
     } else {
-        for key in fresh where !pinned.contains(key) {
+        for key in fresh {
             let at = list.firstIndex { precedes(key, $0, now: now, groupsLast: groupsLast) } ?? list.count
             list.insert(key, at: at)
         }
@@ -93,16 +88,6 @@ public func stableRanking(previous: [Int32], now: [Int32: Double], before: [Int3
                 list.insert(key, at: target)
             }
         }
-    }
-
-    // Pinned keys go back to their old index (an app stays before the group rows).
-    for slot in pinnedSlots.sorted(by: { $0.index < $1.index }) {
-        let limit = groupsLast && slot.key > 0 ? list.lazy.filter { $0 > 0 }.count : list.count
-        list.insert(slot.key, at: min(slot.index, limit))
-    }
-    for key in fresh where pinned.contains(key) && !list.contains(key) {
-        let at = list.firstIndex { precedes(key, $0, now: now, groupsLast: groupsLast) } ?? list.count
-        list.insert(key, at: at)
     }
     return list
 }

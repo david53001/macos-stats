@@ -1,23 +1,23 @@
 import SwiftUI
 import MacStatsCore
 
-/// The top card of the Battery drill-in: status, time left / to full, power, health.
-/// Label on the left, value on the right, in the card language of the rest of the popover.
+/// The top card of the Battery drill-in: time left / to full, power, health. Two label-value
+/// pairs per line, so the app list below keeps room for 4-5 rows; the status is in the header.
+/// In the card language of the rest of the popover.
 struct BatteryDetailsCard: View {
     @ObservedObject var store: MetricsStore
 
     var body: some View {
-        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
-            ForEach(rows, id: \.label) { row in
-                GridRow {
-                    Text(row.label).foregroundStyle(.secondary)
-                        .tooltip(row.help)
-                    Text(row.value)
-                        .monospacedDigit()
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .contentTransition(.interpolate)
-                        .animation(.easeInOut(duration: 0.25), value: row.value)
-                        .tooltip(row.help)
+        let items = rows
+        VStack(spacing: 4) {
+            ForEach(0..<(items.count + 1) / 2, id: \.self) { line in
+                HStack(spacing: 16) {
+                    pair(items[2 * line])
+                    if 2 * line + 1 < items.count {
+                        pair(items[2 * line + 1])
+                    } else {
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
+                    }
                 }
             }
         }
@@ -26,6 +26,20 @@ struct BatteryDetailsCard: View {
         .padding(.horizontal, Design.cardPadding)
         .padding(.vertical, 9)
         .background(CardBackground())
+    }
+
+    private func pair(_ row: Row) -> some View {
+        HStack(spacing: 4) {
+            Text(row.label).foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+            Text(row.value)
+                .monospacedDigit()
+                .contentTransition(.interpolate)
+                .animation(.easeInOut(duration: 0.25), value: row.value)
+        }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .tooltip(row.help)
     }
 
     private struct Row {
@@ -37,7 +51,7 @@ struct BatteryDetailsCard: View {
     private var rows: [Row] {
         guard let b = store.battery else { return [Row(label: "Status", value: "No battery")] }
         let t = store.batteryTelemetry
-        var rows = [Row(label: "Status", value: b.statusText)]
+        var rows: [Row] = []
 
         switch b.state {
         case .discharging:
@@ -47,7 +61,10 @@ struct BatteryDetailsCard: View {
                             ?? (b.atChargeLimit ? "Almost done" : b.percent >= 90 ? "Almost full" : "Calculating…")))
         case .charged, .notCharging:
             // Optimized Charging's pause is not the user's limit: show both.
-            if let hold = b.chargeHoldPercent { rows.append(Row(label: "Optimized Charging", value: "Held at \(hold)%")) }
+            if let hold = b.chargeHoldPercent {
+                rows.append(Row(label: "Paused at", value: "\(hold)%",
+                                help: "Optimized Charging is holding the charge here for now"))
+            }
             if let limit = b.chargeLimitPercent { rows.append(Row(label: "Charge limit", value: "\(limit)%")) }
         }
 
@@ -57,15 +74,18 @@ struct BatteryDetailsCard: View {
         }
         // Awake time only: intervals that span sleep are left out (see `gaugeInterval`).
         if let avg = store.batteryAverageWatts {
-            rows.append(Row(label: store.batteryAverageSinceUnplug ? "Average since unplugged" : "Average this session",
-                            value: formatWatts(avg), help: "Counts only time the Mac was awake"))
+            rows.append(Row(label: "Average", value: formatWatts(avg),
+                            help: (store.batteryAverageSinceUnplug ? "Since you unplugged" : "Since MacStats started")
+                                + ", counting only time the Mac was awake"))
         }
         if b.state.isPluggedIn, let adapter = t?.adapterWatts {
             rows.append(Row(label: "Adapter", value: "\(adapter) W"))
         }
         if let health = t?.healthPercent {
-            let cycles = t?.cycleCount.map { " · \($0) cycles" } ?? ""
-            rows.append(Row(label: "Health", value: "\(health)%\(cycles)"))
+            rows.append(Row(label: "Health", value: "\(health)%", help: "Capacity left compared with when new"))
+        }
+        if let cycles = t?.cycleCount {
+            rows.append(Row(label: "Cycles", value: "\(cycles)", help: "Full charges used so far"))
         }
         if let temp = t?.temperatureC {
             rows.append(Row(label: "Temperature", value: "\(Int(temp.rounded())) °C"))

@@ -11,9 +11,12 @@ import Testing
     }
 
     @Test func noSwapWithinTheMargin() {
-        // 5 vs 4: needs > max(4 × 1.25, 4 + 0.2) = 5, so the row below doesn't climb.
-        let order = stableRanking(previous: [2, 1], now: [1: 5, 2: 4], before: [1: 5, 2: 4], rule: cpu)
+        // 4.5 vs 4: needs > max(4 × 1.15, 4 + 0.15) = 4.6, so the row below doesn't climb…
+        let order = stableRanking(previous: [2, 1], now: [1: 4.5, 2: 4], before: [1: 4.5, 2: 4], rule: cpu)
         #expect(order == [2, 1])
+        // …and 4.0 vs 3.5 (a 14 % lead) doesn't either; 4.1 vs 3.5 (17 %) does.
+        #expect(stableRanking(previous: [2, 1], now: [1: 4, 2: 3.5], before: [1: 4, 2: 3.5], rule: cpu) == [2, 1])
+        #expect(stableRanking(previous: [2, 1], now: [1: 4.1, 2: 3.5], before: [1: 4.1, 2: 3.5], rule: cpu) == [1, 2])
     }
 
     @Test func aSwapNeedsTwoReadings() {
@@ -35,15 +38,6 @@ import Testing
         let order = stableRanking(previous: [1, 2, 3], now: [1: 9, 3: 1, 4: 5], before: [1: 9, 2: 6, 3: 1],
                                   rule: cpu)
         #expect(order == [1, 4, 3])
-    }
-
-    @Test func pinnedKeepsItsIndex() {
-        // 3 is pinned at index 1; 4 climbs past everything else around it.
-        let previous: [Int32] = [1, 3, 2, 4]
-        let values: [Int32: Double] = [1: 5, 2: 4, 3: 0.1, 4: 30]
-        let order = stableRanking(previous: previous, now: values, before: values, rule: cpu, pinned: [3])
-        #expect(order[1] == 3)
-        #expect(order == [4, 3, 1, 2])
     }
 
     @Test func frozenKeepsOrderAndAppendsNewKeys() {
@@ -92,8 +86,12 @@ import Testing
         // Round 1's Battery capture: 0.00 W on top, 0.17 W near the bottom (the old 0.05 W margin).
         let values: [Int32: Double] = [1: 0.14, 2: 0.01, 3: 0.00, 4: 0.05, 5: 0.04, 6: 0.17]
         let order = stableRanking(previous: [1, 2, 3, 4, 5, 6], now: values, before: values, rule: .energy)
-        // 0.17 vs 0.14 is within 25 %, so those two keep their order; everything else sorts.
-        #expect(order == [1, 6, 4, 5, 2, 3])
+        // Everything sorts: 0.17 W leads 0.14 W by 21 % and 0.03 W, past both margins (15 %, 0.02 W).
+        #expect(order == [6, 1, 4, 5, 2, 3])
+        // 0.15 vs 0.14 (7 %) is within them, so those two keep their order.
+        let close = stableRanking(previous: [1, 6], now: [1: 0.14, 6: 0.15], before: [1: 0.14, 6: 0.15],
+                                  rule: .energy)
+        #expect(close == [1, 6])
     }
 
     /// Steady readings from any starting order: after one scan, no row is clearly beaten

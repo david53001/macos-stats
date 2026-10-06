@@ -25,6 +25,20 @@ import Testing
         #expect(formatWatts(14.6) == "15 W")
     }
 
+    @Test func energyBelowTheLastDigitSaysSo() {
+        #expect(breakdownValueText(.energy, 0) == "<0.01 W")
+        #expect(breakdownValueText(.energy, 0.0049) == "<0.01 W")
+        #expect(breakdownValueText(.energy, 0.005) == "0.01 W")
+    }
+
+    @Test func processNamesDropTheirAppsName() {
+        #expect(processDisplayName("Google Chrome Helper (Renderer)", inApp: "Google Chrome") == "Helper (Renderer)")
+        #expect(processDisplayName("Code Helper (Plugin)", inApp: "Code") == "Helper (Plugin)")
+        #expect(processDisplayName("Google Chrome", inApp: "Google Chrome") == "Google Chrome")
+        #expect(processDisplayName("Codex", inApp: "Code") == "Codex")          // not a word boundary
+        #expect(processDisplayName("mdworker", inApp: "Other processes") == "mdworker")
+    }
+
     @Test func stepsMatchThePrintedPrecision() {
         #expect(breakdownValueStep(.cpu, 3) == 0.1)
         #expect(breakdownValueStep(.cpu, 12) == 1)

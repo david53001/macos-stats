@@ -10,8 +10,8 @@ import MacStatsCore
 /// until the user has opened a row's menu once (`quitHint`). Rows are buttons with
 /// accessibility actions, so expanding and quitting also work with the keyboard and VoiceOver.
 /// Nothing moves under the pointer: the row order freezes while the pointer is over the list
-/// or a context menu is open, the expanded app keeps its place, and the numbers are the
-/// store's held values (`MetricsStore.setBreakdown`).
+/// (once it has moved there) or a context menu is open, and the numbers are the store's held
+/// values (`BreakdownDisplay`).
 struct BreakdownView: View {
     @ObservedObject var store: MetricsStore
     let metric: BreakdownMetric
@@ -60,7 +60,7 @@ struct BreakdownView: View {
             return "\(gb(m.usedBytes)) / \(gb(m.totalBytes)) GB used"
         case .energy:
             guard let b = store.battery else { return "—" }
-            return "\(b.percent)%"
+            return "\(b.percent)% \u{00B7} \(b.statusText)"   // the details card below has no room for it
         }
     }
 
@@ -72,14 +72,12 @@ struct BreakdownView: View {
         }
     }
 
-    /// The value a full bar stands for. CPU: the whole machine (100 %), the card's scale, so
-    /// a bar is a true share of the Mac. Memory: all of the Mac's RAM, like the header.
-    /// Energy has no natural ceiling, so its scale follows the top row on a sticky 1-2-5 ladder.
+    /// The value a full bar stands for. CPU and energy: a sticky 1-2-5 step above the top row
+    /// (on a 100 % scale every bar was a dot at normal load). Memory: all of the Mac's RAM, like the header.
     private var barScale: Double {
         switch metric {
-        case .cpu: return 100
+        case .cpu, .energy: return store.breakdownBarScale
         case .memory: return Double(store.memory?.totalBytes ?? ProcessInfo.processInfo.physicalMemory)
-        case .energy: return store.breakdownEnergyScale
         }
     }
 
@@ -132,10 +130,10 @@ struct BreakdownView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSMenu.didEndTrackingNotification)) { _ in
             store.setBreakdownMenuOpen(false)
         }
-        .onChange(of: expanded) { _, app in store.setBreakdownPinnedApp(app) }
         .onChange(of: expandedProcessCount) { _, count in
-            // The expanded app quit, or is down to one process: nothing left to show under it
-            // (and it mustn't re-expand by itself if it gains processes again).
+            // The expanded app is gone (after the unfreeze; while frozen it stays with its processes
+            // as placeholders) or down to one process: nothing left to show under it (and it
+            // mustn't re-expand by itself if it gains processes again).
             guard expanded != nil, count <= 1 else { return }
             expanded = nil
             visibleChildren = BreakdownList.initialChildren
@@ -151,20 +149,28 @@ struct BreakdownView: View {
     /// One line that says what the numbers are measured against.
     private var footnote: String {
         switch metric {
-        case .cpu: return "Share of the whole Mac (all \(Self.cores) cores)"
+        case .cpu: return "Each app\u{2019}s share of the whole Mac"
         // Like Activity Monitor's Memory column (footprints); why they don't add up is the tooltip.
         case .memory: return "Each app\u{2019}s memory, as in Activity Monitor"
-        case .energy: return "App power: CPU only, not screen or GPU"
+        case .energy: return "Processor power only, not the screen"
         }
     }
 
     /// The footnote's tooltip: the detail that doesn't fit on its one line.
     private var footnoteHelp: String? {
-        guard metric == .memory else { return nil }
-        // Compressed memory counts at full size (more), and macOS's own and other users'
-        // processes aren't listed (less).
-        return "Compressed memory counts at full size here, and macOS\u{2019}s own processes aren\u{2019}t "
-            + "listed, so the rows don\u{2019}t add up to the total above."
+        switch metric {
+        case .cpu:
+            return "All \(Self.cores) cores together are 100 %. Activity Monitor counts one core as 100 %; "
+                + "right-click a row for that figure."
+        case .memory:
+            // Compressed memory counts at full size (more), and macOS's own and other users'
+            // processes aren't listed (less).
+            return "Compressed memory counts at full size here, and macOS\u{2019}s own processes aren\u{2019}t "
+                + "listed, so the rows don\u{2019}t add up to the total above."
+        case .energy:
+            return "Counts each app\u{2019}s processor use only. The screen, graphics and the rest of the Mac use "
+                + "power too, so the apps don\u{2019}t add up to Power now."
+        }
     }
 
     @ViewBuilder private var list: some View {
@@ -263,7 +269,7 @@ struct BreakdownView: View {
     /// figure (100 % = one core), which no longer has a column of its own.
     private func rowTooltip(_ app: AppUsage, _ cpuPercent: Double, _ info: AppInfoCache.Info) -> String? {
         let what = !app.isApp ? info.detail
-            : app.processes.count > 1 ? "Click to show its \(app.processes.count) processes \u{00B7} Right-click to quit"
+            : app.processes.count > 1 ? "Click to show its processes \u{00B7} Right-click to quit"
             : "Right-click to quit"
         guard metric == .cpu else { return what }
         return [what, oneCore(cpuPercent)].compactMap { $0 }.joined(separator: "\n")
@@ -298,13 +304,16 @@ struct BreakdownView: View {
 
     private func liveProcessRow(_ process: ProcessUsage, in app: AppUsage) -> some View {
         let isAppItself = app.isApp && process.pid == app.appPID
-        let name = isAppItself ? apps.info(for: app.appPID).name
-                               : apps.name(ofProcess: process.pid, startTime: process.startTime)
+        let appName = apps.info(for: app.appPID).name
+        let name = isAppItself ? appName : apps.name(ofProcess: process.pid, startTime: process.startTime)
         let value = shown(process, in: app)
-        return ProcessRow(process: process, name: name, metric: metric, barScale: barScale, shown: value)
+        // Under its own app, "Google Chrome Helper (Renderer)" reads "Helper (Renderer)": the row
+        // shows the part that differs, the tooltip and menu the full name.
+        return ProcessRow(process: process, name: processDisplayName(name, inApp: appName), metric: metric,
+                          barScale: barScale, shown: value)
             .transition(.opacity)
             // The pid lives here and in the menu, not on the row (noise for most people).
-            .tooltip(["pid \(process.pid)", metric == .cpu ? oneCore(value) : nil].compactMap { $0 }
+            .tooltip([name, "pid \(process.pid)", metric == .cpu ? oneCore(value) : nil].compactMap { $0 }
                 .joined(separator: "\n"))
             .accessibilityActions {
                 Button("Quit") {
@@ -440,8 +449,9 @@ private struct AppRow: View {
         }
         .opacity(ended ? 0.45 : 1)
         .padding(.horizontal, 8).padding(.vertical, 6)
+        // Only a row a click expands highlights (the others act on right-click only).
         .background(RoundedRectangle(cornerRadius: Design.cardCornerRadius - 4, style: .continuous)
-            .fill(Color.primary.opacity(hovering && !ended ? 0.07 : 0)))
+            .fill(Color.primary.opacity(hovering && disclosure != nil ? 0.07 : 0)))
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.12), value: hovering)
         .animation(.snappy(duration: 0.25), value: disclosure)
@@ -456,7 +466,7 @@ private struct AppRow: View {
 }
 
 /// One process inside an expanded app: indented to the name column, smaller type, its own
-/// value on the same scale, and a thin bar.
+/// value on the same scale, and a thin bar. No hover highlight: a click does nothing here.
 private struct ProcessRow: View {
     let process: ProcessUsage
     let name: String
@@ -466,8 +476,6 @@ private struct ProcessRow: View {
     let shown: Double
     /// The process ended while the list was frozen: a dimmed placeholder.
     var ended = false
-
-    @State private var hovering = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -487,11 +495,7 @@ private struct ProcessRow: View {
         .opacity(ended ? 0.45 : 1)
         .padding(.leading, BreakdownList.childIndent)
         .padding(.horizontal, 8).padding(.vertical, 4)
-        .background(RoundedRectangle(cornerRadius: Design.cardCornerRadius - 4, style: .continuous)
-            .fill(Color.primary.opacity(hovering && !ended ? 0.07 : 0)))
         .contentShape(Rectangle())
-        .animation(.easeOut(duration: 0.12), value: hovering)
-        .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)
     }
 
@@ -501,22 +505,37 @@ private struct ProcessRow: View {
     }
 }
 
-/// Answers "is the pointer over the list right now?" from AppKit, for `MetricsStore` to read once
-/// a scan (`breakdownPointerProbe`): hover events miss a pointer that hasn't moved since the list
-/// appeared under it or a context menu closed. Never takes clicks; does nothing between scans.
+/// Answers "is the pointer over the list, and has it moved since the list appeared?" from AppKit,
+/// for `MetricsStore` to read once a scan (`breakdownPointerProbe`): hover events miss a pointer
+/// that hasn't moved since a context menu closed, and the list appears under the pointer that
+/// clicked the card, which isn't pointing at a row yet. Never takes clicks; does nothing between scans.
 private struct PointerProbe: NSViewRepresentable {
     let store: MetricsStore
 
     func makeNSView(context: Context) -> ProbeView { ProbeView() }
 
     func updateNSView(_ view: ProbeView, context: Context) {
-        store.breakdownPointerProbe = { [weak view] in view?.pointerInside ?? false }
+        store.breakdownPointerProbe = { [weak view] in
+            view?.reading ?? BreakdownPointer(inside: false, moved: false)
+        }
     }
 
     final class ProbeView: NSView {
-        var pointerInside: Bool {
-            guard let window, window.isVisible else { return false }
-            return bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
+        /// The pointer's place (window coordinates) when the list appeared.
+        private var start: NSPoint?
+        private var moved = false
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            start = window?.mouseLocationOutsideOfEventStream
+            moved = false
+        }
+
+        var reading: BreakdownPointer {
+            guard let window, window.isVisible else { return BreakdownPointer(inside: false, moved: moved) }
+            let location = window.mouseLocationOutsideOfEventStream
+            if !moved, let start, hypot(location.x - start.x, location.y - start.y) > 2 { moved = true }
+            return BreakdownPointer(inside: bounds.contains(convert(location, from: nil)), moved: moved)
         }
 
         override func hitTest(_ point: NSPoint) -> NSView? { nil }

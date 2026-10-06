@@ -42,6 +42,33 @@ import Testing
         #expect(order(store) == [2, 1])
     }
 
+    @Test func theShortFirstWindowIsResortedAtTheNextScan() {
+        // The 0.5 s numbers put 1 first; over the next 2 s, 2 leads by less than the hysteresis
+        // would let it climb. The first full scan sorts afresh (and its text starts afresh).
+        let store = cpuStore()
+        store.setBreakdown([app(1, 0), app(2, 0)], measuring: true, time: 0)
+        store.setBreakdown(scan([app(1, 3), app(2, 0.2)]), measuring: false, time: 0.5)
+        #expect(order(store) == [1, 2])
+        store.setBreakdown(scan([app(1, 2.5), app(2, 2.7)]), measuring: false, time: 2.5)
+        #expect(order(store) == [2, 1])
+        #expect(store.shownValue(app: 2).map { breakdownValueText(.cpu, $0) } == "2.7%")
+        // From then on the hysteresis applies again.
+        store.setBreakdown(scan([app(1, 2.8), app(2, 2.7)]), measuring: false, time: 4.5)
+        #expect(order(store) == [2, 1])
+    }
+
+    @Test func theShortFirstWindowStaysFrozenUnderAPointerThatMoved() {
+        let store = cpuStore()
+        store.setBreakdown([app(1, 0), app(2, 0)], measuring: true, time: 0)
+        store.setBreakdown(scan([app(1, 3), app(2, 0.2)]), measuring: false, time: 0.5)
+        store.breakdownPointerProbe = { BreakdownPointer(inside: true, moved: true) }
+        store.setBreakdown(scan([app(1, 0.1), app(2, 9)]), measuring: false, time: 2.5)
+        #expect(order(store) == [1, 2])
+        store.breakdownPointerProbe = { BreakdownPointer(inside: false, moved: true) }
+        store.setBreakdown(scan([app(1, 2.5), app(2, 2.7)]), measuring: false, time: 4.5)
+        #expect(order(store) == [2, 1])   // still the fresh sort, at the first unfrozen scan
+    }
+
     @Test func freezeHoldsOrderButUpdatesValuesAppendsAndRemoves() {
         let store = cpuStore()
         store.setBreakdown(scan([app(1, 5), app(2, 4), app(3, 3)]), measuring: false, time: 0)
@@ -59,6 +86,23 @@ import Testing
         store.setBreakdown(scan([app(2, 1), app(3, 50), app(4, 7)]), measuring: false, time: 4.5)
         #expect(!order(store).contains(1))
         #expect(!store.isEnded(app: 1))
+    }
+
+    @Test func anEndedAppKeepsItsProcessesWhileFrozen() {
+        // The expanded app quit with the pointer on the list: its rows stay (dimmed), so nothing
+        // under the pointer collapses or moves up.
+        let store = cpuStore()
+        store.setBreakdown(scan([app(1, 6, children: [(10, 3), (11, 2), (12, 1)]), app(2, 1)]),
+                           measuring: false, time: 0)
+        store.setBreakdownPointerInside(true, time: 1)
+        store.setBreakdown([app(2, 1)], measuring: false, time: 2)
+        #expect(order(store) == [1, 2])
+        #expect(store.isEnded(app: 1))
+        #expect(store.breakdown[0].pids == [10, 11, 12])
+        #expect(store.isEnded(app: 1, pid: 11))
+        store.setBreakdownPointerInside(false, time: 3)
+        store.setBreakdown([app(2, 1)], measuring: false, time: 4.5)
+        #expect(order(store) == [2])
     }
 
     @Test func endedProcessesKeepTheirPlaceWhileFrozen() {
@@ -95,11 +139,11 @@ import Testing
     }
 
     @Test func pointerProbeFreezesWithoutAHoverEvent() {
-        // The list appeared under a still pointer (or a menu closed over it): no hover event came.
+        // A menu closed over a pointer that had moved onto the list: no hover event came.
         let store = cpuStore()
         store.setBreakdown(scan([app(1, 5), app(2, 4)]), measuring: false, time: 0)
         var inside = true
-        store.breakdownPointerProbe = { inside }
+        store.breakdownPointerProbe = { BreakdownPointer(inside: inside, moved: true) }
         let spiked = scan([app(1, 1), app(2, 40)])
         store.setBreakdown(spiked, measuring: false, time: 2)
         #expect(order(store) == [1, 2])
@@ -108,6 +152,22 @@ import Testing
         #expect(order(store) == [2, 1])
         store.clearBreakdown()
         #expect(store.breakdownPointerProbe == nil)
+    }
+
+    @Test func aPointerStillRestingFromTheClickDoesNotFreeze() {
+        // The list appears where the clicked card was. Until the pointer moves it isn't pointing at
+        // a row, so the list keeps ranking, even if a hover event said "inside".
+        let store = cpuStore()
+        store.setBreakdown(scan([app(1, 5), app(2, 4)]), measuring: false, time: 0)
+        store.setBreakdownPointerInside(true, time: 0.1)
+        var moved = false
+        store.breakdownPointerProbe = { BreakdownPointer(inside: true, moved: moved) }
+        let spiked = scan([app(1, 1), app(2, 40)])
+        store.setBreakdown(spiked, measuring: false, time: 2)
+        #expect(order(store) == [2, 1])
+        moved = true
+        store.setBreakdown(scan([app(1, 50), app(2, 40)]), measuring: false, time: 4)
+        #expect(order(store) == [2, 1])
     }
 
     @Test func unfreezeHappensAtTheFirstScanASecondAfterThePointerLeaves() {
@@ -141,15 +201,6 @@ import Testing
         #expect(order(store) == [2, 1])
     }
 
-    @Test func pinnedAppKeepsItsIndex() {
-        let store = cpuStore()
-        store.setBreakdown(scan([app(1, 9), app(2, 5), app(3, 4)]), measuring: false, time: 0)
-        store.setBreakdownPinnedApp(3)
-        store.setBreakdown(scan([app(1, 9), app(2, 5), app(3, 0.1), app(4, 30)]), measuring: false, time: 2)
-        #expect(order(store)[2] == 3)
-        #expect(order(store) == [4, 1, 3, 2])
-    }
-
     @Test func childrenReorderWithHysteresisAndFreeze() {
         let store = cpuStore()
         store.setBreakdown([app(1, 6, children: [(10, 3), (11, 2.8)])], measuring: false, time: 0)
@@ -178,15 +229,16 @@ import Testing
     @Test func heldTextValuesStayWithinTheirBound() {
         let store = cpuStore()
         var shown: [Double] = []
-        for (i, v) in [5.04, 5.06, 5.3, 4.8, 5.6, 12.4, 12.9, 13.6].enumerated() {
+        for (i, v) in [5.04, 5.06, 5.3, 4.8, 5.6, 5.6, 12.4, 12.9, 13.6, 13.6].enumerated() {
             store.setBreakdown([app(1, v)], measuring: false, time: Double(i * 2))
             let s = store.shownValue(app: 1) ?? -1
-            #expect(abs(s - v) <= max(0.75 * breakdownValueStep(.cpu, v), 0.10 * s) + 1e-9)
+            #expect(abs(s - v) <= max(1.5 * breakdownValueStep(.cpu, v), 0.20 * s) + 1e-9)
             shown.append(s)
         }
-        // 5.0 holds through the wobble; 5.6 and 12.4 are real moves; 12.9 holds (10 % band).
-        #expect(shown.map { breakdownValueText(.cpu, $0) } == ["5.0%", "5.0%", "5.0%", "5.0%", "5.6%",
-                                                                "12%", "12%", "14%"])
+        // 5.0 holds through the wobble; 5.6 shows once a second scan confirms it; 12.4 is a big
+        // move (shows at once); 12.9 holds (10 % band); 13.6 shows on its second scan.
+        #expect(shown.map { breakdownValueText(.cpu, $0) } == ["5.0%", "5.0%", "5.0%", "5.0%", "5.0%", "5.6%",
+                                                                "12%", "12%", "12%", "14%"])
         // Process rows are held too.
         #expect(store.shownValue(app: 1, pid: 1) == shown.last)
         #expect(store.shownValue(app: 1, pid: 99) == nil)
@@ -209,21 +261,31 @@ import Testing
         var scales: [Double] = []
         for w in [0.9, 0.85, 0.5, 1.5] {
             store.setBreakdown([app(1, 0, watts: w)], measuring: false, time: Double(scales.count * 2))
-            scales.append(store.breakdownEnergyScale)
+            scales.append(store.breakdownBarScale)
         }
         #expect(scales == [2, 2, 1, 2])
+    }
+
+    @Test func cpuBarsFollowTheTopRow() {
+        // At light load a 100 % scale left every bar a dot; the scale is a sticky step above the top row.
+        let store = cpuStore()
+        var scales: [Double] = []
+        for top in [3.5, 3.0, 6.0, 30.0] {
+            store.setBreakdown([app(1, top), app(2, 0.5)], measuring: false, time: Double(scales.count * 2))
+            scales.append(store.breakdownBarScale)
+        }
+        #expect(scales == [5, 5, 10, 50])
     }
 
     @Test func everythingResetsOnBeginAndClear() {
         let store = cpuStore()
         store.setBreakdown(scan([app(1, 5), app(2, 4)]), measuring: false, totalCPU: 30, time: 0)
         store.setBreakdownPointerInside(true, time: 1)
-        store.setBreakdownPinnedApp(2)
         store.clearBreakdown()
         #expect(store.shownValue(app: 1) == nil)
         #expect(store.breakdownShownTotalCPU == nil)
         store.beginBreakdown(metric: .cpu)
-        // Not frozen or pinned any more: a plain sort.
+        // Not frozen any more: a plain sort.
         store.setBreakdown(scan([app(1, 1), app(2, 40)]), measuring: false, time: 2)
         #expect(order(store) == [2, 1])
         store.setBreakdown(scan([app(1, 1), app(2, 40), app(3, 90)]), measuring: false, time: 4)
