@@ -28,3 +28,12 @@ WATCH=$!
 wait "$PID" || true
 pkill -P "$WATCH" 2>/dev/null || true
 kill "$WATCH" 2>/dev/null || true
+# The probe's own throwaway defaults suites (it lists them): cfprefsd may rewrite them at exit.
+LIST="${TMPDIR:-/tmp}/macstats-tour-probe-suites.txt"
+if [[ -f "$LIST" ]]; then
+  sleep 1
+  while read -r name; do
+    [[ "$name" == MacStatsTourProbe-* ]] && rm -f "$HOME/Library/Preferences/$name.plist"
+  done < "$LIST"
+  rm -f "$LIST"
+fi

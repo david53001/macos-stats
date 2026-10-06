@@ -1,6 +1,6 @@
-PASS light: ended child keeps its place [21052, 1, 20835, 121052]
+PASS light: ended child keeps its place [31255, 1, 31090, 131255]
 wrote breakdown-ended-child-light
-PASS dark: ended child keeps its place [21052, 1, 20835, 121052]
+PASS dark: ended child keeps its place [31255, 1, 31090, 131255]
 wrote breakdown-ended-child-dark
 PASS control: without the tour the click reaches the CPU card ([MacStatsCore.BreakdownMetric.cpu])
 dim variant 0: [MacStatsCore.BreakdownMetric.cpu]

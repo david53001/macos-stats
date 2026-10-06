@@ -157,6 +157,8 @@ MainActor.assumeIsolated {
     check(selected == [.cpu], "tour: a click in the cutout reaches the CPU card (\(selected))")
     tw.orderOut(nil); tw.close()
     UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    CFPreferencesAppSynchronize(suiteName as CFString)
+    Thread.sleep(forTimeInterval: 0.3)   // cfprefsd writes the empty plist asynchronously
     let plist = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Preferences/\(suiteName).plist")
     try? FileManager.default.removeItem(at: plist)

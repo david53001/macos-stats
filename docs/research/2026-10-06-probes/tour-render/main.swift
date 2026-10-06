@@ -250,15 +250,25 @@ func log(_ line: String) {
 
 // MARK: Runs
 
-/// Deletes a throwaway suite, including the plist cfprefsd leaves behind.
+/// Deletes a throwaway suite, including the plist cfprefsd leaves behind. cfprefsd writes the
+/// (empty) plist asynchronously after the domain is removed, so flush, wait, then delete.
 func dropSuite(_ name: String) {
     UserDefaults.standard.removePersistentDomain(forName: name)
+    CFPreferencesAppSynchronize(name as CFString)
+    Thread.sleep(forTimeInterval: 0.3)
     let plist = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Preferences/\(name).plist")
     try? FileManager.default.removeItem(at: plist)
 }
 
 @MainActor func suite(_ name: String, audience: TourAudience) -> UserDefaults {
+    // run.sh deletes the plists named here once the probe has exited: cfprefsd can write them
+    // again at exit, after `dropSuite` already removed them.
+    let list = (NSTemporaryDirectory() as NSString).appendingPathComponent("macstats-tour-probe-suites.txt")
+    if let h = FileHandle(forWritingAtPath: list) ?? {
+        FileManager.default.createFile(atPath: list, contents: nil); return FileHandle(forWritingAtPath: list) }() {
+        h.seekToEndOfFile(); h.write(Data((name + "\n").utf8)); try? h.close()
+    }
     let d = UserDefaults(suiteName: name)!
     d.set(audience.rawValue, forKey: TourKey.audience)
     return d
