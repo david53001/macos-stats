@@ -162,13 +162,65 @@ the state changes. Runtime (probe `--cost` / `--no-tour`, % of one core, 20 s ea
 - Trash "Allow…" opens System Settings → Privacy & Security → Automation (only shows after a refused prompt).
 - The first open after installing this build shows the "Take the Tour" chip (the owner is classified `existing`).
 
-## Review round 1 (in progress, 2026-10-06)
-Scores: reviewer A 7.3 (lowest: Resource cost 5.5), reviewer B 7.3 (lowest: Stability 6.4). Bar: both > 9.0 and
-no area < 8.5. Reports: `docs/reviews/2026-10-06-stability-tour-review-r1-A.md`, `…-r1-B.md`.
-Fix commits so far: `478bde3` (panel open/closed follows its window), `70c97d7` (ranking), `07acc95` (frozen
-placeholders, sticky Exited row, pointer probe, a11y rows, contrast), `a748f58` (tour click-through, hint),
-`9b2b08a` (copy), `a732ac0` (first-run open). Next: re-run the render probe and the stability probes, then
-write this section in full (what was fixed, what was rejected and why).
+## Review round 1 (2026-10-06) — fixed, verified, committed
+**Scores:** reviewer A **7.3** (Stability 8.0, Interaction 7.5, Intuitiveness 7.5, Copy 7.5, Visual 8.0, Tour 8.5,
+Code 8.0, **Resource cost 5.5**); reviewer B **7.3** (**Stability 6.4**, Interaction 7.2, Intuitiveness 7.6, Copy 7.6,
+Visual 8.6, Tour 8.8, Code 7.4, Resource 7.4). Bar: both > 9.0 and no area < 8.5. Reports:
+`docs/reviews/2026-10-06-stability-tour-review-r1-A.md`, `docs/reviews/2026-10-06-stability-tour-review-r1-B.md`.
+
+### Fixed (commit → finding)
+| Commit | Finding (severity) | Fix | Evidence |
+|---|---|---|---|
+| `478bde3` | A X1/C1, B K1 (High): panel "open" mode (0.5 s ticks + slides, ~28 % of a core) while the panel is off screen | `AppModel.setPanelAppeared` + `panelWindowChanged`: open = SwiftUI appeared **and** window `isVisible && occlusionState.contains(.visible)`; `RootView.PanelWindowObserver` (occlusion + key notifications); each 0.5 s tick re-checks the window | Probe `docs/research/2026-10-06-probes/visibility/`: `onDisappear` never fires on `orderOut`/`close`; the occlusion notification fires within ~20 ms of every show/hide. Not verified in the real `MenuBarExtra` (no install allowed): owner check below |
+| `70c97d7`, `0bd7598` | B S1/C2 (High) Battery list mis-sorted 84 %; B S2/C1 + A (Medium) a middle row blocks a clear leader | New climbing pass (a row passes the run of lower rows above it up to the highest it clearly beats); a lead must clear **both** margins (max, not sum); abs margins = 2 printed steps (CPU 0.2 pp, energy 0.02 W, was 0.3 / 0.05); a 1.5× lead of ≥ 1 pp / 0.05 W moves on one reading | Property test `steadyInputsConvergeToSorted` (300 random lists × 3 rules); reviewer B's probe: CPU mis-sorted scans 8/18 → 2/18 and 2/23, Battery 16/19 → 2/19 and 2/19 (`docs/research/2026-10-06-probes/r1-fixes/reviewB-probe-*.txt`) |
+| `07acc95` | B S3 (Medium), A S2 (Low): child rows come and go, Exited row toggles, a row moved under a resting pointer | While frozen, ended apps/processes stay as dimmed "Ended" placeholders (`MetricsStore.isEnded`); the Exited row stays (at 0) once shown; Memory drops it | Tests `endedProcessesKeepTheirPlaceWhileFrozen`, `exitedRowStaysOnceItAppeared`, `memoryHasNoExitedRow`; B's probe: row under a resting pointer changed 0/0/0 (was 2 + 1); Exited toggles 0–1 (was 4–9); render `r1-fixes/out/breakdown-ended-child-*.png` |
+| `07acc95` | B I2 (Low) menu close re-sorts under a still pointer; A I2 (Low) list appears under a still pointer | `MetricsStore.breakdownPointerProbe`: the view's `PointerProbe` NSView answers from `window.mouseLocationOutsideOfEventStream`, read once a scan | Test `pointerProbeFreezesWithoutAHoverEvent`; probe `r1-fixes`: inside = true under the real pointer, false away |
+| `07acc95` | A I1, B I1 (Medium): rows mouse-only | App rows are plain-style `Button`s, Expanded/Collapsed value, Quit / Force Quit `accessibilityActions`; process rows have Quit; non-expandable rows drop the button trait | Build; synthetic click on the row Button expands it (r1-fixes probe) |
+| `07acc95` | A V1/D1 (Medium) footnote + hint ~2:1 contrast | `.secondary` | `tour-render/out/breakdown-hint-cpu-light.png` vs the round-1 capture |
+| `07acc95` | A S3 (Low) held row text up to 11 % off | Hold band capped: min(10 %, 2 pp) CPU, min(10 %, 0.2 W) energy | Test `relativeBandIsCapped`; B's probe shown-vs-exact max 0.28 pp |
+| `ed4e0b2` | A S1, B S4 (Medium/Low) CPU card ~1 change/s | Band 0.75 → 1.25 (error ≤ 1.25 pp) | Same live series replayed (`r1-fixes/card-band.swift`): 56.9 → 41.4 changes/min, flip-backs 9 → 4; a 1 s minimum gap was rejected (lags real jumps by up to 8.7 pp) |
+| `a748f58`, `3abb4b0` | A R1 (Medium) "Click the card" but the overlay swallows the click | The dim's hit shape excludes the cutout (`.onHover` must come **before** `contentShape(_, eoFill: true)` or it re-covers the hole); `RootView.endTourForClick` ends the tour, then drills in (or opens Settings for the gear) | Probe `r1-fixes`: cutout click reaches the CPU card, a dim click does nothing; the 4-variant table shows why |
+| `a748f58` | A D1 (Medium) quit hint only on 3 drill-ins | Shows until a row's menu has been opened once (`TourKey.breakdownMenuUsed`), at most 10 drill-ins | `TourRulesTests.breakdownHint` |
+| `a748f58`, `9b2b08a`, `1aea3c6` | Copy (Low): "pressure normal", "Internet speed", "see which apps.", straight ’, no °C label, raw pids, "Exited processes" | "OK / running low / very low" + tooltip; "Network activity"; "…which apps use it."; U+2019 everywhere; CPU card tooltip names the temperature; pid in tooltip/menu only; "Ended processes" | `TourCatalogLintTests`; render fit check (bodies 2 lines) |
+| `a748f58` | B R3 (Low) light dim subtle | 0.25 → 0.30 | `tour-render/out/step1-light.png` |
+| `a732ac0` | A R2 (Low) fixed 2.5 s first-run delay | `StatusItemHover.openPanelWhenFound()` clicks as soon as `attach` finds the button | Build (first-run flow is an owner check) |
+| `1aea3c6` | B I3 (Low) an app down to one process stays "expanded"; A C4 (Low) duplicate tooltip helpers | Collapse when the expanded app has ≤ 1 process; one `View.tooltip(_:)` in `Design.swift` | Build + tests |
+
+**Re-measured** (after all fixes): `./Scripts/test.sh` **346/346**; repo stability probe (`run.sh 90 Code`): top-8
+order changes 7.3/min, target child-set changes 0, frozen slot changes 0, scan 7.45 ms/s, probe process 0.67 % of a
+core; tour render probe: all 12 step measurements inner 2/2/2/2 px, outer 6/6/6/6 px, bodies 2 lines, footnotes fit.
+Open-overview render cost (tour-render `--cost`): 12.7 % tour off / 13.5 % step 1 (unchanged; see rejected X2).
+
+### Rejected or deferred (with the reason)
+- **A X2 / B K2 (Medium/Low, pre-existing): the open overview's continuous sparkline slide costs ~10–13 % of a core
+  in the probe.** Tried `.drawingGroup()` before the slide offset: 12.7 → 11.5 %, within run-to-run noise, so
+  reverted. Sliding less often or not at all changes the owner-approved motion; left for the owner to decide.
+- **A S4 / B I4 (Low): while frozen, a newly heavy app joins at the bottom.** By design: nothing may move under a
+  resting pointer; it takes its place ≤ 1 s after the pointer leaves.
+- **A S5 (Low): card (2 s window) vs breakdown header (4 s window).** Accepted; the header matches its rows, which
+  must add up to it.
+- **B C4 (Low): hold step chosen from the new value near 9.95 %.** Near that boundary the 10 % relative band
+  (≈ 1 pp) dominates either step's 0.75 × step, so the hold applies evenly; no change.
+- **A C3 / B C5 (Low): zero-size buttons for the tour's arrow/Esc shortcuts → `onKeyPress`.** `onKeyPress` needs
+  keyboard focus inside the overlay, which a non-activating menu-bar panel doesn't reliably give; the buttons work
+  regardless of focus.
+- **A C2 / B C3 (Low): extract the breakdown display state from `MetricsStore`.** Worthwhile refactor, but not
+  needed for any finding; deferred to keep this round's diff small.
+- **B R2 (Low): 2 pt gap between card and ring.** A 4 pt cutout inset would exceed half the 6 pt card gap, so the
+  ring would sit closer to the neighbouring card than to its own.
+- **B T4 (Low): step 1 title doesn't say "CPU".** The highlighted card's own label says CPU right above it; the
+  4-word title limit leaves no better wording.
+- **B D4, A V2, A V3, A D2, B R1, B R4, A R3 (Low):** "N apps using almost nothing" row, hiding the no-battery
+  card, sparse Settings, a Network drill-in note, a "Try it" stop (the cutout click now does that), auto-open
+  surprise, callout over the next card: design trade-offs, left as is.
+
+### Owner checks this round adds (need `./Scripts/bundle.sh`, the owner's OK)
+- Open the panel, then close it every way (icon, click elsewhere, Esc, switch Space, lock the screen, display sleep):
+  `ps -o pcpu= -p $(pgrep -x MacStats)` should drop to ~0 within a second each time.
+- With the tour on step 1, click the highlighted CPU card: the tour ends and the CPU breakdown opens.
+- Right-click a busy row, wait 5 s without moving the pointer, close the menu: nothing re-sorts.
+- VoiceOver on a breakdown row: "Expanded/Collapsed", actions Quit / Force Quit.
 
 ## Next
-Finish "Review round 1" above, then review round 2.
+Review round 2 (`/reviewer`, two independent reviewers) on HEAD of `feat/stability-tour`, using the probes:
+`docs/research/2026-10-06-probes/{stability,tour-render,r1-fixes,visibility}/`.
