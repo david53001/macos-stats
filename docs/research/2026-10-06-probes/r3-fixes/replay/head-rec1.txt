@@ -1,0 +1,38 @@
+[cpuA] first shown t=0.5, 150 scans | first re-sort slots 1 | top-8 order chg/min 7.0, slot chg/min 14.9, flat(14) slot chg/min 73.9
+    inversion scans 68/150, missorted pairs 0 | top-8 text chg/min 37.2 (flip-backs 4.2), s between changes per row 16.1 | err steps p95 2.06 max 7.99
+    expanded app moves/min 6.6, child top-5 order chg/min 12.9, child text chg/min 38.1, collapses 0
+[cpuA still] first shown t=0.5, 150 scans | first re-sort slots 1 | top-8 order chg/min 7.0, slot chg/min 14.9, flat(14) slot chg/min 16.1
+    inversion scans 68/150, missorted pairs 0 | top-8 text chg/min 37.2 (flip-backs 4.2), s between changes per row 16.1 | err steps p95 2.06 max 7.99
+    top row changed at t = ["42.5", "56.5", "102.5", "106.5", "108.5", "114.5", "156.5", "162.5", "164.5", "168.5", "218.5", "222.5"]
+[cpuB] first shown t=2.0, 149 scans | first re-sort slots 5 | top-8 order chg/min 9.1, slot chg/min 19.9, flat(14) slot chg/min 87.0
+    inversion scans 37/149, missorted pairs 0 | top-8 text chg/min 36.5 (flip-backs 2.2), s between changes per row 16.4 | err steps p95 1.96 max 20.95
+    expanded app moves/min 8.7, child top-5 order chg/min 12.6, child text chg/min 35.7, collapses 0
+[cpuB still] first shown t=2.0, 149 scans | first re-sort slots 5 | top-8 order chg/min 9.1, slot chg/min 19.9, flat(14) slot chg/min 22.3
+    inversion scans 37/149, missorted pairs 0 | top-8 text chg/min 36.5 (flip-backs 2.2), s between changes per row 16.4 | err steps p95 1.96 max 20.95
+    top row changed at t = ["42.0", "56.0", "78.0", "80.0", "102.0", "106.0", "110.0", "114.0", "156.0", "162.0", "164.0", "168.0", "218.0", "224.0", "258.0", "260.0"]
+[energyA] first shown t=0.5, 150 scans | first re-sort slots 8 | top-8 order chg/min 0.6, slot chg/min 3.2, flat(14) slot chg/min 31.4
+    inversion scans 35/150, missorted pairs 0 | top-8 text chg/min 19.9 (flip-backs 3.4), s between changes per row 30.1 | err steps p95 0.32 max 2.55
+    expanded app moves/min 0.4, child top-5 order chg/min 9.1, child text chg/min 30.4, collapses 0
+[energyA still] first shown t=0.5, 150 scans | first re-sort slots 8 | top-8 order chg/min 0.6, slot chg/min 3.2, flat(14) slot chg/min 5.6
+    inversion scans 35/150, missorted pairs 0 | top-8 text chg/min 19.9 (flip-backs 3.4), s between changes per row 30.1 | err steps p95 0.32 max 2.55
+    top row changed at t = ["2.5", "6.5"]
+[energyB] first shown t=2.0, 149 scans | first re-sort slots 0 | top-8 order chg/min 0.4, slot chg/min 1.6, flat(14) slot chg/min 27.4
+    inversion scans 41/149, missorted pairs 0 | top-8 text chg/min 19.9 (flip-backs 5.5), s between changes per row 27.2 | err steps p95 0.33 max 8.53
+    expanded app moves/min 0.2, child top-5 order chg/min 8.9, child text chg/min 29.8, collapses 0
+[energyB still] first shown t=2.0, 149 scans | first re-sort slots 0 | top-8 order chg/min 0.4, slot chg/min 1.6, flat(14) slot chg/min 2.8
+    inversion scans 41/149, missorted pairs 0 | top-8 text chg/min 19.9 (flip-backs 5.5), s between changes per row 27.2 | err steps p95 0.33 max 8.53
+    top row changed at t = ["6.0"]
+[energyB8] first shown t=2.0, 149 scans | first re-sort slots 0 | top-8 order chg/min 0.2, slot chg/min 0.4, flat(14) slot chg/min 15.6
+    inversion scans 0/149, missorted pairs 0 | top-8 text chg/min 10.3 (flip-backs 1.2), s between changes per row 46.4 | err steps p95 0.38 max 2.81
+    expanded app moves/min 0.2, child top-5 order chg/min 5.1, child text chg/min 16.2, collapses 0
+[energyB8 still] first shown t=2.0, 149 scans | first re-sort slots 0 | top-8 order chg/min 0.2, slot chg/min 0.4, flat(14) slot chg/min 0.4
+    inversion scans 0/149, missorted pairs 0 | top-8 text chg/min 10.3 (flip-backs 1.2), s between changes per row 46.4 | err steps p95 0.38 max 2.81
+    top row changed at t = ["6.0"]
+[memB] first shown t=0.0, 150 scans | first re-sort slots 0 | top-8 order chg/min 0.0, slot chg/min 0.0, flat(14) slot chg/min 0.0
+    inversion scans 0/150, missorted pairs 0 | top-8 text chg/min 0.0 (flip-backs 0.0), s between changes per row 2384.0 | err steps p95 0.44 max 0.88
+    expanded app moves/min 0.0, child top-5 order chg/min 0.0, child text chg/min 2.2, collapses 0
+card bigMove 2 dwell 2.0: changes/min 24.1 flip-backs/min 2.8 | err p95 1.49 max 1.98
+card bigMove 3 dwell 2.0: changes/min 20.9 flip-backs/min 3.2 | err p95 2.06 max 3.00
+card bigMove 4 dwell 2.0: changes/min 18.9 flip-backs/min 2.2 | err p95 2.55 max 3.70
+card bigMove 5 dwell 2.0: changes/min 18.7 flip-backs/min 2.2 | err p95 2.97 max 4.77
+card bigMove 3 dwell 3.0: changes/min 18.5 flip-backs/min 2.6 | err p95 2.37 max 3.00

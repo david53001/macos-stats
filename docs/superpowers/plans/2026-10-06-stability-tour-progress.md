@@ -297,11 +297,69 @@ light + dark), `failures=0`. `./Scripts/test.sh` **356/356**; `swift build` gree
   the pointer leaves.
 - Tour step 1, click the CPU card, go back: the tour is still on step 1.
 
+## Review round 3 (2026-10-06) — fixed, verified, committed
+**Scores:** reviewer A **7.9** (Stability **7.5**, Interaction 8.0, Intuitiveness 8.0, Copy 8.2, Visual 7.8, Tour 8.8,
+Code 8.0, Resource 8.3); reviewer B **7.9** (Stability **7.4**, Interaction 7.6, Intuitiveness 8.0, Copy 8.2, Visual
+8.5, Tour 8.8, Code 7.8, Resource 8.6). Bar: both > 9.0 and no area < 8.5. Reports:
+`docs/reviews/2026-10-06-stability-tour-review-r3-A.md`, `docs/reviews/2026-10-06-stability-tour-review-r3-B.md`.
+
+Terms: **inversion** = a row printed with a lower number directly above a row printed with a higher one (any
+printed difference, reviewer B's measure). **Window** = the span a breakdown row's number is averaged over.
+**Replay** = recorded live scan results fed offline through the real `MetricsStore`, so rules compare on
+identical data (`docs/research/2026-10-06-probes/r3-fixes/replay/`).
+
+### Fixed (commits `7ddbe85`, `2ab7c67`, `c34b3f3`, `2448ddd`, probes `79abf40`)
+| Finding (severity) | Verified? | Fix | Evidence |
+|---|---|---|---|
+| A S1, B S1 (Medium): re-sort from scratch 2.5 s after opening | Yes (B's runs: top row changed at 2.5 s in 3/3) | "Measuring…" until the first full 2 s scan (`breakdownFirstRescanDelay` and the provisional/fresh state removed; text "Takes about two seconds") | Live still pointer: top row changed only at 48 s and 60 s (the busy `yes`), not at 2 s/2.5 s |
+| B S3 (Medium): CPU list inversions in 20/45 scans; A S2 (Medium): reorders with the pointer away | Yes (replay: 83/149 inversion scans on the 4 s window) | Rows average **8 s** (CPU) and an **inversion timeout**: a row printed above the row over it on two published scans passes it (`BreakdownDisplay.rank`, `stableRanking(promoted:)`), for app and process rows | Replay 4 s → final: reorders 5.1 → 3.6/min, inversion scans 83 → 10 of 149, expanded app moves 4.7 → 2.8/min. Live: inversion scans 20/45 → 1/49, reorders 6–15 → 3.1/min. The timeout alone on 4 s doubled reorders (15/min), so the window carries it |
+| B S2 (Medium): Battery top rows swap every 4 s at idle | Yes (CPU energy counters move in lumps) | Battery rows average **16 s** (`energyWindowSeconds`) | Replay: 8 s window 6.7 reorders/min, 36/149 inversion scans; 16 s 0 and 0. Live: 15 → 0.6/min, 1/49 |
+| B I1 (Medium): frozen expanded app gains a process → row inserted, rows below shift | Yes (synthetic) | While frozen, processes new to a listed app (incl. a first "Finished processes" row) wait for the unfreeze | `run.sh synthetic`: before == after in both cases; test `aFrozenAppGainsNoRows` |
+| A S2 (part), A I1 (Low): resting pointer + right-click | Yes | A context menu opened over an unmoved pointer counts as pointing (`BreakdownDisplay.engaged`) | Test `aMenuOpenedWithoutMovingCountsAsPointing` |
+| A V1 (Medium): "102.5 / 128.0…" cut off | Yes | Memory card drops decimals from 100 GB of RAM | `tour-render/out/overview-128gb-{light,dark}.png`: "102 / 128 GB" |
+| A V2, B V2 (Low): callout slices a card's text; 3 pt sliver of the neighbour card | Yes | `calloutGap` 6 → 3 (callout starts at the neighbour's edge); its far edge stretches ≤ 40 pt to the next anchored card edge (`TourLayout.callout(edges:)`), content centred | Render probe steps 1–5 light/dark: callouts 109–249, 182–322, 255–372, 109–249, 255–366 (whole cards); centring unchanged (2 px gap, 6 px ring edge), `failures=0`; test `calloutMeetsCardEdges` |
+| B D1 (Low): header 23 % vs card 27 % | Yes | The header's hold starts from the card's value; the first rows cover 2 s like the card | Test `theHeaderStartsFromTheCardValue` |
+| B I2 (Low): "Process" rows | Yes | Names read in the scan for new processes only (`ProcessUsage.name`, cached by pid + start time) | Real-scan render `tour-render/out/r2-breakdown-*-expanded-*.png`: no "Process" rows; scan p50 17.6 ms (B: ~17) |
+| A S3, B S5 (Low): CPU card ~40 changes/min | Yes | Dwell bypass at 3 pp (was 2) | Replay of the recorded 0.5 s series: 21.9 → 18.5/min, max error 2.0 → 3.0 pp; live 16–21/min |
+| A C1 (Low): `before:` always empty | Yes | Parameter and its two-reading tests removed | Tests |
+| A T1, B T1/T2/T3, A T2/T4, B T4 (Low): copy | Yes | Memory step "The dot turns yellow or red when your Mac runs short. Click to see which apps use it."; CPU step "The number is right now, the graph shows the last minute. …"; welcome "…live in your menu bar, under this icon." / "You can skip it any time."; drill-in time left in the card's wording ("4h", "About 6h"); "Finished processes" | `TourCatalogLintTests` (2-line fit) |
+| A D1, B D3 (Low): bare "47 °C" | Yes | Card meta "Chip 47 °C" | Render `overview-light.png` |
+| B C4 (Low): `.help` vs `.tooltip` | Yes | Finished-processes row uses `.tooltip` | Build |
+
+Display-only accuracy trade-offs: breakdown rows (and the CPU header) are 8 s / 16 s averages (was 4 s); the CPU
+card can be up to 3 pp off for ≤ 2 s (was 2 pp). Stored readings, graphs and alerts stay exact. Cost: the longer
+windows hold 4 / 8 intervals of ~500 entries while that breakdown is open (~100–200 KB, freed on close); scan time
+unchanged; nothing new runs while the panel is closed or the tour is off.
+
+**Measured:** `./Scripts/test.sh` **359/359**; `swift build` green; live probe `docs/research/2026-10-06-probes/r3-fixes/`
+(`after-run2.txt`, `cost.txt`, README table); tour render probe `failures=0`.
+
+### Rejected or deferred (with the reason)
+- **A R1, B P1 (Low): install the branch and verify the closed-panel CPU live.** The hard rules forbid installing
+  `~/Applications/MacStats.app` and driving the menu bar. Owner check (unchanged): after `./Scripts/bundle.sh`, open
+  and close the panel, then `ps -o pcpu,rss,cputime -p $(pgrep -x MacStats)`: expect < 0.5 % closed.
+- **A S2 alt. (Medium): hold the expanded app's row and process order while expanded.** Round 2 removed exactly
+  that pin (30 of 31 mis-sorted scans sat next to it). The longer window cut expanded-app moves 4.7 → 2.8/min (0.6
+  on a second recording) without hiding a real change.
+- **A I1 alt.: freeze for 1 s after any reorder.** Scans are 2 s apart, so it would never apply; the menu
+  engagement covers the right-click case.
+- **A I2 (Low, unverified): stale hover highlight after a reorder under an unmoved pointer.** Needs the real panel
+  to check; reorders under an unmoved pointer are now rare (top row: 2 changes in 95 s, both from a real load jump).
+- **A D2, B I3/D2 (Low): Quit only by right-click; no hover on non-expandable rows.** Round 2's reviewer asked to
+  remove that hover (a click there does nothing). The hint footnote and every row's tooltip name the right-click.
+- **A V3, B V1 (Low): Settings half empty.** Milestone 4 (menu-bar display, alert thresholds) fills it; padding it now
+  would be speculative UI.
+- **A S4 (Low): rows vs header sum.** As round 2: the header is the measured whole-Mac figure.
+- **A T3 (Low): several "Helper" rows.** Activity Monitor does the same; pid is in the tooltip and menu.
+- **B R1 (Low): only 1 pt between card and ring.** As round 1: a wider inset crosses the middle of the 6 pt gap.
+- **A C3 / B C3, A C4, B C5 (Low):** `CardDisplay` extraction, `onKeyPress`, research citations in comments: as in
+  rounds 1–2.
+
 ## Next
-Review round 3 (`/reviewer`, two independent reviewers) on HEAD of `feat/stability-tour`, using the probes
-`docs/research/2026-10-06-probes/{r2-fixes,tour-render,visibility}/` (and `stability/`).
+Review round 4 (`/reviewer`, two independent reviewers) on HEAD of `feat/stability-tour`. Probes:
 ```bash
-docs/research/2026-10-06-probes/r2-fixes/run.sh 150          # stability, 4 breakdowns + cards
-docs/research/2026-10-06-probes/tour-render/run.sh            # tour captures + insets + shadow strips
-docs/research/2026-10-06-probes/tour-render/run.sh --breakdowns
+docs/research/2026-10-06-probes/r3-fixes/run.sh stability 100   # live, reviewer B's measures
+docs/research/2026-10-06-probes/r3-fixes/run.sh synthetic
+docs/research/2026-10-06-probes/tour-render/run.sh               # tour captures + insets, 128 GB overview
+docs/research/2026-10-06-probes/tour-render/run.sh --breakdowns  # real-scan breakdowns
 ```
