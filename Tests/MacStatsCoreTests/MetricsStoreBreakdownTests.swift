@@ -56,6 +56,35 @@ import Testing
         #expect(order(store) == [2, 1])
     }
 
+    @Test func theListReordersAtMostOncePerDwell() {
+        // 1 and 2 trade clear (but not big) leads every scan: the order follows at most every third scan.
+        let store = cpuStore()
+        store.setBreakdown(scan([app(1, 3.8), app(2, 3.0)]), measuring: false, time: 0)
+        var orders: [[Int32]] = []
+        for i in 1...6 {
+            let (a, b) = i % 2 == 1 ? (3.0, 3.8) : (3.8, 3.0)
+            store.setBreakdown(scan([app(1, a), app(2, b)]), measuring: false, time: Double(2 * i))
+            orders.append(order(store))
+        }
+        let reorders = zip([[1, 2]] + orders, orders).filter { $0 != $1 }.count
+        #expect(reorders <= 2)
+        // Held back rows still show their real numbers; a big jump moves at once.
+        store.setBreakdown(scan([app(1, 1), app(2, 1), app(3, 1)]), measuring: false, time: 14)
+        store.setBreakdown(scan([app(1, 1), app(2, 1), app(3, 9)]), measuring: false, time: 16)
+        #expect(order(store).first == 3)
+    }
+
+    @Test func aNewProcessJoinsBelowItsAppsKnownOnesForOneScan() {
+        // Most newcomers are short-lived: shown first at the end, one gone by the next scan moved nothing.
+        let store = cpuStore()
+        store.setBreakdown([app(1, 6, children: [(10, 3), (11, 2)])], measuring: false, time: 0)
+        store.setBreakdown([app(1, 8, children: [(10, 3), (12, 2.6), (11, 2)])], measuring: false, time: 2)
+        #expect(store.breakdown.first?.processes.map(\.pid) == [10, 11, 12])
+        // Still there: it climbs like any row.
+        store.setBreakdown([app(1, 8, children: [(10, 3), (12, 2.6), (11, 2)])], measuring: false, time: 4)
+        #expect(store.breakdown.first?.processes.map(\.pid) == [10, 12, 11])
+    }
+
     @Test func aMenuOpenedWithoutMovingCountsAsPointing() {
         // Right-click on the row under a pointer that never moved: after the menu closes the list
         // stays frozen while the pointer is still there.

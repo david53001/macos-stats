@@ -703,6 +703,28 @@ import Testing
         #expect(abs((third.totalCPUPercent ?? 0) - 5) < 1e-9)
     }
 
+    @Test func aNewLoadRestartsTheWindow() {
+        // 4 cores, header 5 % for 8 s, then app 100 runs one core (25 % of the Mac): rows and header
+        // show it on that scan instead of a quarter of it.
+        func run(fastAttack: Bool) -> BreakdownScanner.Result {
+            let s = BreakdownScanner(cores: 4, windowSeconds: 8, fastAttack: fastAttack,
+                                     responsible: { _ in nil }, allParents: { [:] })
+            var r: BreakdownScanner.Result?
+            for i in 0...5 {
+                let cpu: UInt64 = i == 5 ? 2_000_000_000 : 0
+                let busy = UInt32(min(i, 4) * 10 + (i == 5 ? 60 : 0)), idle = UInt32(min(i, 4) * 190 + (i == 5 ? 140 : 0))
+                r = s.scan([p(100, cpu: cpu)], appPIDs: [100], metric: .cpu, time: Double(2 * i),
+                           absTime: UInt64(10 + i), cpuTicks: ticks(busy, idle))
+            }
+            return r!
+        }
+        let fast = run(fastAttack: true), slow = run(fastAttack: false)
+        #expect(abs(row(fast, 100) - 25) < 1e-9)
+        #expect(abs((fast.totalCPUPercent ?? 0) - 30) < 1e-9)
+        #expect(abs(row(slow, 100) - 6.25) < 1e-9)
+        #expect(abs((slow.totalCPUPercent ?? 0) - 11.25) < 1e-9)
+    }
+
     @Test func memoryIsUnaffected() {
         let s = scanner()
         var r: BreakdownScanner.Result?

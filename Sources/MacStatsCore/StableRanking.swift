@@ -18,6 +18,9 @@ public struct RankHysteresis: Equatable, Sendable {
     public static let memory = RankHysteresis(rel: 0.05, abs: 20 * 1_048_576, jump: 200 * 1_048_576)
     public static let energy = RankHysteresis(rel: 0.15, abs: 0.015, jump: 0.05)     // W
 
+    /// Only a big jump moves (`BreakdownDisplay`'s reorder dwell).
+    public var jumpsOnly: RankHysteresis { RankHysteresis(rel: 0, abs: .greatestFiniteMagnitude, jump: jump) }
+
     public static func `for`(_ metric: BreakdownMetric) -> RankHysteresis {
         switch metric {
         case .cpu: return .cpu
@@ -36,8 +39,8 @@ public struct RankHysteresis: Equatable, Sendable {
 /// it can, and it never passes a key with a higher value.
 /// With steady readings one pass leaves no key clearly beaten by a key below it (tested).
 /// A `promoted` key climbs over every key directly above it that it outranks, margins or not.
-/// `frozen` returns `previous` minus vanished keys, plus new keys appended at the end. `groupsLast` (memory) keeps negative keys
-/// (group rows) after all apps. One insertion pass, O(n²) on ~60 rows (O(n) when little changed).
+/// `frozen` returns `previous` minus vanished keys, plus new keys appended at the end (after the group rows too).
+/// Otherwise `groupsLast` (memory) keeps negative keys (group rows) after all apps. One insertion pass, O(n²) on ~60 rows (O(n) when little changed).
 public func stableRanking(previous: [Int32], now: [Int32: Double],
                           rule: RankHysteresis, frozen: Bool = false,
                           groupsLast: Bool = false, promoted: Set<Int32> = []) -> [Int32] {
@@ -48,10 +51,8 @@ public func stableRanking(previous: [Int32], now: [Int32: Double],
         precedes($0, $1, now: now, groupsLast: groupsLast)
     }
 
-    if frozen {
-        guard groupsLast else { return kept + fresh }
-        return kept.filter { $0 > 0 } + fresh.filter { $0 > 0 } + kept.filter { $0 < 0 } + fresh.filter { $0 < 0 }
-    }
+    // Frozen: new keys go after every kept one, group rows included, so nothing under the pointer moves.
+    if frozen { return kept + fresh }
 
     var list = kept
     if list.isEmpty {

@@ -271,7 +271,7 @@ public final class MetricsStore: ObservableObject {
             return
         }
         let frozen = display.isFrozen(at: time, pointer: breakdownPointerProbe?())
-        if display.apply(apps, totalCPU: totalCPU, frozen: frozen) { breakdownOrderRevision &+= 1 }
+        if display.apply(apps, totalCPU: totalCPU, frozen: frozen, time: time) { breakdownOrderRevision &+= 1 }
         if display.shownTotalCPU != breakdownShownTotalCPU { breakdownShownTotalCPU = display.shownTotalCPU }
         let scale = display.barScale ?? 1
         if scale != breakdownBarScale { breakdownBarScale = scale }

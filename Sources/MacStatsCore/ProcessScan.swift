@@ -373,6 +373,7 @@ public final class BreakdownScanner: @unchecked Sendable {
 
     private let cores: Double
     private let windowSeconds: TimeInterval?
+    private let fastAttack: Bool
     private let attributor: ProcessAttributor
     private let sampler = ProcessSampler()
     private var lastTicks: CPUTicks?
@@ -389,14 +390,16 @@ public final class BreakdownScanner: @unchecked Sendable {
     private let nameOf: (Int32) -> String?
 
     /// `windowSeconds`: the span rows are averaged over; 0 = the latest interval only, nil = the
-    /// metric's own (`trailingWindowSeconds`, `energyWindowSeconds`).
+    /// metric's own (`trailingWindowSeconds`, `energyWindowSeconds`). `fastAttack`: restart the window
+    /// when the Mac gets much busier (`breakdownFastAttackCores`).
     public init(cores: Int = ProcessInfo.processInfo.activeProcessorCount,
-                windowSeconds: TimeInterval? = nil,
+                windowSeconds: TimeInterval? = nil, fastAttack: Bool = true,
                 responsible: @escaping (Int32) -> Int32? = responsiblePID(for:),
                 allParents: @escaping () -> [Int32: Int32] = readAllParentPIDs,
                 nameOf: @escaping (Int32) -> String? = processName) {
         self.cores = Double(max(1, cores))
         self.windowSeconds = windowSeconds.map { max(0, $0) }
+        self.fastAttack = fastAttack
         self.attributor = ProcessAttributor(responsible: responsible, allParents: allParents)
         self.nameOf = nameOf
     }
@@ -471,6 +474,15 @@ public final class BreakdownScanner: @unchecked Sendable {
             if metric == .cpu, let total {
                 // Exit credit's baseline: System over this interval alone, not the window.
                 lastSystemPercent = max(0, total - rowsNs / nsPerPercent)
+            }
+            // Fast attack: when this interval was much busier than the rest of the window (a new
+            // load), the window restarts from it, so rows and header show the load at once instead of
+            // ramping up over the window (a one-core load read 3, 6, 9 then 12 % over 8 s while the
+            // CPU card showed it within 2 s). It regrows by one interval a scan. Falls still average.
+            if fastAttack, let total, !window.isEmpty, window.allSatisfy({ $0.busyNs != nil }) {
+                let restSpan = window.reduce(0) { $0 + $1.elapsed }
+                let rest = window.reduce(0) { $0 + ($1.busyNs ?? 0) } * 100 / (restSpan * cores * 1_000_000_000)
+                if total - rest >= breakdownFastAttackCores * 100 / cores { window = [] }
             }
             window.append(Interval(elapsed: elapsed, busyNs: total.map { $0 * nsPerPercent }, work: work,
                                    exitedNs: exitedNs))

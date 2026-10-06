@@ -51,7 +51,10 @@ import Testing
         #expect(order == [9, 7, 8, other])
         let frozen = stableRanking(previous: [7, 8, other], now: values, rule: .memory,
                                    frozen: true, groupsLast: true)
-        #expect(frozen == [7, 8, 9, other])
+        // While frozen a new app joins below the group rows, so they don't move under the pointer…
+        #expect(frozen == [7, 8, other, 9])
+        // …and takes its place at the unfreeze.
+        #expect(stableRanking(previous: frozen, now: values, rule: .memory, groupsLast: true) == [9, 7, 8, other])
     }
 
     @Test func tiesAreDeterministicByKey() {

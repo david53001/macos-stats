@@ -21,14 +21,16 @@ public struct BreakdownPointer: Equatable, Sendable {
 /// Rules (`apply`): apps and each app's processes are ranked by the values their rows print
 /// (`HeldReading`, which already needs a change to show on two scans), and re-rank only with a clear
 /// lead (`stableRanking`), or when a row has printed more than the one above it for two scans
-/// (`rank`), so the order agrees with the numbers on screen. The order is frozen while
+/// (`rank`), so the order agrees with the numbers on screen. Apart from a big jump, a list (the apps,
+/// or one app's processes) reorders at most once per `breakdownReorderDwell`. The order is frozen while
 /// the pointer is over the list (once it has moved there) or a context menu is open, and until the
 /// first scan `breakdownUnfreezeDelay` after both end.
 /// While frozen, a row whose app or process ended stays in place as a placeholder (`isEnded`), so
 /// nothing below it moves; an ended app keeps its processes as placeholders too, so an expanded app
 /// that quits doesn't collapse under the pointer. An app's "Finished processes" row stays (at 0) once it
 /// has appeared. A process new to a listed app waits for the unfreeze, so an expanded app's block
-/// never grows under the pointer. Values stay exact (bars follow them); the text reads `shownValue` (`HeldReading`).
+/// never grows under the pointer, and then joins below the app's known processes for one scan.
+/// Values stay exact (bars follow them); the text reads `shownValue` (`HeldReading`).
 public struct BreakdownDisplay {
     public let metric: BreakdownMetric
     /// The rows in display order, from the last `apply`.
@@ -44,6 +46,8 @@ public struct BreakdownDisplay {
     private var rows: [Int32: AppRow] = [:]
     /// Apps printed higher than the app above them on the last published scan (`rank`).
     private var lagging: Set<Int32> = []
+    /// When the app order last changed while unfrozen (`rank`).
+    private var reorderedAt: TimeInterval?
 
     private var pointerInside = false
     private var menuOpen = false
@@ -59,6 +63,8 @@ public struct BreakdownDisplay {
         var processes: [Int32: ProcessRow]
         /// This app's processes printed above their upper neighbour on the last scan (`rank`).
         var lagging: Set<Int32> = []
+        /// When this app's process order last changed while unfrozen (`rank`).
+        var reorderedAt: TimeInterval?
     }
 
     private struct ProcessRow {
@@ -104,9 +110,10 @@ public struct BreakdownDisplay {
 
     // MARK: Scans
 
-    /// Folds in one scan (rows as `BreakdownScanner` returns them). Returns whether the app order changed.
+    /// Folds in one scan (rows as `BreakdownScanner` returns them), taken at `time` (nil: no reorder
+    /// dwell). Returns whether the app order changed.
     @discardableResult
-    public mutating func apply(_ scan: [AppUsage], totalCPU: Double?, frozen: Bool) -> Bool {
+    public mutating func apply(_ scan: [AppUsage], totalCPU: Double?, frozen: Bool, time: TimeInterval? = nil) -> Bool {
         let previous = rows
         let previousOrder = order
 
@@ -121,7 +128,7 @@ public struct BreakdownDisplay {
         let rule = RankHysteresis.for(metric)
         let texts = byApp.mapValues { held(previous[$0.appPID]?.text, $0.value(for: metric)) }
         let newOrder = rank(previousOrder, texts.mapValues(\.shown), rule: rule, frozen: frozen,
-                            lagging: &lagging, groupsLast: metric == .memory)
+                            lagging: &lagging, reorderedAt: &reorderedAt, time: time, groupsLast: metric == .memory)
 
         var nextRows: [Int32: AppRow] = [:]
         nextRows.reserveCapacity(newOrder.count)
@@ -156,8 +163,17 @@ public struct BreakdownDisplay {
             let byPID = Dictionary(children.map { ($0.pid, $0) }, uniquingKeysWith: { a, _ in a })
             let childTexts = byPID.mapValues { held(old?.processes[$0.pid]?.text, $0.value(for: metric)) }
             var kidsLagging = old?.lagging ?? []
-            let kids = rank(old?.children ?? [], childTexts.mapValues(\.shown), rule: rule, frozen: frozen,
-                            lagging: &kidsLagging, groupsLast: false)
+            var kidsReorderedAt = old?.reorderedAt
+            // A process new to a listed app joins below its known ones for its first scan, then climbs
+            // like any row (a big lead at once). Most newcomers are short-lived (a build's compilers, a
+            // terminal's commands) and gone by the next scan: ranked in, each pushed an expanded app's
+            // rows down and back, and its top five changed on most scans under a build.
+            let known = Set(old?.children ?? [])
+            let settled = old == nil ? childTexts : childTexts.filter { known.contains($0.key) }
+            var kids = rank(old?.children ?? [], settled.mapValues(\.shown), rule: rule, frozen: frozen,
+                            lagging: &kidsLagging, reorderedAt: &kidsReorderedAt, time: time, groupsLast: false)
+            kids += stableRanking(previous: [], now: childTexts.filter { settled[$0.key] == nil }.mapValues(\.shown),
+                                  rule: rule)
             let processes = kids.compactMap { byPID[$0] }
 
             var processRows: [Int32: ProcessRow] = [:]
@@ -168,7 +184,8 @@ public struct BreakdownDisplay {
                                                 name: p.name)
             }
             nextRows[key] = AppRow(text: texts[key] ?? HeldReading(0, step: 1), ended: appEnded,
-                                   children: kids, processes: processRows, lagging: kidsLagging)
+                                   children: kids, processes: processRows, lagging: kidsLagging,
+                                   reorderedAt: kidsReorderedAt)
             ordered.append(AppUsage(appPID: app.appPID, processes: processes, cpuPercent: app.cpuPercent,
                                     memoryBytes: app.memoryBytes, watts: app.watts))
         }
@@ -201,20 +218,39 @@ public struct BreakdownDisplay {
     }
 
     /// `stableRanking`, plus an inversion timeout: a row printed higher than the row above it on
-    /// two published scans in a row (a lead within the margins) passes it on the second, so the list
-    /// never shows "3.0 %" above "3.3 %" for longer than one scan. `lagging` holds the rows that were
-    /// printed above their upper neighbour on the last published scan.
+    /// two published scans in a row (a lead within the margins) passes it, so "3.0 %" doesn't stay
+    /// above "3.3 %". `lagging` holds the rows that were printed above their upper neighbour on the
+    /// last published scan.
+    /// And a dwell: within `breakdownReorderDwell` of the list's last reorder (`reorderedAt`), only a
+    /// big jump (`RankHysteresis.jump`) moves a row; the rest waits (still `lagging`) for the next
+    /// allowed scan. New rows take their sorted places either way. With 2 s scans, a close race
+    /// between bursty apps reordered the list on most scans.
     private func rank(_ previous: [Int32], _ values: [Int32: Double], rule: RankHysteresis, frozen: Bool,
-                      lagging: inout Set<Int32>, groupsLast: Bool) -> [Int32] {
-        let order = stableRanking(previous: previous, now: values, rule: rule, frozen: frozen,
+                      lagging: inout Set<Int32>, reorderedAt: inout TimeInterval?, time: TimeInterval?,
+                      groupsLast: Bool) -> [Int32] {
+        var order = stableRanking(previous: previous, now: values, rule: rule, frozen: frozen,
                                   groupsLast: groupsLast, promoted: lagging)
         guard !frozen else { return order }
+        if let time, movesRows(previous, order) {
+            if let at = reorderedAt, time - at < breakdownReorderDwell {
+                // A jump still moves, without restarting the dwell (else a spiky row starves the rest).
+                order = stableRanking(previous: previous, now: values, rule: rule.jumpsOnly, groupsLast: groupsLast)
+            } else {
+                reorderedAt = time
+            }
+        }
         lagging = []
         for (above, key) in zip(order, order.dropFirst())
         where (values[key] ?? 0) > (values[above] ?? 0) && (!groupsLast || (above < 0) == (key < 0)) {
             lagging.insert(key)
         }
         return order
+    }
+
+    /// Whether `order` moves any row of `previous` relative to the others (rows coming or going don't count).
+    private func movesRows(_ previous: [Int32], _ order: [Int32]) -> Bool {
+        let before = Set(previous), after = Set(order)
+        return previous.filter { after.contains($0) } != order.filter { before.contains($0) }
     }
 
     /// Row text: within max(0.75 × the printed step, min(10 % (memory 3 %) of the value, 2 pp / 0.2 W)),
