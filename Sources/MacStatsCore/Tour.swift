@@ -37,9 +37,9 @@ public enum TourCatalog {
 
     public static let steps: [TourStep] = [
         TourStep(.cpu, "How hard it’s working",
-                 "The number is now; the graph is the last minute. Click the card to see which apps use it."),
+                 "The number is right now, the graph shows the last minute. Click to see which apps use it."),
         TourStep(.memory, "Memory in use",
-                 "How much memory is in use. The dot turns yellow or red when your Mac runs short."),
+                 "The dot turns yellow or red when your Mac runs short. Click to see which apps use it."),
         TourStep(.network, "Network activity",
                  "↓ is download and ↑ is upload, right now. The graph shows downloads over the last minute."),
         TourStep(.battery, "Battery and time left",
@@ -51,13 +51,13 @@ public enum TourCatalog {
 
     public static let welcomeTitle = "Welcome to MacStats"
     public static let welcomeBody =
-        "Your Mac’s CPU, memory, network and battery, live, from this graph icon in your menu bar."
+        "Your Mac’s CPU, memory, network and battery, live in your menu bar, under this icon."
     public static let alertsPermission =
         "MacStats will ask to send alerts when your Mac stays busy or runs low on memory."
     public static let finderPermission =
         "macOS will ask to let MacStats use Finder, so it can show and empty the Trash."
     public static let welcomeQuestion = "Want a quick tour?"
-    public static let welcomeSubline = "A few short stops. You can skip any time."
+    public static let welcomeSubline = "You can skip it any time."
 
     public static let noThanks = "No Thanks"
     public static let showMeAround = "Show Me Around"

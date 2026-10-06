@@ -55,7 +55,7 @@ struct BatteryDetailsCard: View {
 
         switch b.state {
         case .discharging:
-            rows.append(Row(label: "Time left", value: b.timeToEmptyMinutes.map(aboutTimeLeft) ?? "Calculating…"))
+            rows.append(Row(label: "Time left", value: b.timeToEmptyMinutes.map(timeLeft) ?? "Calculating…"))
         case .charging:
             rows.append(Row(label: b.chargeTargetLabel, value: b.timeToFullMinutes.map(formatTimeToFull)
                             ?? (b.atChargeLimit ? "Almost done" : b.percent >= 90 ? "Almost full" : "Calculating…")))
@@ -93,11 +93,10 @@ struct BatteryDetailsCard: View {
         return rows
     }
 
-    /// "About 4h": the estimate is rounded about as coarsely as it is uncertain, so say so
-    /// (`formatTimeLeft` already says "about 6h" from six hours up).
-    private func aboutTimeLeft(_ minutes: Int) -> String {
+    /// The card's wording ("5h 15m", "About 6h"), so both screens read the same estimate the same way.
+    private func timeLeft(_ minutes: Int) -> String {
         let text = formatTimeLeft(minutes)
-        return text.hasPrefix("about ") ? "A" + text.dropFirst() : "About \(text)"
+        return text.prefix(1).uppercased() + text.dropFirst()
     }
 }
 

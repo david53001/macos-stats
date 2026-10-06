@@ -12,8 +12,11 @@ public enum TourLayout {
     public static let cutoutInset: CGFloat = 3
     /// The accent ring, drawn inside the cutout's edge.
     public static let ringWidth: CGFloat = 2
-    /// Callout to cutout.
-    public static let calloutGap: CGFloat = 6
+    /// Callout to cutout. The cutout ends halfway across the 6 pt gap between cards, so the
+    /// callout starts exactly at the neighbouring card's edge: no sliver of it shows in between.
+    public static let calloutGap: CGFloat = 3
+    /// How far the callout's far edge may stretch to reach an element's edge (`edges`).
+    public static let calloutStretch: CGFloat = 40
     /// Callout and welcome card to the panel edge (the cards' inset).
     public static let panelMargin: CGFloat = 8
     /// Concentric with the panel's 16 pt corners at the 8 pt margin.
@@ -31,11 +34,14 @@ public enum TourLayout {
 
     /// The callout: the cards' width and inset, `calloutGap` below the cutout if it fits inside
     /// the panel's margin, else above, else on the side with more room (its height clamped to
-    /// that room). Never overlaps the cutout.
-    public static func callout(cutout: CGRect, height: CGFloat, panel: CGRect, scale: CGFloat) -> CGRect {
+    /// that room). Never overlaps the cutout. Its far edge then stretches (by up to
+    /// `calloutStretch`) to the nearest of `edges`, the tops and bottoms of the panel's cards, so
+    /// it never cuts across a line of a card's text.
+    public static func callout(cutout: CGRect, height: CGFloat, panel: CGRect, scale: CGFloat,
+                               edges: [CGFloat] = []) -> CGRect {
         let top = panel.minY + panelMargin, bottom = panel.maxY - panelMargin
         let below = cutout.maxY + calloutGap, above = cutout.minY - calloutGap
-        let y: CGFloat, h: CGFloat
+        var y: CGFloat, h: CGFloat
         if below + height <= bottom {
             (y, h) = (below, height)
         } else if above - height >= top {
@@ -45,6 +51,14 @@ public enum TourLayout {
         } else {
             h = max(0, above - top)
             y = above - h
+        }
+        if y >= cutout.maxY {
+            if let edge = edges.filter({ $0 >= y + h && $0 - (y + h) <= calloutStretch && $0 <= bottom }).min() {
+                h = edge - y
+            }
+        } else if let edge = edges.filter({ $0 <= y && y - $0 <= calloutStretch && $0 >= top }).max() {
+            h += y - edge
+            y = edge
         }
         return snapped(CGRect(x: panel.minX + panelMargin, y: y,
                               width: panel.width - 2 * panelMargin, height: h), scale)

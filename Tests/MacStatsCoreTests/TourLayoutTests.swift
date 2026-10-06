@@ -71,9 +71,9 @@ import Testing
                     #expect(panel.insetBy(dx: 8, dy: 8).contains(co), "\(f.id)")
                     #expect(co.minX == 8 && co.width == 304)
                     if f.below {
-                        #expect(co.minY - cut.maxY == 6, "\(f.id) below")
+                        #expect(co.minY - cut.maxY == TourLayout.calloutGap, "\(f.id) below")
                     } else {
-                        #expect(cut.minY - co.maxY == 6, "\(f.id) above")
+                        #expect(cut.minY - co.maxY == TourLayout.calloutGap, "\(f.id) above")
                     }
                     #expect(abs(co.height - h) <= 1 / scale + 1e-9)
                 }
@@ -81,17 +81,38 @@ import Testing
         }
     }
 
+    /// The callout starts at the neighbouring card's edge (no sliver of it between) and its far
+    /// edge stretches to the next card edge, so it never cuts a line of a card's text in half.
+    @Test func calloutMeetsCardEdges() {
+        let edges = fixtures.flatMap { [$0.rect.minY, $0.rect.maxY] }
+        let expected: [TourStepID: (CGFloat, CGFloat)] = [
+            .cpu: (109, 249), .memory: (182, 322), .network: (255, 372), .battery: (109, 249), .footer: (255, 366),
+        ]
+        for scale: CGFloat in [1, 2] {
+            for f in fixtures {
+                let cut = TourLayout.cutout(target: f.rect, targetRadius: cardRadius, panel: panel, scale: scale).rect
+                let others = edges.filter { $0 != f.rect.minY && $0 != f.rect.maxY }
+                let co = TourLayout.callout(cutout: cut, height: 108, panel: panel, scale: scale, edges: others)
+                #expect(co.minY == expected[f.id]!.0 && co.maxY == expected[f.id]!.1, "\(f.id): \(co)")
+                #expect(!co.intersects(cut))
+            }
+        }
+        // No edge within reach: the callout keeps its own height.
+        let cut = TourLayout.cutout(target: fixtures[0].rect, targetRadius: cardRadius, panel: panel, scale: 2).rect
+        #expect(TourLayout.callout(cutout: cut, height: 108, panel: panel, scale: 2, edges: [300]).height == 108)
+    }
+
     @Test func fallbackWhenNeitherSideFits() {
         // A tall target leaves 60 pt above and 30 pt below: the callout goes above, clamped.
         let cut = CGRect(x: 5, y: 74, width: 310, height: 286)
         let co = TourLayout.callout(cutout: cut, height: 100, panel: panel, scale: 2)
-        #expect(co.maxY == cut.minY - 6)
+        #expect(co.maxY == cut.minY - TourLayout.calloutGap)
         #expect(co.minY == 8)
         #expect(!co.intersects(cut))
         // More room below than above: below, clamped to the panel margin.
         let low = CGRect(x: 5, y: 20, width: 310, height: 300)
         let co2 = TourLayout.callout(cutout: low, height: 100, panel: panel, scale: 2)
-        #expect(co2.minY == low.maxY + 6)
+        #expect(co2.minY == low.maxY + TourLayout.calloutGap)
         #expect(co2.maxY == 396)
     }
 

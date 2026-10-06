@@ -102,7 +102,7 @@ private struct TourOverlay: View {
         GeometryReader { proxy in
             let panel = CGRect(origin: .zero, size: proxy.size)
             ZStack(alignment: .topLeading) {
-                content(panel: panel, hole: hole(proxy, panel: panel))
+                content(proxy, panel: panel, hole: hole(proxy, panel: panel))
                     // Reduce Motion: a short cross-fade between steps instead of moving.
                     .id(reduceMotion ? phaseKey : 0)
                     .transition(.opacity)
@@ -120,8 +120,16 @@ private struct TourOverlay: View {
                                  scale: scale)
     }
 
+    /// The tops and bottoms of every anchored element: where the callout's far edge may end.
+    private func edges(_ proxy: GeometryProxy) -> [CGFloat] {
+        anchors.values.flatMap { anchor -> [CGFloat] in
+            let r = proxy[anchor.bounds]
+            return [r.minY, r.maxY]
+        }
+    }
+
     @ViewBuilder
-    private func content(panel: CGRect, hole: (rect: CGRect, radius: CGFloat)?) -> some View {
+    private func content(_ proxy: GeometryProxy, panel: CGRect, hole: (rect: CGRect, radius: CGFloat)?) -> some View {
         // On the welcome card the hole is a point at the centre, so it opens out to the first card.
         let cut = hole ?? (CGRect(x: panel.midX, y: panel.midY, width: 0, height: 0), 0)
         ZStack(alignment: .topLeading) {
@@ -143,13 +151,17 @@ private struct TourOverlay: View {
                     .offset(x: frame.minX, y: frame.minY)
             } else if let hole, let current = tour.currentStep, let progress = tour.progress {
                 let frame = TourLayout.callout(cutout: hole.rect, height: calloutHeight ?? 0, panel: panel,
-                                               scale: scale)
+                                               scale: scale, edges: edges(proxy))
                 let below = frame.minY >= hole.rect.maxY
                 ZStack(alignment: .topLeading) {
+                    // Content at its own height, centred in the (possibly stretched) surface.
                     TourCallout(step: current.step, progress: progress,
                                 onSkip: { tour.skip() }, onBack: { tour.back() }, onNext: { tour.next() })
                         .frame(width: frame.width)
+                        .fixedSize(horizontal: false, vertical: true)
                         .measuredHeight($calloutHeight)
+                        .frame(height: max(frame.height, calloutHeight ?? 0))
+                        .background(TourSurface().opacity(calloutHeight == nil ? 0 : 1))
                         .offset(x: frame.minX, y: frame.minY)
                 }
                 .frame(width: panel.width, height: panel.height, alignment: .topLeading)
@@ -242,8 +254,8 @@ private struct TourSurface: View {
     }
 }
 
-/// One step's bubble: title, body (always two lines' room, so every step has the same height
-/// and the bubble never jumps), "n of m" and the buttons.
+/// One step's bubble content: title, body (always two lines' room, so every step has the same
+/// height and the bubble never jumps), "n of m" and the buttons. The overlay draws its surface.
 struct TourCallout: View {
     let step: TourStep
     let progress: (number: Int, total: Int)
@@ -284,7 +296,6 @@ struct TourCallout: View {
         }
         .padding(Design.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TourSurface())
         .accessibilityElement(children: .contain)
     }
 }

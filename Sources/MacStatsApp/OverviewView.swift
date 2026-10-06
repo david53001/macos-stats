@@ -95,14 +95,15 @@ struct OverviewView: View {
         .background(CardBackground())
     }
 
-    private func gb(_ bytes: UInt64) -> String {
-        String(format: "%.1f", Double(bytes) / 1_073_741_824)
+    /// One decimal, or none from 100 GB of RAM up, so "103 / 128 GB" fits the card's value column.
+    private func gb(_ bytes: UInt64, of total: UInt64) -> String {
+        String(format: total >= 100 * 1_073_741_824 ? "%.0f" : "%.1f", Double(bytes) / 1_073_741_824)
     }
     private func rate(_ bps: Double) -> String { formattedRate(bytesPerSecond: bps) }
 
     private var memoryValue: String {
         guard let m = store.cardMemory else { return "—" }
-        return "\(gb(m.usedBytes)) / \(gb(m.totalBytes)) GB"
+        return "\(gb(m.usedBytes, of: m.totalBytes)) / \(gb(m.totalBytes, of: m.totalBytes)) GB"
     }
     private var trashValue: String {
         if store.trashNeedsPermission { return "Needs permission" }
