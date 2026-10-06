@@ -316,31 +316,67 @@ public final class ProcessSampler {
 }
 
 /// One breakdown's scan pipeline: attribution + interval usage + the CPU header over the
-/// same interval. Lives only while a breakdown is open (a new one per drill-in).
+/// same span. Lives only while a breakdown is open (a new one per drill-in).
+///
+/// CPU and energy rows are averaged over a trailing window (`windowSeconds`, the last two
+/// 2 s scan intervals by default), and so is the CPU header, so rows + System still add up to
+/// it. A process that started mid-window counts what it used over the whole window; one that
+/// exited mid-window keeps its earlier work in its app's "Exited processes" row while the app
+/// runs (else it falls into System). Memory rows are instantaneous.
 /// Not thread-safe: `@unchecked Sendable` so it can be handed to the app's serial scan queue,
 /// which is the only place it is used.
 public final class BreakdownScanner: @unchecked Sendable {
     public struct Result: Equatable, Sendable {
         public let apps: [AppUsage]
-        /// Whole-machine CPU % over exactly the interval the rows cover (nil until measured).
+        /// Whole-machine CPU % over exactly the span the rows cover (nil until measured).
         public let totalCPUPercent: Double?
         /// CPU and energy need two scans for a delta.
         public let measuring: Bool
     }
 
+    /// A process across scans: a reused pid is a different process.
+    private struct ProcessKey: Hashable {
+        let pid: Int32
+        let startTime: UInt64
+    }
+    /// What one process did in one interval (after the child-credit cap), and its app then.
+    private struct Work {
+        let app: Int32
+        let ns: Double
+        let nj: Double
+    }
+    /// One scan interval of the trailing window.
+    private struct Interval {
+        let elapsed: Double
+        /// The machine's busy CPU time (ns); nil when the tick counters didn't move.
+        let busyNs: Double?
+        /// Every process that was alive at the interval's end.
+        let work: [ProcessKey: Work]
+        /// Exit credit (ns) per app: work by processes that exited during the interval.
+        let exitedNs: [Int32: Double]
+    }
+
     private let cores: Double
+    private let windowSeconds: TimeInterval
     private let attributor: ProcessAttributor
     private let sampler = ProcessSampler()
     private var lastTicks: CPUTicks?
     /// The previous scan's owners, for processes that have exited since.
     private var lastOwners: [Int32: Int32] = [:]
-    /// The previous CPU scan's System row (%): the level exit credit leaves to System.
+    /// The previous CPU scan's System row over that scan's interval alone (%): the level exit
+    /// credit leaves to System.
     private var lastSystemPercent: Double?
+    /// The trailing window's intervals, oldest first. A few dictionaries of ~500 entries
+    /// (~20–60 KB), freed with the scanner when the breakdown closes.
+    private var window: [Interval] = []
 
+    /// `windowSeconds`: the span rows are averaged over; 0 = the latest interval only.
     public init(cores: Int = ProcessInfo.processInfo.activeProcessorCount,
+                windowSeconds: TimeInterval = trailingWindowSeconds,
                 responsible: @escaping (Int32) -> Int32? = responsiblePID(for:),
                 allParents: @escaping () -> [Int32: Int32] = readAllParentPIDs) {
         self.cores = Double(max(1, cores))
+        self.windowSeconds = max(0, windowSeconds)
         self.attributor = ProcessAttributor(responsible: responsible, allParents: allParents)
     }
 
@@ -356,6 +392,7 @@ public final class BreakdownScanner: @unchecked Sendable {
         lastTicks = cpuTicks
         let previousOwners = lastOwners
         lastOwners = owners
+        let nsPerPercent = elapsed * cores * 1_000_000_000 / 100   // ns of one % of the Mac
 
         // Reaped-child credit is capped, all of it together, at the CPU the machine used beyond
         // the processes' own time. When a root process we can't read (a Terminal tab's
@@ -371,13 +408,13 @@ public final class BreakdownScanner: @unchecked Sendable {
                 credit += Double(d.childCreditNs)
                 own += Double(d.cpuNs - d.childCreditNs)
             }
-            let machineNs = total / 100 * elapsed * cores * 1_000_000_000
+            let machineNs = total * nsPerPercent
             if credit > 0 {
                 creditScale = min(1, max(0, machineNs - own) / credit)
             }
             if metric == .cpu {
                 let unexplained = max(0, machineNs - own - credit * creditScale)
-                let baseline = (lastSystemPercent ?? 0) / 100 * elapsed * cores * 1_000_000_000
+                let baseline = (lastSystemPercent ?? 0) * nsPerPercent
                 exitCredit = exitWorkCredit(unexplained: sampler.unexplainedExitNs,
                                             orphans: sampler.orphanExitNs, previousOwners: previousOwners,
                                             alive: { deltas[$0] != nil }, budgetNs: unexplained - baseline)
@@ -387,44 +424,93 @@ public final class BreakdownScanner: @unchecked Sendable {
             }
         }
 
-        var usages: [ProcessUsage] = []
-        usages.reserveCapacity(processes.count)
-        for p in processes {
-            let d = deltas?[p.pid]
-            let cpu = d.map {
-                let ns = $0.cpuNs - $0.childCreditNs + UInt64(Double($0.childCreditNs) * creditScale)
-                return processCPUPercent(previousCPUTimeNs: 0, currentCPUTimeNs: ns, elapsedSeconds: elapsed) / cores
-            } ?? 0
-            var watts = 0.0
-            if metric == .energy, let d {
-                let nj = d.energyNj - d.childCreditEnergyNj + UInt64(Double(d.childCreditEnergyNj) * creditScale)
-                watts = processWatts(previousNj: 0, currentNj: nj, elapsedSeconds: elapsed)
+        // This interval's work per process, then the window.
+        if let deltas, elapsed > 0 {
+            var work: [ProcessKey: Work] = [:]
+            work.reserveCapacity(processes.count)
+            var rowsNs = 0.0
+            for p in processes {
+                guard let d = deltas[p.pid] else { continue }
+                let ns = Double(d.cpuNs - d.childCreditNs) + Double(d.childCreditNs) * creditScale
+                let nj = metric == .energy
+                    ? Double(d.energyNj - d.childCreditEnergyNj) + Double(d.childCreditEnergyNj) * creditScale : 0
+                work[ProcessKey(pid: p.pid, startTime: p.startTime)] =
+                    Work(app: owners[p.pid] ?? BreakdownGroup.otherProcesses, ns: ns, nj: nj)
+                rowsNs += ns
             }
-            usages.append(ProcessUsage(pid: p.pid, appPID: owners[p.pid] ?? BreakdownGroup.otherProcesses,
-                                       cpuPercent: cpu, memoryBytes: p.memoryBytes, watts: watts,
+            // Exit credit is work by processes that are gone, so it gets its own child row in the
+            // app the credited process belongs to instead of landing on a live process: credited
+            // to the app's main process, an idle VS Code read 79 % of one core after an orphaned
+            // `yes` was killed, on the very row someone would Force Quit.
+            var exitedNs: [Int32: Double] = [:]
+            for (pid, ns) in exitCredit {
+                exitedNs[owners[pid] ?? BreakdownGroup.otherProcesses, default: 0] += Double(ns)
+                rowsNs += Double(ns)
+            }
+            if metric == .cpu, let total {
+                // Exit credit's baseline: System over this interval alone, not the window.
+                lastSystemPercent = max(0, total - rowsNs / nsPerPercent)
+            }
+            window.append(Interval(elapsed: elapsed, busyNs: total.map { $0 * nsPerPercent }, work: work,
+                                   exitedNs: exitedNs))
+            // Keep the newest intervals that cover the window (10 % slack for timer jitter).
+            let span = metric == .memory ? 0 : windowSeconds
+            var covered = window.reduce(0) { $0 + $1.elapsed }
+            while window.count > 1, covered - window[0].elapsed >= span * 0.9 {
+                covered -= window[0].elapsed
+                window.removeFirst()
+            }
+        } else {
+            window = []
+        }
+
+        // Sums over the window. Processes that exited mid-window go to their app's "Exited
+        // processes" row while that app still has processes; otherwise they fall into System.
+        let span = window.reduce(0) { $0 + $1.elapsed }
+        let alive = window.last?.work ?? [:]
+        var ns: [ProcessKey: Double] = [:], nj: [ProcessKey: Double] = [:]
+        var exitedNs: [Int32: Double] = [:], exitedNj: [Int32: Double] = [:]
+        for interval in window {
+            for (key, w) in interval.work {
+                if alive[key] != nil {
+                    ns[key, default: 0] += w.ns
+                    if w.nj > 0 { nj[key, default: 0] += w.nj }
+                } else {
+                    exitedNs[w.app, default: 0] += w.ns
+                    exitedNj[w.app, default: 0] += w.nj
+                }
+            }
+            for (app, credit) in interval.exitedNs { exitedNs[app, default: 0] += credit }
+        }
+        let windowTotal: Double? = window.isEmpty || window.contains { $0.busyNs == nil } ? nil
+            : window.reduce(0) { $0 + ($1.busyNs ?? 0) } / (span * cores * 1_000_000_000) * 100
+        let percentPerNs = span > 0 ? 100 / (span * cores * 1_000_000_000) : 0
+
+        var usages: [ProcessUsage] = []
+        usages.reserveCapacity(processes.count + exitedNs.count)
+        var liveApps = Set<Int32>()
+        for p in processes {
+            let key = ProcessKey(pid: p.pid, startTime: p.startTime)
+            let app = owners[p.pid] ?? BreakdownGroup.otherProcesses
+            liveApps.insert(app)
+            usages.append(ProcessUsage(pid: p.pid, appPID: app, cpuPercent: (ns[key] ?? 0) * percentPerNs,
+                                       memoryBytes: p.memoryBytes,
+                                       watts: span > 0 ? (nj[key] ?? 0) / 1_000_000_000 / span : 0,
                                        startTime: p.startTime))
         }
-        // Exit credit is work by processes that are gone, so it gets its own child row in the
-        // app the credited process belongs to instead of landing on a live process: credited to
-        // the app's main process, an idle VS Code read 79 % of one core after an orphaned `yes`
-        // was killed, on the very row someone would Force Quit.
-        var exitedByApp: [Int32: UInt64] = [:]
-        for (pid, ns) in exitCredit {
-            exitedByApp[owners[pid] ?? BreakdownGroup.otherProcesses, default: 0] += ns
-        }
-        for (app, ns) in exitedByApp {
-            let cpu = processCPUPercent(previousCPUTimeNs: 0, currentCPUTimeNs: ns, elapsedSeconds: elapsed) / cores
-            usages.append(ProcessUsage(pid: BreakdownGroup.exitedProcesses, appPID: app, cpuPercent: cpu,
-                                       memoryBytes: 0))
+        for (app, exited) in exitedNs where liveApps.contains(app) {
+            let watts = span > 0 ? (exitedNj[app] ?? 0) / 1_000_000_000 / span : 0
+            guard exited > 0 || watts > 0 else { continue }
+            usages.append(ProcessUsage(pid: BreakdownGroup.exitedProcesses, appPID: app,
+                                       cpuPercent: exited * percentPerNs, memoryBytes: 0, watts: watts))
         }
 
         let measuring = metric != .memory && deltas == nil
         var apps = aggregate(usages, by: metric)
-        if metric == .cpu, !measuring, let total {
-            apps = addingSystemRow(to: apps, totalCPUPercent: total)
-            lastSystemPercent = apps.first { $0.appPID == BreakdownGroup.system }?.cpuPercent
+        if metric == .cpu, !measuring, let windowTotal {
+            apps = addingSystemRow(to: apps, totalCPUPercent: windowTotal)
         }
-        return Result(apps: apps, totalCPUPercent: measuring ? nil : total, measuring: measuring)
+        return Result(apps: apps, totalCPUPercent: measuring ? nil : windowTotal, measuring: measuring)
     }
 }
 

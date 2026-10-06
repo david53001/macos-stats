@@ -356,8 +356,9 @@ import Testing
         RawProcess(pid: pid, ppid: ppid, cpuTimeNs: cpu, memoryBytes: mem, startTime: 1)
     }
 
+    /// Per-interval values (no trailing window), so each expectation covers one interval.
     private func scanner() -> BreakdownScanner {
-        BreakdownScanner(cores: 4, responsible: { _ in nil }, allParents: { [:] })
+        BreakdownScanner(cores: 4, windowSeconds: 0, responsible: { _ in nil }, allParents: { [:] })
     }
 
     @Test func cpuRowsAreAShareOfTheWholeMachineAndAddUpToTheHeader() {
@@ -469,7 +470,8 @@ import Testing
     @Test func orphanWorkShowsAsExitedProcessesNotOnTheAppsMainProcess() {
         // An orphaned `yes` (ppid 1) the app is responsible for, killed between scans. Credited
         // to the app's main process, an idle VS Code read 79 % of one core.
-        let s = BreakdownScanner(cores: 4, responsible: { $0 == 102 ? 100 : nil }, allParents: { [:] })
+        let s = BreakdownScanner(cores: 4, windowSeconds: 0, responsible: { $0 == 102 ? 100 : nil },
+                                 allParents: { [:] })
         _ = s.scan([p(100, cpu: 0), p(102, cpu: 0)], appPIDs: [100], metric: .cpu, time: 0, absTime: 10,
                    cpuTicks: ticks0)
         _ = s.scan([p(100, cpu: 0), p(102, cpu: 1_000_000_000)], appPIDs: [100], metric: .cpu, time: 1,
@@ -560,5 +562,129 @@ import Testing
         #expect(!isVersionLikeProcessName("node"))
         #expect(!isVersionLikeProcessName("Code Helper (Renderer)"))
         #expect(!isVersionLikeProcessName(""))
+    }
+}
+
+/// The breakdown's trailing window: rows and header averaged over the last few scan intervals.
+@Suite struct BreakdownWindowTests {
+    private func p(_ pid: Int32, ppid: Int32 = 1, cpu: UInt64, mem: UInt64 = 0, start: UInt64 = 1) -> RawProcess {
+        RawProcess(pid: pid, ppid: ppid, cpuTimeNs: cpu, memoryBytes: mem, startTime: start)
+    }
+
+    private func scanner(window: Double = 4) -> BreakdownScanner {
+        BreakdownScanner(cores: 4, windowSeconds: window, responsible: { _ in nil }, allParents: { [:] })
+    }
+
+    /// Busy and idle ticks so far (cumulative), for a header of `busy` % per interval.
+    private func ticks(_ busy: UInt32, _ idle: UInt32) -> CPUTicks {
+        CPUTicks(user: busy, system: 0, idle: idle, nice: 0)
+    }
+
+    private func row(_ r: BreakdownScanner.Result, _ app: Int32) -> Double {
+        r.apps.first { $0.appPID == app }?.cpuPercent ?? 0
+    }
+
+    /// App 100 runs one core for the first 2 s, then idles 2 s. Header 25 %, then 5 %.
+    private func twoIntervals(window: Double) -> BreakdownScanner.Result {
+        let s = scanner(window: window)
+        _ = s.scan([p(100, cpu: 0)], appPIDs: [100], metric: .cpu, time: 0, absTime: 10, cpuTicks: ticks(0, 0))
+        _ = s.scan([p(100, cpu: 2_000_000_000)], appPIDs: [100], metric: .cpu, time: 2, absTime: 20,
+                   cpuTicks: ticks(25, 75))
+        return s.scan([p(100, cpu: 2_000_000_000)], appPIDs: [100], metric: .cpu, time: 4, absTime: 30,
+                      cpuTicks: ticks(30, 170))
+    }
+
+    @Test func rowsAndHeaderAverageTheWindowAndStillAddUp() {
+        let r = twoIntervals(window: 4)
+        // 2e9 ns ÷ (4 s × 4 cores) = 12.5 % of the Mac; header (25 × 2 + 5 × 2) ÷ 4 = 15 %.
+        #expect(abs(row(r, 100) - 12.5) < 1e-9)
+        #expect(abs((r.totalCPUPercent ?? 0) - 15) < 1e-9)
+        #expect(abs(row(r, BreakdownGroup.system) - 2.5) < 1e-9)
+        #expect(abs(r.apps.reduce(0) { $0 + $1.cpuPercent } - 15) < 1e-9)
+    }
+
+    @Test func windowZeroIsTheLatestIntervalOnly() {
+        let r = twoIntervals(window: 0)
+        #expect(row(r, 100) == 0)
+        #expect(abs((r.totalCPUPercent ?? 0) - 5) < 1e-9)
+    }
+
+    @Test func windowTrimsByTime() {
+        // 1 s scans: one busy second, then idle. It counts while it is one of the last 4 s.
+        let s = scanner(window: 4)
+        var result: [BreakdownScanner.Result] = []
+        for t in 0...5 {
+            let cpu: UInt64 = t >= 1 ? 1_000_000_000 : 0
+            result.append(s.scan([p(100, cpu: cpu)], appPIDs: [100], metric: .cpu, time: Double(t),
+                                 absTime: UInt64(10 + t), cpuTicks: ticks(UInt32(t * 10), UInt32(t * 90))))
+        }
+        #expect(abs(row(result[4], 100) - 6.25) < 1e-9)   // 1e9 ns ÷ (4 s × 4 cores)
+        #expect(row(result[5], 100) == 0)                 // that second left the window
+    }
+
+    @Test func processStartingMidWindowCountsWhatItUsedOverTheWholeWindow() {
+        let s = scanner()
+        _ = s.scan([p(100, cpu: 0)], appPIDs: [100], metric: .cpu, time: 0, absTime: 10, cpuTicks: ticks(0, 0))
+        _ = s.scan([p(100, cpu: 0)], appPIDs: [100], metric: .cpu, time: 2, absTime: 20, cpuTicks: ticks(1, 99))
+        let r = s.scan([p(100, cpu: 0), p(101, ppid: 100, cpu: 1_000_000_000, start: 25)], appPIDs: [100],
+                       metric: .cpu, time: 4, absTime: 30, cpuTicks: ticks(14, 186))
+        let app = r.apps.first { $0.appPID == 100 }!
+        #expect(abs((app.processes.first { $0.pid == 101 }?.cpuPercent ?? 0) - 6.25) < 1e-9)
+    }
+
+    /// App 100 ← 101, which runs one core for 2 s and then exits (no reap shows): idle after.
+    private func exitMidWindow(appStays: Bool) -> BreakdownScanner.Result {
+        let s = scanner()
+        _ = s.scan([p(100, cpu: 0), p(101, ppid: 100, cpu: 0), p(900, cpu: 0)], appPIDs: [100], metric: .cpu,
+                   time: 0, absTime: 10, cpuTicks: ticks(0, 0))
+        _ = s.scan([p(100, cpu: 0), p(101, ppid: 100, cpu: 2_000_000_000), p(900, cpu: 0)], appPIDs: [100],
+                   metric: .cpu, time: 2, absTime: 20, cpuTicks: ticks(25, 75))
+        let last = appStays ? [p(100, cpu: 0), p(900, cpu: 0)] : [p(900, cpu: 0)]
+        return s.scan(last, appPIDs: appStays ? [100] : [], metric: .cpu, time: 4, absTime: 30,
+                      cpuTicks: ticks(25, 175))
+    }
+
+    @Test func exitMidWindowGoesToTheAppsExitedRow() {
+        let r = exitMidWindow(appStays: true)
+        let app = r.apps.first { $0.appPID == 100 }!
+        #expect(abs(app.cpuPercent - 12.5) < 1e-9)
+        #expect(app.processes.first?.pid == BreakdownGroup.exitedProcesses)
+        #expect(abs((app.processes.first?.cpuPercent ?? 0) - 12.5) < 1e-9)
+        #expect(abs((r.totalCPUPercent ?? 0) - 12.5) < 1e-9)
+        #expect(row(r, BreakdownGroup.system) < 1e-9)
+    }
+
+    @Test func exitMidWindowFallsIntoSystemWhenTheAppIsGone() {
+        let r = exitMidWindow(appStays: false)
+        #expect(!r.apps.contains { $0.appPID == 100 })
+        #expect(!r.apps.contains { $0.processes.contains { $0.pid == BreakdownGroup.exitedProcesses } })
+        #expect(abs(row(r, BreakdownGroup.system) - 12.5) < 1e-9)
+    }
+
+    @Test func firstScansUseThePartialWindow() {
+        // Scans at 0, 0.5 (the quick second scan) and 2.5 s: windows of 0.5 s, then 2.5 s.
+        let s = scanner()
+        let first = s.scan([p(100, cpu: 0)], appPIDs: [100], metric: .cpu, time: 0, absTime: 10,
+                           cpuTicks: ticks(0, 0))
+        #expect(first.measuring)
+        let second = s.scan([p(100, cpu: 500_000_000)], appPIDs: [100], metric: .cpu, time: 0.5, absTime: 20,
+                            cpuTicks: ticks(25, 75))
+        #expect(!second.measuring)
+        #expect(abs(row(second, 100) - 25) < 1e-9)
+        let third = s.scan([p(100, cpu: 500_000_000)], appPIDs: [100], metric: .cpu, time: 2.5, absTime: 30,
+                           cpuTicks: ticks(25, 475))
+        #expect(abs(row(third, 100) - 5) < 1e-9)   // 0.5e9 ns ÷ (2.5 s × 4 cores)
+        #expect(abs((third.totalCPUPercent ?? 0) - 5) < 1e-9)
+    }
+
+    @Test func memoryIsUnaffected() {
+        let s = scanner()
+        var r: BreakdownScanner.Result?
+        for (i, mem) in [UInt64(1_000), 3_000, 2_000].enumerated() {
+            r = s.scan([p(100, cpu: UInt64(i) * 1_000_000_000, mem: mem)], appPIDs: [100], metric: .memory,
+                       time: Double(i * 2), absTime: UInt64(10 + i), cpuTicks: ticks(UInt32(i * 10), UInt32(i * 90)))
+            #expect(r?.measuring == false)
+        }
+        #expect(r?.apps.first?.memoryBytes == 2_000)
     }
 }

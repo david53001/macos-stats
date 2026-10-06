@@ -40,7 +40,16 @@ public let prewarmMinInterval: TimeInterval = 1.0
 /// less: 0.3 s windows read a bursty app (VS Code) anywhere from 8 % to 76 % of a core against
 /// a 15 % average, so the first numbers shown were noise that then "dropped".
 public let breakdownFirstRescanDelay: TimeInterval = 0.5
-public let breakdownScanInterval: TimeInterval = 1.0
+/// Later scans come every 2 s, and each row is averaged over the last `trailingWindowSeconds`.
+/// With 1 s scans and 1 s values the CPU breakdown's top-8 order changed on every scan (59 a
+/// minute) and VS Code read 0.2–7.3 % between scans; 2 s scans over a 4 s window, with the
+/// ranking hysteresis, measured 5–13 order changes a minute, and halve the scan cost
+/// (`docs/research/2026-10-06-stability-diagnosis.md` §4.1, variant D). Activity Monitor's own
+/// default refresh is 5 s.
+public let breakdownScanInterval: TimeInterval = 2.0
+/// The span breakdown CPU and energy rows (and the CPU header) are averaged over: the last two
+/// scan intervals (`BreakdownScanner`). Memory rows stay instantaneous.
+public let trailingWindowSeconds: TimeInterval = 4.0
 
 /// Whether a tiered read last done at `last` (nil = never) is due again at `now`.
 public func isDue(last: Date?, now: Date, every interval: TimeInterval) -> Bool {
