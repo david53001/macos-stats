@@ -34,6 +34,8 @@ public final class MetricsStore: ObservableObject {
     @Published public private(set) var netDownHistory: [SamplePoint] = []  // bytes/sec
 
     @Published public private(set) var trashBytes: UInt64?
+    /// Finder access was refused, so the Trash can't be read or emptied until it's allowed.
+    @Published public private(set) var trashNeedsPermission = false
 
     @Published public private(set) var cpuTempCelsius: Double?
 
@@ -229,6 +231,10 @@ public final class MetricsStore: ObservableObject {
     /// Finder (`~/.Trash` is TCC-protected), not on the per-second collection path.
     public func setTrashBytes(_ bytes: UInt64?) {
         trashBytes = bytes
+    }
+
+    public func setTrashNeedsPermission(_ needed: Bool) {
+        if needed != trashNeedsPermission { trashNeedsPermission = needed }
     }
 
     /// Enter a drill-in for `metric`. CPU and energy start in the "measuring" state (they

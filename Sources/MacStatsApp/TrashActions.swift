@@ -1,4 +1,12 @@
-import Foundation
+import AppKit
+
+/// One read of the Trash size: the size, Finder access refused (the user said Don't Allow; macOS
+/// won't ask again), or unknown for another reason (Finder not reachable).
+enum TrashReading: Equatable {
+    case bytes(UInt64)
+    case notPermitted
+    case unavailable
+}
 
 /// Empties the Trash by asking Finder (covers all volumes, like the real menu item).
 /// There is no public FileManager API to empty the Trash, so we script Finder.
@@ -20,9 +28,8 @@ enum TrashActions {
     /// Total logical size (bytes) of everything in the Trash, read via Finder. A direct
     /// filesystem scan of `~/.Trash` fails ("Operation not permitted") without Full Disk
     /// Access — it's a TCC-protected location — so we ask Finder, which is exempt (same as
-    /// `emptyTrash`). Returns nil when Finder can't be reached or permission is refused, i.e.
-    /// the size is genuinely unknown (distinct from an empty Trash, which returns 0).
-    static func trashSize() -> UInt64? {
+    /// `emptyTrash`). An empty Trash reads `.bytes(0)`.
+    static func trashSize() -> TrashReading {
         let script = NSAppleScript(source: """
             tell application "Finder"
                 set total to 0
@@ -36,8 +43,17 @@ enum TrashActions {
             """)
         var error: NSDictionary?
         let result = script?.executeAndReturnError(&error)
-        if error != nil { return nil }
-        guard let value = result?.doubleValue, value.isFinite, value >= 0 else { return nil }
-        return UInt64(value)
+        if let error {
+            return (error[NSAppleScript.errorNumber] as? Int) == -1743 ? .notPermitted : .unavailable
+        }
+        guard let value = result?.doubleValue, value.isFinite, value >= 0 else { return .unavailable }
+        return .bytes(UInt64(value))
+    }
+
+    /// System Settings → Privacy & Security → Automation, where Finder access can be turned on.
+    static func openAutomationSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
+        else { return }
+        NSWorkspace.shared.open(url)
     }
 }

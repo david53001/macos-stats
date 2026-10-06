@@ -213,4 +213,18 @@ import Testing
         store.setBattery(BatterySample(percent: 61, state: .discharging, timeToEmptyMinutes: 99))
         #expect(store.battery?.timeToEmptyMinutes == 99)
     }
+
+    @Test func trashPermissionStateIsSeparateFromTheSize() {
+        let store = MetricsStore()
+        #expect(!store.trashNeedsPermission)
+        store.setTrashBytes(nil)
+        store.setTrashNeedsPermission(true)
+        #expect(store.trashNeedsPermission)
+        #expect(store.trashBytes == nil)
+        // Allowed later: the next read has a size and clears the flag.
+        store.setTrashBytes(0)
+        store.setTrashNeedsPermission(false)
+        #expect(!store.trashNeedsPermission)
+        #expect(store.trashBytes == 0)
+    }
 }

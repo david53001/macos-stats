@@ -398,9 +398,9 @@ final class AppModel: ObservableObject {
 
         DispatchQueue.global(qos: .userInitiated).async {
             let message = TrashActions.emptyTrash()
-            let bytes = TrashActions.trashSize()   // reflect the new (usually empty) Trash
+            let reading = TrashActions.trashSize()   // reflect the new (usually empty) Trash
             Task { @MainActor in
-                self.store.setTrashBytes(bytes)
+                self.publishTrash(reading)
                 if let message { self.presentTrashError(message) }
             }
         }
@@ -421,9 +421,14 @@ final class AppModel: ObservableObject {
     /// to issue every second.
     private func refreshTrashSize() {
         DispatchQueue.global(qos: .utility).async {
-            let bytes = TrashActions.trashSize()
-            Task { @MainActor in self.store.setTrashBytes(bytes) }
+            let reading = TrashActions.trashSize()
+            Task { @MainActor in self.publishTrash(reading) }
         }
+    }
+
+    private func publishTrash(_ reading: TrashReading) {
+        if case .bytes(let bytes) = reading { store.setTrashBytes(bytes) } else { store.setTrashBytes(nil) }
+        store.setTrashNeedsPermission(reading == .notPermitted)
     }
 
     /// Background sampler while the popover is closed: CPU%, memory and network every ~10s

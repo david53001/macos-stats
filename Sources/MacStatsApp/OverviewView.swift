@@ -53,9 +53,16 @@ struct OverviewView: View {
             Spacer()
             Text(trashValue)
                 .font(.callout).foregroundStyle(.secondary).monospacedDigit()
-            Button("Empty") { onEmptyTrash() }
-                .buttonStyle(SubtleButtonStyle())
-                .disabled((store.trashBytes ?? 0) == 0)
+            if store.trashNeedsPermission {
+                // Finder access was refused: macOS won't ask again, so say where to allow it.
+                Button("Allow\u{2026}") { TrashActions.openAutomationSettings() }
+                    .buttonStyle(SubtleButtonStyle())
+                    .help("Opens System Settings → Privacy & Security → Automation")
+            } else {
+                Button("Empty") { onEmptyTrash() }
+                    .buttonStyle(SubtleButtonStyle())
+                    .disabled((store.trashBytes ?? 0) == 0)
+            }
         }
         .padding(.horizontal, Design.cardPadding)
         .padding(.vertical, 7)
@@ -72,8 +79,9 @@ struct OverviewView: View {
         return "\(gb(m.usedBytes)) / \(gb(m.totalBytes)) GB"
     }
     private var trashValue: String {
+        if store.trashNeedsPermission { return "Needs permission" }
         guard let bytes = store.trashBytes else { return "—" }   // still reading / unknown
-        guard bytes > 0 else { return "empty" }
+        guard bytes > 0 else { return "Nothing in it" }   // not "empty" beside the Empty button
         let mb = Double(bytes) / 1_048_576
         return mb >= 1024 ? String(format: "%.1f GB", mb / 1024) : String(format: "%.0f MB", mb)
     }
