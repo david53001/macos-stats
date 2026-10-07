@@ -503,3 +503,11 @@ docs/research/2026-10-06-probes/tour-render/run.sh               # tour captures
 docs/research/2026-10-06-probes/tour-render/run.sh --breakdowns  # real-scan breakdowns
 # round 4 record/replay + synthetic contention: docs/research/2026-10-06-probes/r4-fixes/README.md
 ```
+
+## Paused (2026-10-07 ~07:10)
+
+The owner paused the review loop with a 30-minute deadline. State at pause:
+
+- Scores: r1 7.3/7.3 · r2 7.9/7.8 · r3 7.9/7.9 · r4 8.3/8.1 · r5 8.1/8.2. Round 6 was interrupted: reviewer A failed when the Mac went to sleep (API error at 05:24); reviewer B's report is included only if `docs/reviews/2026-10-06-stability-tour-review-r6-B.md` exists. No round-6 fixes were made.
+- Verified at pause: `./Scripts/test.sh` → 373 tests in 46 suites pass; `./Scripts/bundle.sh` installed HEAD to `~/Applications/MacStats.app` (relaunched with `open -g`); closed-panel idle 0.0 % CPU, phys_footprint 13 MB (`footprint <pid>`).
+- **Next step:** follow `docs/superpowers/plans/2026-10-07-stability-tour-continuation-plan.md` — a consolidation pass on the breakdown steadiness logic first (one small model, fewer rules/constants, history-free comments, interactions made testable off-screen), then resume the two-reviewer loop until both > 9.0 with no area < 8.5, then bug hunt + perf vs baseline `1ed61cf`, docs, final build/test/install.
