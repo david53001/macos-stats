@@ -1,0 +1,4 @@
+overview live 15 s, tour off: 5.78 % of one core
+overview live 15 s, tour ON (step 1): 9.86 % of one core
+overview live 15 s, tour off: 13.40 % of one core
+overview live 15 s, tour ON (step 1): 16.35 % of one core

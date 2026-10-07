@@ -1,0 +1,110 @@
+LIVE 150 s on 8 cores; burst: yes from t=50.0 to t=65.0
+card cpu printed changes  52 (20.8/min), A-B-A flips 0, samples 213
+card mem printed changes   5 (2.0/min), A-B-A flips 0, samples 213
+card down printed changes  16 (6.4/min), A-B-A flips 0, samples 213
+card up printed changes  32 (12.8/min), A-B-A flips 0, samples 213
+card cpu WITHOUT hold (raw 2 s reading rounded): changes 137 (54.8/min), flips 16
+card cpu |shown-exact| pp: median 0.50 p95 2.34 max 2.74
+card: burst t=50.0..65.0; card first >= 13% at t=51.5, back below at t=66.0
+   t= 48.0 exact   4.2 shown   4
+   t= 49.0 exact   3.4 shown   4
+   t= 50.0 exact   3.6 shown   4
+   t= 51.0 exact   8.3 shown   6
+   t= 52.0 exact  15.8 shown  14
+   t= 53.0 exact  18.9 shown  19
+   t= 54.0 exact  15.2 shown  15
+   t= 55.0 exact  15.0 shown  15
+   t= 56.0 exact  17.3 shown  15
+   t= 57.0 exact  17.6 shown  18
+   t= 58.0 exact  15.8 shown  18
+   t= 59.0 exact  15.3 shown  16
+   t= 60.0 exact  15.8 shown  16
+   t= 61.0 exact  16.1 shown  16
+   t= 62.0 exact  15.3 shown  16
+   t= 63.0 exact  15.2 shown  16
+   t= 64.0 exact  16.3 shown  16
+   t= 65.0 exact  16.3 shown  16
+   t= 66.0 exact   9.7 shown  10
+   t= 67.0 exact   6.5 shown   7
+   t= 68.0 exact   8.1 shown   7
+   t= 69.0 exact   7.2 shown   7
+   t= 70.0 exact   5.7 shown   5
+--- cpu / pointer away: scans 53
+  top-8 order changes 12 (6.8/min), changes undone within 2 scans 0
+  top-8 printed value changes 56 (31.7/min, 3.96/row/min), A-B-A flips 1
+  scans with a visibly unsorted pair in top 8: 7 (pairs 8); longest a pair stayed inverted: 3 scans
+  expanded app 58374 (Code): missing 0 scans, <=1 process (view collapses) 0; first-5 process order changes 4, set changes 3
+  first 9 visible rows (with expanded app) changed 18 times; 'Ended' placeholders shown 0
+  t= 50.0 burst app row #3 1.2%  header 4%  card 4%
+  t= 52.0 burst app row #1 13%  header 19%  card 14%
+  t= 54.0 burst app row #1 13%  header 17%  card 15%
+  t= 56.0 burst app row #1 13%  header 17%  card 15%
+  t= 58.0 burst app row #1 13%  header 17%  card 18%
+  t= 60.0 burst app row #1 13%  header 17%  card 16%
+  t= 62.0 burst app row #1 13%  header 17%  card 16%
+  t= 64.0 burst app row #1 13%  header 16%  card 16%
+  t= 66.0 burst process not listed; finished rows 58374:9.4%; header 14% card 10%
+  t= 68.0 burst process not listed; finished rows ; header 8% card 7%
+  t= 70.0 burst process not listed; finished rows 58374:0.2%; header 7% card 5%
+  t= 72.0 burst process not listed; finished rows 58374:0.2%; header 6% card 5%
+  t= 74.0 burst process not listed; finished rows 58374:0.2%; header 7% card 11%
+  t= 76.0 burst process not listed; finished rows ; header 7% card 7%
+  t= 78.0 burst process not listed; finished rows ; header 7% card 3%
+  t= 80.0 burst process not listed; finished rows ; header 7% card 3%
+  t= 82.0 burst process not listed; finished rows ; header 5% card 3%
+  t= 84.0 burst process not listed; finished rows ; header 5% card 7%
+--- cpu / pointer rest-row3: scans 53
+  top-8 order changes 1 (0.6/min), changes undone within 2 scans 0
+  top-8 printed value changes 56 (31.7/min, 3.96/row/min), A-B-A flips 1
+  scans with a visibly unsorted pair in top 8: 48 (pairs 56); longest a pair stayed inverted: 29 scans
+  expanded app 58374 (Code): missing 0 scans, <=1 process (view collapses) 0; first-5 process order changes 0, set changes 0
+  first 9 visible rows (with expanded app) changed 1 times; 'Ended' placeholders shown 0
+  POINTER on app 55352 (MacStats): scans where rows down to it moved 0, scans where it was missing 0
+--- cpu / pointer on-expanded: scans 53
+  top-8 order changes 1 (0.6/min), changes undone within 2 scans 0
+  top-8 printed value changes 56 (31.7/min, 3.96/row/min), A-B-A flips 1
+  scans with a visibly unsorted pair in top 8: 48 (pairs 56); longest a pair stayed inverted: 29 scans
+  expanded app 58374 (Code): missing 0 scans, <=1 process (view collapses) 0; first-5 process order changes 0, set changes 0
+  first 9 visible rows (with expanded app) changed 1 times; 'Ended' placeholders shown 0
+  POINTER on app 58374 (Code): scans where rows down to it moved 0, scans where it was missing 0
+--- memory / pointer away: scans 54
+  top-8 order changes 0 (0.0/min), changes undone within 2 scans 0
+  top-8 printed value changes 2 (1.1/min, 0.14/row/min), A-B-A flips 0
+  scans with a visibly unsorted pair in top 8: 0 (pairs 0); longest a pair stayed inverted: 0 scans
+  expanded app 58374 (Code): missing 0 scans, <=1 process (view collapses) 0; first-5 process order changes 1, set changes 2
+  first 9 visible rows (with expanded app) changed 4 times; 'Ended' placeholders shown 0
+--- memory / pointer rest-row3: scans 54
+  top-8 order changes 0 (0.0/min), changes undone within 2 scans 0
+  top-8 printed value changes 2 (1.1/min, 0.14/row/min), A-B-A flips 0
+  scans with a visibly unsorted pair in top 8: 0 (pairs 0); longest a pair stayed inverted: 0 scans
+  expanded app 58374 (Code): missing 0 scans, <=1 process (view collapses) 0; first-5 process order changes 0, set changes 0
+  first 9 visible rows (with expanded app) changed 1 times; 'Ended' placeholders shown 0
+  POINTER on app 671 (Finder): scans where rows down to it moved 0, scans where it was missing 0
+--- memory / pointer on-expanded: scans 54
+  top-8 order changes 0 (0.0/min), changes undone within 2 scans 0
+  top-8 printed value changes 2 (1.1/min, 0.14/row/min), A-B-A flips 0
+  scans with a visibly unsorted pair in top 8: 0 (pairs 0); longest a pair stayed inverted: 0 scans
+  expanded app 58374 (Code): missing 0 scans, <=1 process (view collapses) 0; first-5 process order changes 0, set changes 0
+  first 9 visible rows (with expanded app) changed 1 times; 'Ended' placeholders shown 0
+  POINTER on app 58374 (Code): scans where rows down to it moved 0, scans where it was missing 0
+--- energy / pointer away: scans 53
+  top-8 order changes 4 (2.3/min), changes undone within 2 scans 0
+  top-8 printed value changes 27 (15.3/min, 1.91/row/min), A-B-A flips 0
+  scans with a visibly unsorted pair in top 8: 4 (pairs 4); longest a pair stayed inverted: 3 scans
+  expanded app 58374 (Code): missing 0 scans, <=1 process (view collapses) 0; first-5 process order changes 0, set changes 4
+  first 9 visible rows (with expanded app) changed 8 times; 'Ended' placeholders shown 0
+--- energy / pointer rest-row3: scans 53
+  top-8 order changes 1 (0.6/min), changes undone within 2 scans 0
+  top-8 printed value changes 27 (15.3/min, 1.91/row/min), A-B-A flips 0
+  scans with a visibly unsorted pair in top 8: 37 (pairs 43); longest a pair stayed inverted: 24 scans
+  expanded app 58374 (Code): missing 0 scans, <=1 process (view collapses) 0; first-5 process order changes 0, set changes 0
+  first 9 visible rows (with expanded app) changed 1 times; 'Ended' placeholders shown 0
+  POINTER on app 55352 (MacStats): scans where rows down to it moved 0, scans where it was missing 0
+--- energy / pointer on-expanded: scans 53
+  top-8 order changes 1 (0.6/min), changes undone within 2 scans 0
+  top-8 printed value changes 27 (15.3/min, 1.91/row/min), A-B-A flips 0
+  scans with a visibly unsorted pair in top 8: 37 (pairs 43); longest a pair stayed inverted: 24 scans
+  expanded app 58374 (Code): missing 0 scans, <=1 process (view collapses) 0; first-5 process order changes 0, set changes 0
+  first 9 visible rows (with expanded app) changed 1 times; 'Ended' placeholders shown 0
+  POINTER on app 58374 (Code): scans where rows down to it moved 0, scans where it was missing 0
+cost: MetricsStore.setBreakdown median 259 µs p95 460 µs; scan median 2.5 ms p95 22.5 ms
