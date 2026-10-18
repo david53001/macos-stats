@@ -29,10 +29,14 @@ cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
 # Sparkle (auto-updates): the executable finds it through its @executable_path/../Frameworks
 # rpath (Package.swift). ditto keeps the framework's symlinks. Its XPC services are only for
-# sandboxed apps (MacStats isn't; Sparkle's docs say they may be removed then), so they go.
+# sandboxed apps (MacStats isn't; Sparkle's docs say they may be removed then), so they go, and
+# so do its headers and module map (only for compiling against it, as Xcode's "strip headers"
+# does when embedding). sign-app.sh re-signs the framework afterwards.
 FW="$APP/Contents/Frameworks/Sparkle.framework"
 ditto "$BIN_DIR/Sparkle.framework" "$FW"
-rm -rf "$FW/XPCServices" "$FW/Versions/B/XPCServices"
+for DIR in XPCServices Headers PrivateHeaders Modules; do
+    rm -rf "${FW:?}/$DIR" "${FW:?}/Versions/B/$DIR"
+done
 
 # SwiftPM also bakes in rpaths to folders on this Mac: its build folder (…/PackageFrameworks,
 # searched first) and the Command Line Tools' Swift folders. Sparkle is the only @rpath library

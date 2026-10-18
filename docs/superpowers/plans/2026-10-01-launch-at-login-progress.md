@@ -1,5 +1,11 @@
 # Launch-at-login switch — progress (2026-10-01)
 
+> **Superseded by `docs/sparkle-updates/README.md` (2026-10-18).** On `feat/sparkle-updates` and
+> later, `LoginItem.registerOnce()` is gone (MacStats never turns launch at login on by itself),
+> the switch no longer sets `didRegisterLoginItem` (it is only read now) and any choice made with
+> it marks the one-time "Open MacStats at login?" question as asked. The notes below describe the
+> 2026-10-01 branch only.
+
 Branch `feat/launch-at-login`, git worktree
 `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/launch-at-login`
 (based on `feat/polish-perf`). Same feature is being added to JVoice and BetterScreenshot separately.

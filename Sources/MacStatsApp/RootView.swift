@@ -20,7 +20,8 @@ struct RootView: View {
         // the overview drifts back a little and fades), clipped to the panel. The login card,
         // when due, floats over them inside that same frame: it never changes the window's size.
         screens
-            .overlay { LoginPromptOverlay(prompt: loginPrompt) }
+            .environment(\.loginPromptActive, loginPrompt.isShowing)
+            .overlayPreferenceValue(LoginPromptAnchorKey.self) { LoginPromptOverlay(prompt: loginPrompt, anchors: $0) }
             .background(PanelBackdrop())   // the Opacity setting (Appearance.swift)
             .background(PanelVisibilityObserver { loginPrompt.panelVisibilityChanged(onScreen: $0) })
             .animation(.snappy(duration: 0.3), value: store.activeBreakdownMetric)

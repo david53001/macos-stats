@@ -74,40 +74,96 @@ final class LoginPrompt: ObservableObject {
     }
 }
 
-/// The question over a dimmed panel, centred in it (the panel keeps its size). The dim takes
-/// clicks and hovers, so nothing under it opens by accident; a click on it just puts the card
-/// away. Same dim strength as the guided tour on `feat/stability-tour`.
+/// The question over a dimmed panel (the panel keeps its size). The card covers the Memory and
+/// Network cards edge to edge (their bounds come from `.loginPromptAnchor()` in the overview), so
+/// its edges line up with the cards' and no value is cut in half; centred if those aren't on
+/// screen. The dim takes clicks and hovers, so nothing under it opens by accident; a click on it
+/// just puts the card away. Same dim strength as the guided tour on `feat/stability-tour`.
+///
+/// Launch at login turned on elsewhere (System Settings) while the card is up isn't watched: the
+/// status is re-read whenever the panel closes (opening System Settings closes it), and the card
+/// isn't shown again after that.
 struct LoginPromptOverlay: View {
     @ObservedObject var prompt: LoginPrompt
-    @ObservedObject private var login = LaunchAtLogin.shared
+    let anchors: [Anchor<CGRect>]
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        ZStack {
-            if prompt.isShowing {
-                Rectangle()
-                    .fill(Color.black.opacity(colorScheme == .dark ? 0.40 : 0.30))
-                    .onHover { _ in }
-                    .contentShape(Rectangle())
-                    .onTapGesture { prompt.dismiss() }
-                    .accessibilityHidden(true)
-                    .transition(.opacity)
-                LoginPromptCard(prompt: prompt)
-                    .padding(.horizontal, Design.panelInset)
-                    .transition(.opacity)
+        GeometryReader { proxy in
+            ZStack(alignment: .topLeading) {
+                if prompt.isShowing {
+                    Rectangle()
+                        .fill(Color.black.opacity(colorScheme == .dark ? 0.40 : 0.30))
+                        .onHover { _ in }
+                        .contentShape(Rectangle())
+                        .onTapGesture { prompt.dismiss() }
+                        .accessibilityHidden(true)
+                        .transition(.opacity)
+                    card(in: proxy)
+                        .transition(.opacity)
+                }
             }
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
-        // Turned on somewhere else (System Settings) while the question is up: nothing to ask.
-        .onChange(of: login.status) { _, status in
-            if status == .enabled, prompt.answer == .none, prompt.isShowing { prompt.dismiss() }
+    }
+
+    @ViewBuilder
+    private func card(in proxy: GeometryProxy) -> some View {
+        if let target = anchors.map({ proxy[$0] }).reduce(nil, { $0?.union($1) ?? $1 }) {
+            LoginPromptCard(prompt: prompt, minHeight: target.height)
+                .frame(width: target.width)
+                .offset(x: target.minX, y: target.minY)
+        } else {
+            LoginPromptCard(prompt: prompt, minHeight: 0)
+                .padding(.horizontal, Design.panelInset)
+                .frame(width: proxy.size.width, height: proxy.size.height)
         }
     }
 }
 
-/// The card: question, then the outcome in the same place. Sized by its content (it floats, so
-/// a change of height moves nothing else).
+/// Marks a card the login question covers (Memory and Network). Reports its bounds only while
+/// the question is due (`loginPromptActive`), so it costs nothing otherwise.
+struct LoginPromptAnchorKey: PreferenceKey {
+    static let defaultValue: [Anchor<CGRect>] = []
+    static func reduce(value: inout [Anchor<CGRect>], nextValue: () -> [Anchor<CGRect>]) {
+        value += nextValue()
+    }
+}
+
+private struct LoginPromptActiveKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// True while the login question is due or up: `.loginPromptAnchor()` reports only then.
+    var loginPromptActive: Bool {
+        get { self[LoginPromptActiveKey.self] }
+        set { self[LoginPromptActiveKey.self] = newValue }
+    }
+}
+
+extension View {
+    func loginPromptAnchor() -> some View { modifier(LoginPromptAnchorModifier()) }
+}
+
+private struct LoginPromptAnchorModifier: ViewModifier {
+    @Environment(\.loginPromptActive) private var active
+
+    func body(content: Content) -> some View {
+        if active {
+            content.anchorPreference(key: LoginPromptAnchorKey.self, value: .bounds) { [$0] }
+        } else {
+            content
+        }
+    }
+}
+
+/// The card: question, then the outcome in the same place, its content centred vertically in
+/// at least `minHeight` (the two cards it covers). Return is the highlighted button, Esc the
+/// other one (No Thanks, Done), as in a macOS alert.
 struct LoginPromptCard: View {
     @ObservedObject var prompt: LoginPrompt
+    let minHeight: CGFloat
     @ObservedObject private var login = LaunchAtLogin.shared
 
     var body: some View {
@@ -119,8 +175,10 @@ struct LoginPromptCard: View {
                 buttons {
                     Button(action: prompt.decline) { Text("No Thanks").frame(maxWidth: .infinity) }
                         .buttonStyle(SubtleButtonStyle())
+                        .keyboardShortcut(.cancelAction)
                     Button(action: prompt.accept) { Text("Open at Login").frame(maxWidth: .infinity) }
                         .buttonStyle(SubtleButtonStyle(prominent: true))
+                        .keyboardShortcut(.defaultAction)
                 }
             case (.accepted, .enabled):
                 message("MacStats will open at login.", "Change it any time in Settings.")
@@ -129,22 +187,27 @@ struct LoginPromptCard: View {
                 buttons {
                     Button(action: prompt.dismiss) { Text("Done").frame(maxWidth: .infinity) }
                         .buttonStyle(SubtleButtonStyle())
+                        .keyboardShortcut(.cancelAction)
                     Button {
                         login.openLoginItems()
                         prompt.dismiss()
                     } label: { Text("Open Login Items").frame(maxWidth: .infinity) }
                         .buttonStyle(SubtleButtonStyle(prominent: true))
+                        .keyboardShortcut(.defaultAction)
                 }
             case (.accepted, _):
                 message("Couldn't turn it on.", "You can try again in Settings → Launch at login.")
                 buttons {
+                    // The only button, so it's the default one (Esc still closes the panel; it's
+                    // already answered by now).
                     Button(action: prompt.dismiss) { Text("Done").frame(maxWidth: .infinity) }
                         .buttonStyle(SubtleButtonStyle())
+                        .keyboardShortcut(.defaultAction)
                 }
             }
         }
         .padding(Design.cardPadding)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
         .background(PromptSurface())
         .animation(.snappy(duration: 0.25), value: prompt.answer)
         .accessibilityElement(children: .contain)
@@ -166,15 +229,25 @@ struct LoginPromptCard: View {
     }
 }
 
-/// The card's surface: a system material (it floats over the dimmed cards, so a plain tint
-/// would let their text show through), the cards' hairline and one soft shadow. The material
-/// turns solid by itself with Reduce Transparency. Same surface as the tour's callouts.
+/// The card's surface, the same as the guided tour's callouts and welcome card (`TourSurface`
+/// on `feat/stability-tour`, values copied exactly): a system material (it floats over the
+/// dimmed cards, so a plain tint would let their text show through), a near-solid window
+/// colour with Reduce Transparency, the cards' hairline and the tour's one soft shadow
+/// (`.black` 0.18, radius 12, y 4), so the two floating surfaces in the panel look alike.
 private struct PromptSurface: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Design.cardCornerRadius, style: .continuous)
-        shape.fill(.regularMaterial)
-            .overlay(shape.strokeBorder(Color.primary.opacity(Design.cardHairline), lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
+        Group {
+            if reduceTransparency {
+                shape.fill(Color(nsColor: .windowBackgroundColor).opacity(0.92))
+            } else {
+                shape.fill(.regularMaterial)
+            }
+        }
+        .overlay(shape.strokeBorder(Color.primary.opacity(Design.cardHairline), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
     }
 }
 

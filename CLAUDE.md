@@ -20,7 +20,7 @@ live sparkline; click a card → per-app breakdown with quick actions (Quit / Fo
 - ✅ **Per-app CPU % / Memory accuracy fix (2026-10-01, v1.0.1)** — Memory breakdown now uses **physical footprint** (Activity Monitor's number) instead of RSS; per-app CPU % was ~41.7× too low on Apple Silicon because `pti_total_*` is in Mach ticks, not ns (now converted); new processes no longer read 0 % for their first scan. Verified against `footprint`/`top`/`ps`. Notes + known leftovers (battery-watts baseline): `docs/superpowers/plans/2026-10-01-process-accuracy.md`.
 - ✅ **Launch-at-login switch (2026-10-01, branch `feat/launch-at-login`)** — Settings → **GENERAL** card (above Appearance) → **Launch at login** switch, backed directly by `SMAppService.mainApp.status` (no mirrored flag; re-read each time Settings opens; a failed register/unregister reverts to the real status). First-launch auto-enable via `didRegisterLoginItem` is unchanged; any toggle also sets that flag so the auto-enable never overrides the user. Only when the status is `.requiresApproval` does the card show a one-line hint + **Open** button (`SMAppService.openSystemSettingsLoginItems()`). Replaces the earlier "No Settings UI by design". Notes: `docs/superpowers/plans/2026-10-01-launch-at-login-progress.md`.
 - ✅ **Sparkle auto-updates + one-time "open at login?" prompt (2026-10-18, v1.2.0 build 4, branch `feat/sparkle-updates`, NOT merged/pushed/released)** — **everything (release steps, keys, `--latest` rule, prompt rules + UserDefaults keys, end-to-end test, status): `docs/sparkle-updates/README.md`.** Sparkle 2.10.0 via SwiftPM, embedded + signed inside-out by `Scripts/bundle.sh` / `Scripts/sign-app.sh`; releases are now signed with the stable self-signed identity **"MacStats Code Signing"** (`Scripts/setup-signing.sh`), no longer ad-hoc. Settings gets an UPDATES card (Check automatically + Check for Updates…). The silent first-launch login-item enable is **gone** (supersedes the "Launch at login BUILT" item above): after 5 panel opens of ≥ 1 s, the next open shows a card asking once (`LaunchAtLoginPrompt`, `LoginPrompt.swift`); 1.0.x users (`didRegisterLoginItem`) are never asked. `Scripts/sparkle-e2e-test.sh` proves a real signed update installs and a bad signature is refused.
-- ✅ **126 tests pass** via `./Scripts/test.sh`.
+- ✅ **136 tests pass** via `./Scripts/test.sh`.
 - ⬜ **Milestone 4** remainder (Settings UI, customizable menu-bar display, adjustable alert thresholds) not started. Per-app **Network** breakdown remains deferred (no clean per-app network API).
 
 ## Start here
@@ -73,9 +73,11 @@ swift build          # compile
 ./Scripts/sparkle-e2e-test.sh  # end-to-end Sparkle update test on a throwaway copy (~1 min)
 ```
 
-**Publishing an update:** bump **both** `CFBundleShortVersionString` and `CFBundleVersion` (+1)
-in `Resources/Info.plist`, run `./Scripts/package-release.sh notes.md`, push to `main`, then run
-the `gh release create … --latest` command it prints (attaches `MacStats.app.zip` **and**
+**Publishing an update** (on `main`, in this order; `package-release.sh` refuses a dirty tree or
+`HEAD` ≠ `origin/main`): bump **both** `CFBundleShortVersionString` and `CFBundleVersion` (+1) in
+`Resources/Info.plist` → `./Scripts/test.sh` → commit → `git push origin main` →
+`./Scripts/package-release.sh notes.md` (notes outside the repo) → run the
+`gh release create … --target <sha> --latest` command it prints (attaches `MacStats.app.zip` **and**
 `appcast.xml`). Installed copies (1.2.0+) find it through Sparkle; the curl one-liner still works.
 Any non-Mac release must use `--latest=false`. Full steps: `docs/sparkle-updates/README.md`.
 

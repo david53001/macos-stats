@@ -10,7 +10,10 @@
 # 3. EdDSA-signs the zip with the Sparkle key from the login Keychain (sign_update)
 # 4. dist/appcast.xml — the Sparkle feed for this one release; its URL in every installed app is
 #    releases/LATEST/download/appcast.xml, so publishing this release as "latest" is what ships it
-# 5. prints the exact `gh release create` command (this script publishes nothing)
+# 5. prints the exact `gh release create` command, tagged on this HEAD (it publishes nothing)
+#
+# Order: bump Info.plist → Scripts/test.sh → commit → git push origin main → this script → the
+# printed gh command (the checks below need the bump committed and pushed first).
 #
 # The optional notes file (Markdown) becomes both the GitHub release notes and the text Sparkle
 # shows in its update window; without one, a short default pointing to the release page is used.
@@ -135,5 +138,6 @@ codesign --verify --deep --strict "$DIST/MacStats.app" && echo "code signature O
 codesign -dvv "$DIST/MacStats.app" 2>&1 | grep -E '^(Identifier|Authority|Signature)=' || true
 echo "MacStats $VERSION (build $BUILD): $ZIP, $DIST/appcast.xml"
 echo
-echo "==> To publish (after merging to main and pushing), run exactly:"
-echo "gh release create $TAG \"$ZIP\" \"$DIST/appcast.xml\" --repo $REPO --latest --title \"MacStats $VERSION\" --notes-file \"$NOTES_OUT\""
+# --target: the tag is created on exactly the commit that was packaged, even if main moves on.
+echo "==> To publish, run exactly:"
+echo "gh release create $TAG \"$ZIP\" \"$DIST/appcast.xml\" --repo $REPO --target $(git -C "$ROOT" rev-parse HEAD) --latest --title \"MacStats $VERSION\" --notes-file \"$NOTES_OUT\""

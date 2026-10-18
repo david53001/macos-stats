@@ -23,12 +23,14 @@ struct OverviewView: View {
                      metaDot: pressureColor, onTap: { onSelect(.memory) }) {
                 Sparkline(points: store.memHistory, color: .blue, maxValue: 1.0)
             }
+            .loginPromptAnchor()   // the login question covers Memory + Network (LoginPrompt.swift)
             StatCard(label: "Network", value: networkValue,
                      number: store.network?.downBytesPerSec ?? 0, meta: networkMeta) {
                 // Dynamic scale with a 10 KB/s floor, so an idle link draws flat.
                 Sparkline(points: store.netDownHistory, color: .purple, maxValue: 0,
                           dynamicMinimum: 10_000)
             }
+            .loginPromptAnchor()
             StatCard(label: "Battery", value: batteryValue,
                      number: Double(store.battery?.percent ?? 0), meta: batteryMeta,
                      onTap: store.battery == nil ? nil : { onSelect(.energy) }) {

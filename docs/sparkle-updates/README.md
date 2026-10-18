@@ -40,7 +40,7 @@ BetterScreenshot) to get this; the same approach is meant to be copied to the ot
 | `SUFeedURL` = `https://github.com/david53001/macos-stats/releases/latest/download/appcast.xml`, `SUPublicEDKey` = `JrE6EncJErY++AZZXYrrwcNmcVzY/M2wgDWcCkaBf6U=`, `SUEnableAutomaticChecks` = YES (daily check, no "may we check?" dialog). Version **1.2.0**, build **4** | `Resources/Info.plist` |
 | Updater: `SPUStandardUpdaterController`, started at launch; "gentle reminders" for a menu-bar app (a scheduled find opens Sparkle's window *behind* the user's windows, never stealing focus). So it isn't missed: one notification ("MacStats X is available", click → Sparkle's window comes forward), an accent **dot on the footer gear** and "Version X is available." + **Show Update…** in Settings, until the user looks at Sparkle's window | `Sources/MacStatsApp/Updates.swift` (started in `MacStatsMain.swift`), gear dot in `SettingsView.swift` (`SettingsButton`) |
 | Settings → **UPDATES** card: "Check automatically" switch + **Check for Updates…** button (**Show Update…** while one waits) + current version (MacStats has no menu of its own, so this is where the menu item lives) | `Sources/MacStatsApp/SettingsView.swift` (`UpdatesCard`) |
-| Bundle: copies `Sparkle.framework` into `Contents/Frameworks` (ditto, keeps symlinks) and removes its `XPCServices` (only sandboxed apps use them). Deletes every absolute rpath except `/usr/lib/swift` (SwiftPM's build folder `…/PackageFrameworks` and the Command Line Tools' Swift folders), so only the embedded Sparkle can load and no path from the build Mac is left; fails if a new `@rpath` library other than Sparkle ever appears | `Scripts/bundle.sh` |
+| Bundle: copies `Sparkle.framework` into `Contents/Frameworks` (ditto, keeps symlinks) and removes its `XPCServices` (only sandboxed apps use them) and its `Headers`, `PrivateHeaders`, `Modules` (only for compiling against it). Deletes every absolute rpath except `/usr/lib/swift` (SwiftPM's build folder `…/PackageFrameworks` and the Command Line Tools' Swift folders), so only the embedded Sparkle can load and no path from the build Mac is left; fails if a new `@rpath` library other than Sparkle ever appears | `Scripts/bundle.sh` |
 | Signing, inside-out, no `--deep`: `Autoupdate`, `Updater.app` (with hardened runtime, as shipped), the framework, then the app | `Scripts/sign-app.sh` |
 | Stable self-signed identity **"MacStats Code Signing"** in its own keychain | `Scripts/setup-signing.sh` |
 | One-command release: build, sign, zip, EdDSA-sign, appcast, print the `gh` command | `Scripts/package-release.sh` |
@@ -84,7 +84,9 @@ flag `didRegisterLoginItem`). That is **removed**. Now:
   (`isVisible`), because SwiftUI `onAppear`/`onDisappear` don't follow a `MenuBarExtra` window
   reliably (finding from `feat/stability-tour`, `docs/research/2026-10-06-probes/visibility/` there).
 - After the **5th** use, the **next** open shows the question: a card **floating over the panel's
-  own content**, centred, over a dim (black 30 % light / 40 % dark, as the guided tour on
+  own content**, covering the Memory and Network cards edge to edge (their bounds come from
+  `.loginPromptAnchor()` in `OverviewView`; its text is centred vertically in that height, and it
+  is centred in the panel if those cards aren't on screen), so no value is cut in half, over a dim (black 30 % light / 40 % dark, as the guided tour on
   `feat/stability-tour`): "Open MacStats at login?" / "Your stats stay one click away after a
   restart. You can change this any time in Settings." with **No Thanks** and **Open at Login**
   (accent-filled, the primary action). It is drawn *inside* the panel's fixed 320 × 404 pt frame
@@ -100,11 +102,16 @@ flag `didRegisterLoginItem`). That is **removed**. Now:
   step / Allow MacStats in Login Items to finish." + **Done** / **Open Login Items**
   (`SMAppService.openSystemSettingsLoginItems()`); error → "Couldn't turn it on. / You can try again
   in Settings → Launch at login." + **Done**. If launch at login gets turned on elsewhere (System
-  Settings) while the question is up, the card goes.
+  Settings), the card isn't shown again: the status is re-read whenever the panel closes (and
+  opening System Settings closes it). Nothing watches it while the card is up.
+- **Keyboard**, as in a macOS alert: Return = the accent button (Open at Login, Open Login Items;
+  Done when it's the only button), Esc = No Thanks / Done. (Esc used to close the whole panel.)
 - **When it counts as asked** (`LaunchAtLoginPromptSession`, MacStatsCore, unit-tested): on an
   answer, or once the card has been on screen ≥ 1 s (then closing the panel or clicking the dim
   uses it up). A glance (click-and-close, or a click on the dim within 1 s) leaves it due for the
-  next open, the same rule as "a glance isn't a use".
+  next open, the same rule as "a glance isn't a use", but only twice: the **3rd** quick dismissal
+  counts as asked (`launchAtLoginPromptQuickDismissals`), so someone who always clicks it away at
+  once doesn't get a dimmed panel on every open.
 - The Settings → GENERAL **Launch at login** switch (cherry-picked from `feat/launch-at-login`,
   commit cd57038) and the card observe the same `LaunchAtLogin` object, so they always agree.
 - **Asked at most once ever** (answered, or seen for ≥ 1 s). Never asked if launch at login is
@@ -115,9 +122,11 @@ flag `didRegisterLoginItem`). That is **removed**. Now:
 - Design (MacStats design language, `docs/design-language/README.md`): continuous 8 pt corners
   (concentric with the panel) + the cards' 0.5 pt hairline, `.headline` title + `.callout`
   secondary line, `SubtleButtonStyle` buttons (`prominent: true` = accent fill, white text, the
-  same style the tour's welcome card uses). Surface: the system `.regularMaterial` (translucent;
-  macOS makes it solid by itself with Reduce Transparency) + one soft shadow, the same surface as
-  the tour's callouts. Not a plain card tint: the card floats over the (dimmed) cards, whose text
+  same style the tour's welcome card uses). Surface: exactly the tour's callout surface
+  (`TourSurface` on `feat/stability-tour`): the system `.regularMaterial`, `windowBackgroundColor`
+  at 92 % with Reduce Transparency, the hairline and the tour's one soft shadow (black 18 %,
+  radius 12, y 4; the checklist's "one soft shadow per floating element": the two floating
+  surfaces in the panel match). Not a plain card tint: the card floats over the (dimmed) cards, whose text
   would show through a 5–10 % tint. Not an opaque fill (round 1: principle 1 forbids it).
 
 **UserDefaults keys** (domain `com.macstats.MacStats`):
@@ -126,6 +135,7 @@ flag `didRegisterLoginItem`). That is **removed**. Now:
 |---|---|---|
 | `launchAtLoginPromptUses` | Int | Uses counted so far (stops at 5) |
 | `launchAtLoginPromptAsked` | Bool | Shown once, or chosen in Settings: never ask again |
+| `launchAtLoginPromptQuickDismissals` | Int | Times the card was put away within 1 s; the 3rd sets `…Asked` |
 | `didRegisterLoginItem` | Bool | Legacy, **read only**: 1.0.x auto-enabled launch at login |
 
 Code: rules + open/close cycle (pure, tested) `Sources/MacStatsCore/LaunchAtLoginPrompt.swift`
@@ -136,7 +146,7 @@ placement `Sources/MacStatsApp/RootView.swift`; `SubtleButtonStyle(prominent:)` 
 
 To see the card on a dev build without waiting for 5 uses (only on a Mac where you're happy to
 change MacStats' own settings): `defaults write com.macstats.MacStats launchAtLoginPromptUses -int 5;
-defaults delete com.macstats.MacStats launchAtLoginPromptAsked; defaults delete com.macstats.MacStats didRegisterLoginItem`,
+defaults delete com.macstats.MacStats launchAtLoginPromptAsked; defaults delete com.macstats.MacStats launchAtLoginPromptQuickDismissals; defaults delete com.macstats.MacStats didRegisterLoginItem`,
 make sure launch at login is off, relaunch, open the panel.
 
 ## Where the keys live (and their backups)
@@ -167,17 +177,25 @@ copy the owner runs):
 
 ```bash
 cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
+git switch main && git pull --ff-only origin main
 # 1. Bump the version in Resources/Info.plist:
 #    CFBundleShortVersionString (e.g. 1.2.0 -> 1.3.0) AND CFBundleVersion (+1, e.g. 4 -> 5).
-# 2. Write release notes (Markdown); they become the GitHub notes and Sparkle's update text:
-$EDITOR /tmp/macstats-notes.md
-# 3. Tests, then build + sign + zip + EdDSA-sign + appcast:
+# 2. Tests:
 ./Scripts/test.sh
+# 3. Commit the bump and push it (package-release.sh refuses a dirty tree or HEAD != origin/main):
+git commit -am "release: v1.3.0" && git push origin main
+# 4. Release notes (Markdown, outside the repo so the tree stays clean); they become the GitHub
+#    notes and Sparkle's update text. Then build + sign + zip + EdDSA-sign + appcast:
+$EDITOR /tmp/macstats-notes.md
 ./Scripts/package-release.sh /tmp/macstats-notes.md
-# 4. Commit the bump, push main, then run the gh command the script printed, which looks like:
+# 5. Run the gh command the script printed, which looks like (--target = the packaged commit):
 gh release create v1.3.0 "<repo>/dist/MacStats.app.zip" "<repo>/dist/appcast.xml" \
-    --repo david53001/macos-stats --latest --title "MacStats 1.3.0" --notes-file "<repo>/dist/release-notes.md"
+    --repo david53001/macos-stats --target <HEAD sha> --latest --title "MacStats 1.3.0" --notes-file "<repo>/dist/release-notes.md"
 ```
+
+Never use the `ALLOW_*` overrides below for a real release: if a guard refuses, fix the cause
+(commit, push, merge) and run the script again. (`dist/` is in `.gitignore`, so the script's own
+output doesn't make the tree dirty.)
 
 `package-release.sh` outputs `dist/MacStats.app.zip` (the asset both `install.sh` and Sparkle
 download), `dist/appcast.xml` (one item: this version, `sparkle:version` = build number, minimum

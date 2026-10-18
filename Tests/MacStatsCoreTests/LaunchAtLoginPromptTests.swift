@@ -99,6 +99,7 @@ import Testing
         #expect(LaunchAtLoginPrompt.Key.uses == "launchAtLoginPromptUses")
         #expect(LaunchAtLoginPrompt.Key.asked == "launchAtLoginPromptAsked")
         #expect(LaunchAtLoginPrompt.Key.legacyAutoEnabled == "didRegisterLoginItem")
+        #expect(LaunchAtLoginPrompt.Key.quickDismissals == "launchAtLoginPromptQuickDismissals")
     }
 }
 
@@ -190,6 +191,29 @@ import Testing
             session.panelHidden(at: t0 + 5, isEnabled: { false })
             #expect(!rules.asked)         // the card itself was up 0.3 s
             #expect(session.isShowing)
+        }
+    }
+
+    /// Someone who always puts the card away at once (dim click or panel close within a second)
+    /// mustn't get a dimmed panel on every open: the third quick dismissal counts as asked.
+    @Test func threeQuickDismissalsCountAsAsked() {
+        withDefaults { _, rules in
+            var session = dueSession(rules)
+            session.panelShown(at: t0)
+            session.dismiss(at: t0 + 0.3)                     // 1: dim click
+            session.panelHidden(at: t0 + 2, isEnabled: { false })
+            #expect(!rules.asked)
+            #expect(session.isShowing)
+            open(&session, at: 10, for: 0.4)                  // 2: panel closed at once
+            #expect(rules.quickDismissals == 2)
+            #expect(!rules.asked)
+            #expect(session.isShowing)
+            open(&session, at: 20, for: 0.2)                  // 3
+            #expect(rules.quickDismissals == LaunchAtLoginPrompt.quickDismissalsBeforeAsked)
+            #expect(rules.asked)
+            #expect(!session.isShowing)
+            open(&session, at: 30, for: 5)
+            #expect(!session.isShowing)                       // never again
         }
     }
 

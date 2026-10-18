@@ -19,10 +19,15 @@ public struct LaunchAtLoginPrompt {
         public static let asked = "launchAtLoginPromptAsked"
         /// Bool, read only: written by 1.0.x after its silent first-launch enable succeeded.
         public static let legacyAutoEnabled = "didRegisterLoginItem"
+        /// Int: times the card was put away (panel closed or dim clicked) before it could be read.
+        public static let quickDismissals = "launchAtLoginPromptQuickDismissals"
     }
 
     public static let usesBeforeAsking = 5
     public static let minimumUseSeconds: TimeInterval = 1
+    /// The card put away unread this many times counts as asked: one quick dismissal is likely a
+    /// glance, but someone who always clicks it away at once shouldn't get it on every open.
+    public static let quickDismissalsBeforeAsked = 3
 
     /// The decision itself, free of storage.
     public static func shouldAsk(uses: Int, asked: Bool, legacyAutoEnabled: Bool, enabled: Bool) -> Bool {
@@ -63,6 +68,16 @@ public struct LaunchAtLoginPrompt {
     public func markAsked() {
         defaults.set(true, forKey: Key.asked)
     }
+
+    public var quickDismissals: Int { defaults.integer(forKey: Key.quickDismissals) }
+
+    /// The card was put away before it could be read. Leaves it due, until the
+    /// `quickDismissalsBeforeAsked`th time, which counts as asked.
+    public func recordQuickDismissal() {
+        let count = quickDismissals + 1
+        defaults.set(count, forKey: Key.quickDismissals)
+        if count >= Self.quickDismissalsBeforeAsked { markAsked() }
+    }
 }
 
 /// The panel's open/close cycle around `LaunchAtLoginPrompt`: counts uses, decides (while the
@@ -71,7 +86,8 @@ public struct LaunchAtLoginPrompt {
 /// The question is used up only by an answer, or by being on screen for at least
 /// `minimumUseSeconds` (closing the panel or dismissing the card after that). A glance (an
 /// accidental click-and-close, or dismissing it at once) leaves it due for the next open, just
-/// as a glance at the panel isn't a use. Times are passed in, so it is tested without a clock.
+/// as a glance at the panel isn't a use, until the `quickDismissalsBeforeAsked`th glance, which
+/// counts as asked. Times are passed in, so it is tested without a clock.
 public struct LaunchAtLoginPromptSession {
     public let rules: LaunchAtLoginPrompt
     /// The card is part of the current open (panel on screen) or of the next one (closed).
@@ -115,10 +131,15 @@ public struct LaunchAtLoginPromptSession {
         isShowing = rules.couldAsk && !isEnabled()
     }
 
-    /// An unanswered card that was on screen long enough to be read counts as asked.
+    /// An unanswered card that was on screen long enough to be read counts as asked; a quick
+    /// dismissal is counted (`LaunchAtLoginPrompt.recordQuickDismissal`).
     private mutating func settleCard(at now: Date) {
         guard let shown = cardShownAt else { return }
         cardShownAt = nil
-        if now.timeIntervalSince(shown) >= LaunchAtLoginPrompt.minimumUseSeconds { rules.markAsked() }
+        if now.timeIntervalSince(shown) >= LaunchAtLoginPrompt.minimumUseSeconds {
+            rules.markAsked()
+        } else {
+            rules.recordQuickDismissal()
+        }
     }
 }
