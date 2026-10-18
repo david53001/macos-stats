@@ -342,10 +342,19 @@ Finder permission surviving the update. On a Mac running the previous release:
 
 ### Release 1.3.0 (branch `release/1.3.0`): read this first
 
-State on 2026-10-18 (evening). Branch `release/1.3.0`, worktree
+**RELEASED 2026-10-18 (late evening).** Review round 2 scored **9.0 / 10**. `main` was fast-forwarded
+to `release/1.3.0` (`bb41c0f`), `./Scripts/test.sh` passed (415 tests in 51 suites), it was pushed,
+packaged with `Scripts/package-release.sh` and published as
+https://github.com/david53001/macos-stats/releases/tag/v1.3.0 (`--latest`, zip + appcast). The live
+feed serves build 5. Installed in `~/Applications/MacStats.app` (Authority "MacStats Code Signing");
+the old 1.1.0 / build 3 `fix/battery-health` dev build was backed up to
+`~/Backups/2026-10-18-pre-sparkle/MacStats-1.1.0-battery-health.app`. Still open (owner checks): the
+manual 1.2.0 → 1.3.0 Sparkle checklist on a Mac running 1.2.0, and round 2's L2 (watch a real
+reopen while the login card is due and the tour chip shows). The steps below are kept as the record.
+
+History: branch `release/1.3.0`, worktree
 `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/release-1.3.0`,
-made from local `main` = `origin/main` = `68a5d15` (the v1.2.0 release). **Not pushed, not tagged,
-not released, not installed** (the owner's session does that after review).
+made from local `main` = `origin/main` = `68a5d15` (the v1.2.0 release).
 
 What is on it, all by `git merge` (no rebase, no squash, `main`'s history untouched):
 
@@ -447,7 +456,7 @@ the reviewer verified in a scratch copy; window metadata can't see menu-bar item
 `package-release.sh` was not re-run: no script, plist or packaging change since the dry run
 above except the comment in `sign-app.sh`.
 
-**NEXT STEPS for 1.3.0 (owner's session, in this order):**
+**Release steps for 1.3.0 (DONE 2026-10-18; kept as the recipe for the next release):**
 
 1. Review: `git log --first-parent main..release/1.3.0`, `git diff main release/1.3.0 -- Sources`.
 2. **In the worktree that has `main`** (`git switch main` fails everywhere else on this Mac, see
