@@ -217,6 +217,33 @@ import Testing
         }
     }
 
+    /// The guided tour (or its welcome card or chip) has the panel: no card in that open, and it
+    /// stays due for the next one, however long the open was.
+    @Test func aBlockedOpenHidesTheCardAndKeepsItDue() {
+        withDefaults { _, rules in
+            var session = dueSession(rules)
+            session.panelShown(at: t0, blocked: true)
+            #expect(!session.isShowing)
+            session.panelHidden(at: t0 + 30, countsAsUse: false, isEnabled: { false })
+            #expect(!rules.asked)
+            #expect(rules.quickDismissals == 0)
+            #expect(session.isShowing)
+            session.panelShown(at: t0 + 40)
+            #expect(session.isShowing)
+        }
+    }
+
+    @Test func tourOpensAreNotUses() {
+        withDefaults { _, rules in
+            var session = LaunchAtLoginPromptSession(rules: rules, isEnabled: { false })
+            session.panelShown(at: t0, blocked: true)
+            session.panelHidden(at: t0 + 20, countsAsUse: false, isEnabled: { false })
+            session.panelShown(at: t0 + 30, blocked: true)           // chip only: blocked, but a use
+            session.panelHidden(at: t0 + 33, isEnabled: { false })
+            #expect(rules.uses == 1)
+        }
+    }
+
     @Test func dismissingAfterReadingUsesItUp() {
         withDefaults { _, rules in
             var session = dueSession(rules)

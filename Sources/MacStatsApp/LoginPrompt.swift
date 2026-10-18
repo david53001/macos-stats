@@ -10,7 +10,8 @@ import MacStatsCore
 /// inside a panel the user just opened, so it can't take focus from what they were typing, and
 /// it is drawn inside the panel's fixed 320 × 404 pt frame, so the window never changes size.
 /// Whether it shows is decided while the panel is closed (at launch and at each close), so it is
-/// there from the open's first frame.
+/// there from the open's first frame. It shows only over the overview (`LoginCardGate`, tested);
+/// every close returns the panel there (`AppModel.panelVisibilityChanged`).
 @MainActor
 final class LoginPrompt: ObservableObject {
     enum Answer { case none, accepted }
@@ -20,6 +21,8 @@ final class LoginPrompt: ObservableObject {
     @Published private(set) var answer: Answer = .none
 
     private var session: LaunchAtLoginPromptSession
+    /// Which opens may show the card and which count as uses (MacStatsCore, tested).
+    private var gate = LoginCardGate()
     /// Bumped on every open/close, so a delayed auto-dismiss can't reach a later open.
     private var generation = 0
 
@@ -29,16 +32,19 @@ final class LoginPrompt: ObservableObject {
         isShowing = session.isShowing
     }
 
-    /// From the panel window (`PanelVisibilityObserver`): it was put on screen or taken off.
-    func panelVisibilityChanged(onScreen: Bool) {
-        guard onScreen != session.isPanelOnScreen else { return }
+    /// The panel window came on screen (`AppModel`), showing `screen`.
+    func panelOpened(screen: PanelScreen) {
+        guard !session.isPanelOnScreen else { return }
         generation += 1
-        if onScreen {
-            session.panelShown(at: Date())
-        } else {
-            session.panelHidden(at: Date(), isEnabled: Self.isEnabled)
-            answer = .none
-        }
+        session.panelShown(at: Date(), blocked: gate.opened(on: screen))
+        isShowing = session.isShowing
+    }
+
+    func panelClosed() {
+        guard session.isPanelOnScreen else { return }
+        generation += 1
+        session.panelHidden(at: Date(), countsAsUse: gate.closed(), isEnabled: Self.isEnabled)
+        answer = .none
         isShowing = session.isShowing
     }
 
@@ -76,8 +82,8 @@ final class LoginPrompt: ObservableObject {
 
 /// The question over a dimmed panel (the panel keeps its size). The card covers the Memory and
 /// Network cards edge to edge (their bounds come from `.loginPromptAnchor()` in the overview), so
-/// its edges line up with the cards' and no value is cut in half; centred if those aren't on
-/// screen. The dim takes clicks and hovers, so nothing under it opens by accident; a click on it
+/// its edges line up with the cards' and no value is cut in half (centred if they ever aren't on
+/// screen; `LoginCardGate` keeps the card to the overview). The dim takes clicks and hovers, so nothing under it opens by accident; a click on it
 /// just puts the card away. Same dim strength as the guided tour on `feat/stability-tour`.
 ///
 /// Launch at login turned on elsewhere (System Settings) while the card is up isn't watched: the

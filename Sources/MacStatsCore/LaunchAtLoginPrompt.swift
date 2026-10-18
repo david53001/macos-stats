@@ -105,10 +105,16 @@ public struct LaunchAtLoginPromptSession {
 
     public var isPanelOnScreen: Bool { openedAt != nil }
 
-    public mutating func panelShown(at now: Date) {
+    /// `blocked`: something else has the panel this open (the guided tour, its welcome card or
+    /// its "Take the Tour" chip). The card stays off for the whole open and stays due.
+    public mutating func panelShown(at now: Date, blocked: Bool = false) {
         guard openedAt == nil else { return }
         openedAt = now
-        if isShowing { cardShownAt = now }
+        if blocked {
+            isShowing = false
+        } else if isShowing {
+            cardShownAt = now
+        }
     }
 
     /// Either button. Asked for good; the card stays (showing the result) until dismissed.
@@ -123,11 +129,12 @@ public struct LaunchAtLoginPromptSession {
         isShowing = false
     }
 
-    public mutating func panelHidden(at now: Date, isEnabled: () -> Bool) {
+    /// `countsAsUse: false` for an open the guided tour took part in (a tour isn't a use).
+    public mutating func panelHidden(at now: Date, countsAsUse: Bool = true, isEnabled: () -> Bool) {
         guard let start = openedAt else { return }
         openedAt = nil
         settleCard(at: now)
-        rules.recordUse(seconds: now.timeIntervalSince(start))
+        if countsAsUse { rules.recordUse(seconds: now.timeIntervalSince(start)) }
         isShowing = rules.couldAsk && !isEnabled()
     }
 

@@ -13,6 +13,29 @@ import MacStatsCore
 final class AppModel: ObservableObject {
     let store = MetricsStore(historyWindow: 60)
     let loginPrompt = LoginPrompt()
+    /// The in-popover Settings screen (pushed from the overview footer). Here, not in `RootView`,
+    /// so a real close can reset it (`panelVisibilityChanged`): SwiftUI's `onDisappear` doesn't
+    /// fire when the `MenuBarExtra` window is ordered out.
+    @Published var showingSettings = false
+
+    /// The screen the panel shows right now.
+    var panelScreen: PanelScreen {
+        if showingSettings { return .settings }
+        return store.activeBreakdownMetric == nil ? .overview : .breakdown
+    }
+
+    /// The panel window went on or off screen (`PanelVisibilityObserver`, which follows the window,
+    /// unlike `onAppear` / `onDisappear`). Every close goes back to the overview, so the next open
+    /// starts there, and the login card (shown only over the overview) is never over Settings.
+    func panelVisibilityChanged(onScreen: Bool) {
+        if onScreen {
+            loginPrompt.panelOpened(screen: panelScreen)
+        } else {
+            loginPrompt.panelClosed()
+            showingSettings = false
+            exitBreakdown()
+        }
+    }
 
     private var timer: Timer?                    // open-popover tick (one-shot, rescheduled)
     private var idleTimer: Timer?                // closed-popover sampler (repeating)

@@ -11,8 +11,6 @@ struct RootView: View {
     @ObservedObject var store: MetricsStore
     /// The one-time "Open MacStats at login?" card over the screens (`LoginPrompt.swift`).
     @ObservedObject var loginPrompt: LoginPrompt
-    /// The in-popover Settings screen (pushed from the overview footer); reset on close.
-    @State private var showingSettings = false
 
     var body: some View {
         // Both screens have the same fixed size, so the window never resizes; switching
@@ -23,20 +21,18 @@ struct RootView: View {
             .environment(\.loginPromptActive, loginPrompt.isShowing)
             .overlayPreferenceValue(LoginPromptAnchorKey.self) { LoginPromptOverlay(prompt: loginPrompt, anchors: $0) }
             .background(PanelBackdrop())   // the Opacity setting (Appearance.swift)
-            .background(PanelVisibilityObserver { loginPrompt.panelVisibilityChanged(onScreen: $0) })
+            // A close also resets the screen (Settings, a breakdown) to the overview: `AppModel`.
+            .background(PanelVisibilityObserver { model.panelVisibilityChanged(onScreen: $0) })
             .animation(.snappy(duration: 0.3), value: store.activeBreakdownMetric)
-            .animation(.snappy(duration: 0.3), value: showingSettings)
+            .animation(.snappy(duration: 0.3), value: model.showingSettings)
             .onAppear { model.setVisibility(.popoverOpen) }
-            .onDisappear {
-                model.setVisibility(.idle)
-                showingSettings = false
-            }
+            .onDisappear { model.setVisibility(.idle) }
     }
 
     private var screens: some View {
         ZStack {
-            if showingSettings {
-                SettingsView(onBack: { showingSettings = false })
+            if model.showingSettings {
+                SettingsView(onBack: { model.showingSettings = false })
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             } else if let metric = store.activeBreakdownMetric {
                 BreakdownView(store: store, metric: metric,
@@ -46,7 +42,7 @@ struct RootView: View {
                 OverviewView(store: store,
                              onSelect: { model.enterBreakdown($0) },
                              onEmptyTrash: { model.confirmAndEmptyTrash() },
-                             onSettings: { showingSettings = true })
+                             onSettings: { model.showingSettings = true })
                     .transition(.offset(x: -Design.panelWidth * 0.3).combined(with: .opacity))
             }
         }

@@ -120,7 +120,7 @@ private struct UpdatesCard: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 Spacer(minLength: 8)
-                Button(updates.pendingVersion == nil ? "Check for Updates…" : "Show Update…") {
+                Button(updates.actionTitle) {
                     updates.checkForUpdates()
                 }
                 .buttonStyle(.bordered)

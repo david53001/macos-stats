@@ -57,7 +57,10 @@ fi
 # yet. A release without them would take those features away from every copy Sparkle updates.
 # Checked only where the branch exists (locally or as origin/<name>); remove a name once it's
 # merged into main for good. Details: docs/sparkle-updates/README.md, STATUS / NEXT STEPS.
-MUST_CONTAIN=(feat/stability-tour)
+#   feat/stability-tour  stability fixes + guided tour (trial merge: integrate/stability-tour-sparkle)
+#   fix/battery-health   battery health fix, being worked on in another session (2026-10-18; the
+#                        copy installed in ~/Applications was built from it)
+MUST_CONTAIN=(feat/stability-tour fix/battery-health)
 if [ "${ALLOW_MISSING_BRANCHES:-0}" != 1 ]; then
     for BRANCH in "${MUST_CONTAIN[@]}"; do
         for REF in "refs/heads/$BRANCH" "refs/remotes/origin/$BRANCH"; do
