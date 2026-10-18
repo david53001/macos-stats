@@ -57,12 +57,13 @@ fi
 # yet. A release without them would take those features away from every copy Sparkle updates.
 # Checked only where the branch exists (locally or as origin/<name>); remove a name once it's
 # merged into main for good. Details: docs/sparkle-updates/README.md, STATUS / NEXT STEPS.
-#   feat/stability-tour  stability fixes + guided tour (trial merge: integrate/stability-tour-sparkle)
-#   fix/battery-health   battery health fix, being worked on in another session (2026-10-18; the
-#                        copy installed in ~/Applications was built from it)
-MUST_CONTAIN=(feat/stability-tour fix/battery-health)
+# 2026-10-18 (v1.2.0): the owner chose "Route A": ship Sparkle + only the battery-health and
+# Trash fixes cherry-picked from fix/battery-health; feat/stability-tour (and the parts of
+# fix/battery-health that need it) ship later together. So nothing is listed for now. When that
+# later release is cut from a merge of them, list any branch the owner runs that is still unmerged.
+MUST_CONTAIN=()
 if [ "${ALLOW_MISSING_BRANCHES:-0}" != 1 ]; then
-    for BRANCH in "${MUST_CONTAIN[@]}"; do
+    for BRANCH in ${MUST_CONTAIN[@]+"${MUST_CONTAIN[@]}"}; do
         for REF in "refs/heads/$BRANCH" "refs/remotes/origin/$BRANCH"; do
             git -C "$ROOT" rev-parse -q --verify "$REF" >/dev/null || continue
             if ! git -C "$ROOT" merge-base --is-ancestor "$REF" HEAD; then
