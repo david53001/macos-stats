@@ -378,7 +378,17 @@ scripts):
   refused (still build 100): PASS` (Code 4005), installed copy passes `codesign --verify --deep
   --strict`, Authority "MacStats Code Signing", relaunched; exit 0. Afterwards no test process,
   no `com.macstats.MacStats.sparkletest` defaults, port 8765 free. (`E2E_UI=1` not re-run.)
-- `package-release.sh` dry run: DRYRUN_RESULT
+- `package-release.sh` dry run (notes = the 1.3.0 section of `CHANGELOG.md`, in a file outside
+  the repo), on the committed, clean tree: with no override it refuses (`error: HEAD is not
+  origin/main; merge and push first, or ALLOW_NOT_MAIN=1 for a dry run`); with `ALLOW_NOT_MAIN=1`
+  only (no `ALLOW_DIRTY`, no `ALLOW_MISSING_BRANCHES`) every other guard passed (`MUST_CONTAIN`
+  empty, no `v1.3.0` release on GitHub yet, build 5 above the published appcast's 4), the release
+  build signed as "MacStats Code Signing" and passed `codesign --verify --deep --strict`, the
+  framework holds only `Autoupdate`, `Resources`, `Sparkle`, `Updater.app`, and `dist/appcast.xml`
+  had `sparkle:version` 5, `shortVersionString` 1.3.0, minimum 14.0, enclosure
+  `…/releases/download/v1.3.0/MacStats.app.zip` with an EdDSA signature; exit 0. Nothing was
+  published (the printed `gh release create` was not run) and `dist/` was deleted afterwards,
+  because it was built from a commit that isn't on `main`: re-run the script on `main`.
 - Not done here (owner): a live look at the merged app (tour + card + Settings on real glass),
   the manual Sparkle checklist above with the real 1.2.0 → 1.3.0 update.
 
