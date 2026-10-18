@@ -55,10 +55,17 @@ struct BatteryDetailsCard: View {
 
         switch b.state {
         case .discharging:
-            rows.append(Row(label: "Time left", value: b.timeToEmptyMinutes.map(timeLeft) ?? "Calculating…"))
+            rows.append(Row(label: "Time left", value: b.timeToEmptyMinutes.map(timeLeft) ?? "Calculating…",
+                            help: b.macOSTimeToEmptyMinutes.map {
+                                "macOS's own estimate: \(formatDuration($0)) (it follows the last minute's use)"
+                            }))
         case .charging:
             rows.append(Row(label: b.chargeTargetLabel, value: b.timeToFullMinutes.map(formatTimeToFull)
-                            ?? (b.atChargeLimit ? "Almost done" : b.percent >= 90 ? "Almost full" : "Calculating…")))
+                            ?? (b.atChargeLimit ? "Almost done" : b.percent >= 90 ? "Almost full" : "Calculating…"),
+                            help: b.macOSTimeToFullMinutes.map { minutes in
+                                let text = "macOS's own estimate: \(formatDuration(minutes)) to 100%"
+                                return b.chargeStopPercent.map { "\(text) (it doesn't count your \($0)% stop)" } ?? text
+                            }))
         case .charged, .notCharging:
             // Optimized Charging's pause is not the user's limit: show both.
             if let hold = b.chargeHoldPercent {
@@ -106,7 +113,8 @@ extension BatterySample {
         switch state {
         case .charging: return "Charging"
         case .charged: return "Fully charged"
-        case .notCharging: return "Plugged in, not charging"
+        case .notCharging:
+            return heldAtLimitPercent.map { "Charged to \($0)% limit" } ?? "Plugged in, not charging"
         case .discharging: return "On battery"
         }
     }
@@ -130,7 +138,7 @@ extension BatterySample {
             return timeToFullMinutes.map { "\(formatTimeToFull($0)) to \(chargeTargetName)" }
                 ?? (atChargeLimit ? "almost done" : percent >= 90 ? "almost full" : "charging")   // no estimate in the last trickle
         case .charged: return "fully charged"
-        case .notCharging: return "not charging"
+        case .notCharging: return heldAtLimitPercent.map { "at \($0)% limit" } ?? "not charging"
         case .discharging: return timeToEmptyMinutes.map { "\(formatTimeLeft($0)) left" } ?? "calculating…"
         }
     }
