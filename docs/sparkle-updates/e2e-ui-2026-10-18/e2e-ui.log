@@ -1,0 +1,49 @@
+
+==> build (SPARKLE_E2E_TEST) into <scratch>/e2e-r4-ui/stage
+
+==> UI: signed update 100 -> 101 through Sparkle's own windows
+NOTE: right after launch the (transparent) test app can take keyboard focus for a moment;
+      it gives it back after its first snapshot. Don't type for about 30 s.
+launching OLD: build 100, com.macstats.MacStats.sparkletest, UI mode 1
+OLD pid 84035 loads Sparkle from: /tmp/claude-501/-Users-davidghermansteinberg/5b949303-546e-405b-abfa-f4229b6718d0/scratchpad/e2e-r4-ui/install/MacStats.app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle
+after 2s: installed build 101
+SPARKLE-E2E found 90.1 (build 101)
+SPARKLE-E2E UI scheduled update 90.1, immediate focus 1
+SPARKLE-E2E UI will show 90.1: handled by Sparkle 1, user-initiated 0
+SPARKLE-E2E UI pending set by the scheduled find: 90.1
+SPARKLE-E2E UI notification posted: 1
+SPARKLE-E2E UI update window shown: key 0, app active 0, frontmost app com.apple.loginwindow
+SPARKLE-E2E UI panel: gear dot 1, Settings button: Show Update…
+SPARKLE-E2E UI snapshot <scratch>/e2e-r4-ui/ui/1-update-found.png
+SPARKLE-E2E UI after Show Update…: pending 90.1, gear dot 1, Settings button: Show Update…
+SPARKLE-E2E UI focus now: app active 0
+SPARKLE-E2E UI clicking Install Update
+SPARKLE-E2E UI user attention for 90.1
+SPARKLE-E2E downloaded 101
+SPARKLE-E2E UI at Install and Relaunch: pending none, gear dot 0, Settings button: Check for Updates…
+SPARKLE-E2E UI snapshot <scratch>/e2e-r4-ui/ui/2-ready-to-install.png
+SPARKLE-E2E UI clicking Install and Relaunch
+SPARKLE-E2E installing 101
+installed copy: codesign --verify --deep --strict OK
+Identifier=com.macstats.MacStats.sparkletest
+Authority=MacStats Code Signing
+
+==> server requests
+
+==> RESULT (UI mode)
+the scheduled find set pendingVersion (90.1): PASS
+the scheduled find posted the update notification: PASS
+update window shown by the scheduled check: PASS
+(SPARKLE-E2E UI scheduled update 90.1, immediate focus 1; Mac idle 13905 s)
+(the update window came up without focus: frontmost app com.apple.loginwindow)
+without focus: no keyboard taken (not key, app not active): PASS
+without focus: gear dot + Show Update… while it waits: PASS
+Sparkle reports the user's attention: PASS
+pendingVersion cleared once the user acted (no dot, Check for Updates…): PASS
+the test app doesn't keep the keyboard (not active a second later): PASS
+Install and Relaunch was offered and clicked: PASS
+installed as build 101: PASS
+relaunched after the install (pid 84053): PASS
+<scratch>/e2e-r4-ui/ui/1-update-found.png
+<scratch>/e2e-r4-ui/ui/2-ready-to-install.png
+kept <scratch>/e2e-r4-ui

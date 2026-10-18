@@ -445,10 +445,74 @@ dim click → quick 1; 1.5 s look → asked; Settings shows all three cards and 
 Renders: the card over Memory + Network with the squircle dim, the welcome card, the tour step 1,
 the chip, Settings (light + dark).
 
+- **Review round 3** (independent reviewer, **8.0 / 10**; report `docs/sparkle-updates/REVIEW-round3.md`
+  + `docs/sparkle-updates/review-round3/`, uncommitted as the reviewer left them). Every item fixed
+  on 2026-10-18, in commit `64ca563` (+ the docs commit after it) on this branch and merge `adfc5de`
+  on `integrate/stability-tour-sparkle`:
+  1. MEDIUM, the card could sit over Settings and Esc went back under it: (a) every real close now
+     resets Settings and the breakdown in `AppModel` (`showingSettings` moved there from
+     `RootView`'s `@State`; `onDisappear`, which used to reset it, doesn't fire for an ordered-out
+     `MenuBarExtra` window), so the panel always reopens on the overview; (b) the card is shown only
+     over the overview (`LoginCardGate`: an open on another screen is blocked and keeps it due);
+     (c) on the integration branch the Settings and breakdown back buttons drop Esc while the card
+     is up (`.keyboardShortcut(loginPromptActive ? nil : .cancelAction)`); (d) probe cases added
+     (close from Settings / from a breakdown, reopen, Esc; and Settings forced under the card, Esc).
+     The false "reset on close" comment is gone with the `@State`.
+  2. LOW, untested glue: the open/close decisions (screen, tour active, chip, tour started during
+     the open → blocked / a use) are now one pure struct, `Sources/MacStatsCore/LoginCardGate.swift`,
+     with 6 tests (`LoginCardGateTests`, incl. gate + session sequences); `LoginPrompt` only passes
+     them through. The live probe is committed: `docs/research/2026-10-18-probes/login-prompt/`
+     (harness, scenarios for both branches, `probe.sh`, results). What stays app-side and is only
+     covered by the probe: that `AppModel.updateVisibility` calls the tour before the card, and that
+     the window notifications arrive (unit tests can't create a `MenuBarExtra` window).
+  3. LOW, user-facing update path unverified: `E2E_UI=1 Scripts/sparkle-e2e-test.sh` now goes through
+     Sparkle's real windows (see "How to re-run the end-to-end test"): scheduled find →
+     `pendingVersion` (dot + "Show Update…") → notification request → update window → Show Update…
+     → Install Update → Install and Relaunch → build 101, signature valid, relaunched. I used the
+     JVoice / BetterScreenshot driver (in-process, finds Sparkle's buttons) instead of the suggested
+     `CGWindowListCopyWindowInfo` check, because it also clicks through the install, which a window
+     list can't. Return on the card is now probed with the login-item service stubbed (`probe.sh`
+     patches the scratch copy and refuses to build if a real `SMAppService` call is left): enabled,
+     needs approval (Return = Open Login Items) and error (Return = Done) all behave. **Not fixed,
+     because they can't be on this Mac without a real release or the owner:** the notification on
+     screen and its click (the test build never asks for the notification permission, by design:
+     it must not leave a prompt behind), the window opening behind a frontmost app on an unlocked
+     screen, Return on the real app (it would register a real login item), real Liquid Glass. They
+     are the hard gate for 1.2.1 (manual checklist above) plus one owner check of the card.
+  4. LOW, stale docs: §2 now describes the integration branch's wiring (`AppModel.updateVisibility`,
+     `PanelWindowObserver`, `.overlayPreferenceValue`), with the sparkle-only observer named as such.
+  5. NIT, help in GENERAL: the row is now "Guided tour" (`TourCatalog.helpRow`, integration branch;
+     the button beside it still says Take the Tour). Rendered: `results-integration/light-T7-settings.png`
+     in the probe folder.
+  Also: `fix/battery-health` (the other session's battery fix; the copy in `~/Applications` was
+  built from it) is now in `MUST_CONTAIN` (`Scripts/package-release.sh`), so a release refuses until
+  it is merged.
+- Verified after round 3 (2026-10-18; the screen was locked the whole time, the owner away):
+  - `./Scripts/test.sh`: **144 tests pass** here, **400** on the integration branch.
+  - Live probe (`docs/research/2026-10-18-probes/login-prompt/`, both branches, light and dark
+    identical, frame 320 × 404 on every line): close from Settings / the CPU breakdown → reopen on
+    the overview with the card → Esc = No Thanks (asked, card gone); Settings forced under the card
+    → Esc answers the card and Settings stays; Return: enabled → confirmation gone by itself,
+    needs approval → Return = Open Login Items (stub), error → Return = Done; integration also:
+    chip open = no card but a use, tour opens not uses, resumed + skipped tour no card, welcome
+    opens blocked then the card. Because the screen was locked, the harness posted the panel's
+    occlusion notification itself after each toggle (macOS doesn't while locked) and clicks on
+    the dim didn't register (the window can't become key); both were verified unlocked in rounds
+    1-2 and that code is unchanged.
+  - `./Scripts/sparkle-e2e-test.sh` on the integration branch: GOOD PASS + BAD PASS (Code
+    4005/3002), exit 0. `E2E_UI=1`: all 11 checks PASS on both branches, exit 0 (log and
+    snapshots: `docs/sparkle-updates/e2e-ui-2026-10-18/`; the snapshots are `cacheDisplay`
+    renders of a transparent window, so Sparkle's text didn't draw; the log is the evidence). With
+    the screen locked the window came up without focus (frontmost app `loginwindow`) although
+    Sparkle asked for "immediate focus"; the "came up key" branch was not exercised.
+  - `package-release.sh` on the integration branch: "HEAD is not origin/main"; with
+    `ALLOW_NOT_MAIN=1`: "HEAD doesn't contain refs/heads/fix/battery-health". Nothing published.
+  - Afterwards: no `sparkletest` / probe processes, defaults domains or caches left, port 8765
+    free. `~/Applications`, `/Applications` and the `com.macstats.MacStats` defaults untouched.
 - **Not tested** (needs the owner or a real release): the dim + material on real Liquid Glass
-  (off-screen renders don't draw the glass), the real notification and its click, Sparkle's own
-  window and "Install and Relaunch" (checklist above), `.requiresApproval` on screen, Return on the
-  card (it would register a login item on this Mac).
+  (off-screen renders don't draw the glass), the real notification on screen and its click,
+  Sparkle's window behind a frontmost app on an unlocked screen (checklist above), Return on the
+  real app's card (it would register a login item on this Mac; probed with a stub instead).
 - Note (2026-10-18 13:57): during this session `~/Applications/MacStats.app` was rebuilt from
   `.claude/worktrees/battery-health` (`fix/battery-health`, debug build, ad-hoc, 1.1.0 / 3) and
   relaunched by another session; none of this work's scripts write there (they all set
@@ -461,12 +525,19 @@ the chip, Settings (light + dark).
    integrate/stability-tour-sparkle -- Sources`). If OK: merge it into `main`
    (`git switch main && git merge --no-ff integrate/stability-tour-sparkle`), then remove
    `feat/stability-tour` from `MUST_CONTAIN` in `Scripts/package-release.sh` only once it is on main
-   for good. `fix/battery-health` (installed right now) is a separate branch: decide whether it
-   goes into main before 1.2.0 too, or add it to `MUST_CONTAIN`. If the tour branch gets more
+   for good. **Also merge `fix/battery-health`** (the battery fix another session is working on,
+   worktree `.claude/worktrees/battery-health`; the installed copy was built from it) into main
+   before 1.2.0: it is in `MUST_CONTAIN`, so `package-release.sh` refuses until it is in (remove it
+   from the list once it's on main). If the tour branch gets more
    commits first, merge `feat/stability-tour` into the integration branch again (or redo the merge
    with the resolutions in the table above).
 2. Push `main`, then cut 1.2.0 with the steps above. 1.0.1 users get 1.2.0 via the curl
    installer once; Sparkle takes over from there. Then run the manual checklist with 1.2.1, and
    check the card once on real glass (`defaults write … launchAtLoginPromptUses -int 5` etc., above).
 3. Port the same template to JVoice and BetterScreenshot (their own repos; they already have
-   stable identities; enforce `--latest=false` on their Windows releases).
+   stable identities; enforce `--latest=false` on their Windows releases). Both parts: Sparkle
+   (embedding, inside-out signing, `package-release.sh` with guards, `sparkle-e2e-test.sh` incl.
+   `E2E_UI=1`) **and** the one-time "open at login?" question after 5 uses (JVoice: 5 completed
+   dictations; BetterScreenshot: 5 screenshots), with its rules in a pure, tested type like
+   `LaunchAtLoginPrompt` + `LoginCardGate`, never a silent first-launch enable. (2026-10-18:
+   JVoice's `feat/sparkle-updates` already has both; this review loop covered MacStats only.)
