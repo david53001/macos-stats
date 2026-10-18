@@ -108,20 +108,24 @@ private struct UpdatesCard: View {
             }
 
             HStack {
+                // Found, not downloaded yet (Sparkle downloads once the user says Install).
                 Group {
                     if let version = updates.pendingVersion {
-                        Text("MacStats \(version) is ready to install.")
+                        Text("Version \(version) is available.").foregroundStyle(.primary)
                     } else {
-                        Text("You have MacStats \(updates.currentVersion).")
+                        Text("You have MacStats \(updates.currentVersion).").foregroundStyle(.secondary)
                     }
                 }
                 .font(.caption)
-                .foregroundStyle(.secondary)
-                Spacer()
-                Button("Check for Updates…") { updates.checkForUpdates() }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(!updates.canCheck)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                Spacer(minLength: 8)
+                Button(updates.pendingVersion == nil ? "Check for Updates…" : "Show Update…") {
+                    updates.checkForUpdates()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(!updates.canCheck && updates.pendingVersion == nil)
             }
         }
         .padding(.horizontal, Design.cardPadding)
@@ -173,16 +177,27 @@ private struct AppearanceCard: View {
     }
 }
 
-/// The footer button that opens Settings (a small gear in the card-button language).
+/// The footer button that opens Settings (a small gear in the card-button language). While a
+/// found update waits for the user, it carries a small accent dot (a status indicator, design
+/// language principle 5), so the update isn't hidden behind other windows unnoticed.
 struct SettingsButton: View {
     let action: () -> Void
+    @ObservedObject private var updates = Updates.shared
 
     var body: some View {
+        let updateWaiting = updates.pendingVersion != nil
         Button(action: action) {
             Image(systemName: "gearshape")
-                .accessibilityLabel("Settings")
+                .overlay(alignment: .topTrailing) {
+                    if updateWaiting {
+                        Circle().fill(Color.accentColor)
+                            .frame(width: 6, height: 6)
+                            .offset(x: 3, y: -2)
+                    }
+                }
+                .accessibilityLabel(updateWaiting ? "Settings, update available" : "Settings")
         }
         .buttonStyle(SubtleButtonStyle())
-        .help("Settings")
+        .help(updateWaiting ? "Settings · An update is available" : "Settings")
     }
 }

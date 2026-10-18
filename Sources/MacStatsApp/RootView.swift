@@ -9,7 +9,7 @@ struct RootView: View {
     /// and SwiftUI does NOT observe a nested ObservableObject reached through `model.store` —
     /// without this, entering/leaving a breakdown wouldn't re-render the view.
     @ObservedObject var store: MetricsStore
-    /// The one-time "Open MacStats at login?" card above the screens (`LoginPrompt.swift`).
+    /// The one-time "Open MacStats at login?" card over the screens (`LoginPrompt.swift`).
     @ObservedObject var loginPrompt: LoginPrompt
     /// The in-popover Settings screen (pushed from the overview footer); reset on close.
     @State private var showingSettings = false
@@ -18,24 +18,18 @@ struct RootView: View {
         // Both screens have the same fixed size, so the window never resizes; switching
         // between them is an Apple-style push (breakdown slides in from the trailing edge,
         // the overview drifts back a little and fades), clipped to the panel. The login card,
-        // when due, sits above them for that one open (decided while closed, so the panel
-        // opens at its final size).
-        VStack(spacing: 0) {
-            if loginPrompt.isShowing {
-                LoginPromptCard(prompt: loginPrompt)
-                    .padding([.horizontal, .top], Design.panelInset)
+        // when due, floats over them inside that same frame: it never changes the window's size.
+        screens
+            .overlay { LoginPromptOverlay(prompt: loginPrompt) }
+            .background(PanelBackdrop())   // the Opacity setting (Appearance.swift)
+            .background(PanelVisibilityObserver { loginPrompt.panelVisibilityChanged(onScreen: $0) })
+            .animation(.snappy(duration: 0.3), value: store.activeBreakdownMetric)
+            .animation(.snappy(duration: 0.3), value: showingSettings)
+            .onAppear { model.setVisibility(.popoverOpen) }
+            .onDisappear {
+                model.setVisibility(.idle)
+                showingSettings = false
             }
-            screens
-        }
-        .background(PanelBackdrop())   // the Opacity setting (Appearance.swift)
-        .background(PanelVisibilityObserver { loginPrompt.panelVisibilityChanged(onScreen: $0) })
-        .animation(.snappy(duration: 0.3), value: store.activeBreakdownMetric)
-        .animation(.snappy(duration: 0.3), value: showingSettings)
-        .onAppear { model.setVisibility(.popoverOpen) }
-        .onDisappear {
-            model.setVisibility(.idle)
-            showingSettings = false
-        }
     }
 
     private var screens: some View {

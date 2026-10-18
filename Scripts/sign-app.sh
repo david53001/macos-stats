@@ -1,6 +1,6 @@
 #!/bin/bash
 # Signs an assembled MacStats.app inside-out: Sparkle's nested helpers, then the framework, then
-# the app (no --deep: it would re-sign the helpers without their own options/entitlements).
+# the app (no --deep: it would re-sign the helpers without their own options).
 #
 #   Scripts/sign-app.sh path/to/MacStats.app
 #
@@ -32,8 +32,7 @@ fi
 FW="$APP/Contents/Frameworks/Sparkle.framework"
 if [ -d "$FW" ]; then
     V="$FW/Versions/B"
-    codesign --force "${SIGN[@]}" -o runtime "$V/XPCServices/Installer.xpc"
-    codesign --force "${SIGN[@]}" -o runtime --preserve-metadata=entitlements "$V/XPCServices/Downloader.xpc"
+    # (bundle.sh removed the XPC services: only sandboxed apps use them.)
     codesign --force "${SIGN[@]}" -o runtime "$V/Autoupdate"
     codesign --force "${SIGN[@]}" -o runtime "$V/Updater.app"
     codesign --force "${SIGN[@]}" -o runtime "$FW"

@@ -1,10 +1,11 @@
 import Foundation
 
-/// When MacStats asks "Open MacStats at login?" (the card at the top of the panel, `LoginPrompt.swift`).
+/// When MacStats asks "Open MacStats at login?" (a card over the panel, `LoginPrompt.swift`).
 ///
 /// Rules: count each panel open that stayed on screen for at least `minimumUseSeconds` (a real
 /// look, not a click-and-close); once `usesBeforeAsking` uses are recorded, the *next* open shows
-/// the question, from its first frame. Ask at most once ever, never when launch at login is
+/// the question, from its first frame (the open/close cycle: `LaunchAtLoginPromptSession` below).
+/// Ask at most once ever, never when launch at login is
 /// already on, and never for users of 1.0.x, whose first launch turned it on by itself (that
 /// build wrote `didRegisterLoginItem`): they either still have it, or turned it off on purpose.
 /// A choice made with the Settings switch also counts as answered.
@@ -61,5 +62,63 @@ public struct LaunchAtLoginPrompt {
 
     public func markAsked() {
         defaults.set(true, forKey: Key.asked)
+    }
+}
+
+/// The panel's open/close cycle around `LaunchAtLoginPrompt`: counts uses, decides (while the
+/// panel is closed) whether the next open shows the question, and when it counts as asked.
+///
+/// The question is used up only by an answer, or by being on screen for at least
+/// `minimumUseSeconds` (closing the panel or dismissing the card after that). A glance (an
+/// accidental click-and-close, or dismissing it at once) leaves it due for the next open, just
+/// as a glance at the panel isn't a use. Times are passed in, so it is tested without a clock.
+public struct LaunchAtLoginPromptSession {
+    public let rules: LaunchAtLoginPrompt
+    /// The card is part of the current open (panel on screen) or of the next one (closed).
+    public private(set) var isShowing: Bool
+    private var openedAt: Date?
+    /// When the unanswered card came on screen; nil once answered or settled.
+    private var cardShownAt: Date?
+
+    /// `isEnabled` reads the system's launch-at-login status (an XPC call); it's only called
+    /// once nothing else rules the question out.
+    public init(rules: LaunchAtLoginPrompt = LaunchAtLoginPrompt(), isEnabled: () -> Bool) {
+        self.rules = rules
+        isShowing = rules.couldAsk && !isEnabled()
+    }
+
+    public var isPanelOnScreen: Bool { openedAt != nil }
+
+    public mutating func panelShown(at now: Date) {
+        guard openedAt == nil else { return }
+        openedAt = now
+        if isShowing { cardShownAt = now }
+    }
+
+    /// Either button. Asked for good; the card stays (showing the result) until dismissed.
+    public mutating func answered() {
+        rules.markAsked()
+        cardShownAt = nil
+    }
+
+    /// The card is taken away during an open (a click outside it, Done, or after the result).
+    public mutating func dismiss(at now: Date) {
+        settleCard(at: now)
+        isShowing = false
+    }
+
+    public mutating func panelHidden(at now: Date, isEnabled: () -> Bool) {
+        guard let start = openedAt else { return }
+        openedAt = nil
+        settleCard(at: now)
+        rules.recordUse(seconds: now.timeIntervalSince(start))
+        isShowing = rules.couldAsk && !isEnabled()
+    }
+
+    /// An unanswered card that was on screen long enough to be read counts as asked.
+    private mutating func settleCard(at now: Date) {
+        guard let shown = cardShownAt else { return }
+        cardShownAt = nil
+        if now.timeIntervalSince(shown) >= LaunchAtLoginPrompt.minimumUseSeconds { rules.markAsked() }
     }
 }

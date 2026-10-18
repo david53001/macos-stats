@@ -3,144 +3,178 @@ import SwiftUI
 import ServiceManagement
 import MacStatsCore
 
-/// The one-time "Open MacStats at login?" question (rules: `MacStatsCore/LaunchAtLoginPrompt.swift`).
+/// The one-time "Open MacStats at login?" question (rules and open/close cycle, both tested:
+/// `MacStatsCore/LaunchAtLoginPrompt.swift`).
 ///
-/// It is a card at the top of the panel, never a window or alert: it shows only inside a panel
-/// the user just opened, so it can't take focus from what they were typing or doing, and it
-/// never moves or covers anything mid-use. Whether it shows is decided while the panel is
-/// closed (at launch and at each close), so the panel opens at its final size on frame one and
-/// nothing resizes while it's open; after an answer the card keeps its size and shows the result
-/// until the panel closes.
+/// It is a card floating over the panel's own content, never a window or alert: it shows only
+/// inside a panel the user just opened, so it can't take focus from what they were typing, and
+/// it is drawn inside the panel's fixed 320 × 404 pt frame, so the window never changes size.
+/// Whether it shows is decided while the panel is closed (at launch and at each close), so it is
+/// there from the open's first frame.
 @MainActor
 final class LoginPrompt: ObservableObject {
-    enum Answer { case none, accepted, declined }
+    enum Answer { case none, accepted }
 
-    /// The card is part of the panel's next (or current) open.
-    @Published private(set) var isShowing = false
+    /// The card is up in the current open, or will be in the next one.
+    @Published private(set) var isShowing: Bool
     @Published private(set) var answer: Answer = .none
 
-    private let rules = LaunchAtLoginPrompt()
-    private var openedAt: Date?
+    private var session: LaunchAtLoginPromptSession
+    /// Bumped on every open/close, so a delayed auto-dismiss can't reach a later open.
+    private var generation = 0
 
     init() {
-        isShowing = isDue()
+        let session = LaunchAtLoginPromptSession(isEnabled: Self.isEnabled)
+        self.session = session
+        isShowing = session.isShowing
     }
 
     /// From the panel window (`PanelVisibilityObserver`): it was put on screen or taken off.
     func panelVisibilityChanged(onScreen: Bool) {
+        guard onScreen != session.isPanelOnScreen else { return }
+        generation += 1
         if onScreen {
-            guard openedAt == nil else { return }
-            openedAt = Date()
-            if isShowing { rules.markAsked() }   // seen = asked; at most once ever
+            session.panelShown(at: Date())
         } else {
-            guard let start = openedAt else { return }
-            openedAt = nil
-            if isShowing {
-                // Asked (answered or not); the card is gone from the next open on.
-                isShowing = false
-                answer = .none
-            } else if rules.recordUse(seconds: Date().timeIntervalSince(start)) {
-                isShowing = isDue()
+            session.panelHidden(at: Date(), isEnabled: Self.isEnabled)
+            answer = .none
+        }
+        isShowing = session.isShowing
+    }
+
+    func accept() {
+        session.answered()
+        answer = .accepted
+        // A short confirmation when it simply worked; the other outcomes wait for the user.
+        if LaunchAtLogin.shared.setEnabled(true) == .enabled {
+            let open = generation
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(1.6))
+                guard let self, self.generation == open, self.isShowing else { return }
+                self.dismiss()
             }
         }
     }
 
-    func accept() {
-        answer = .accepted
-        LaunchAtLogin.shared.setEnabled(true)
-    }
-
     func decline() {
-        answer = .declined
+        session.answered()
+        dismiss()
     }
 
-    /// Reads the system status only once everything else says yes (it's an XPC call).
-    private func isDue() -> Bool {
-        guard rules.couldAsk else { return false }
+    /// Takes the card away for the rest of this open (a click outside it, Done, No Thanks). Unread
+    /// (under a second) it stays due for the next open; after that it counts as asked.
+    func dismiss() {
+        session.dismiss(at: Date())
+        withAnimation(.easeOut(duration: 0.2)) { isShowing = session.isShowing }
+    }
+
+    private static func isEnabled() -> Bool {
         LaunchAtLogin.shared.refresh()
-        return rules.shouldAsk(enabled: LaunchAtLogin.shared.status == .enabled)
+        return LaunchAtLogin.shared.status == .enabled
     }
 }
 
-/// The card. Text is `.primary` on a near-opaque window-colour layer, so it keeps ≥ 4.5:1
-/// contrast whatever shows through the panel and whatever the Opacity setting is (worst-case
-/// numbers in docs/sparkle-updates/README.md). Same continuous corners and hairline as the cards.
+/// The question over a dimmed panel, centred in it (the panel keeps its size). The dim takes
+/// clicks and hovers, so nothing under it opens by accident; a click on it just puts the card
+/// away. Same dim strength as the guided tour on `feat/stability-tour`.
+struct LoginPromptOverlay: View {
+    @ObservedObject var prompt: LoginPrompt
+    @ObservedObject private var login = LaunchAtLogin.shared
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            if prompt.isShowing {
+                Rectangle()
+                    .fill(Color.black.opacity(colorScheme == .dark ? 0.40 : 0.30))
+                    .onHover { _ in }
+                    .contentShape(Rectangle())
+                    .onTapGesture { prompt.dismiss() }
+                    .accessibilityHidden(true)
+                    .transition(.opacity)
+                LoginPromptCard(prompt: prompt)
+                    .padding(.horizontal, Design.panelInset)
+                    .transition(.opacity)
+            }
+        }
+        // Turned on somewhere else (System Settings) while the question is up: nothing to ask.
+        .onChange(of: login.status) { _, status in
+            if status == .enabled, prompt.answer == .none, prompt.isShowing { prompt.dismiss() }
+        }
+    }
+}
+
+/// The card: question, then the outcome in the same place. Sized by its content (it floats, so
+/// a change of height moves nothing else).
 struct LoginPromptCard: View {
     @ObservedObject var prompt: LoginPrompt
     @ObservedObject private var login = LaunchAtLogin.shared
 
     var body: some View {
-        // The question's layout always sets the size, so the card never resizes on answering.
-        ZStack(alignment: .leading) {
-            question
-                .opacity(prompt.answer == .none ? 1 : 0)
-                .allowsHitTesting(prompt.answer == .none)
-                .accessibilityHidden(prompt.answer != .none)
-            if prompt.answer != .none {
-                result
-            }
-        }
-        .padding(.horizontal, Design.cardPadding)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(PromptBackground())
-    }
-
-    private var question: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Open MacStats at login?").font(.callout.weight(.semibold))
-                Text("Your stats stay one click away after a restart.").font(.caption)
-            }
-            HStack(spacing: 6) {
-                Spacer()
-                Button("Not Now") { prompt.decline() }
-                    .buttonStyle(SubtleButtonStyle())
-                Button("Open at Login") { prompt.accept() }
-                    .buttonStyle(SubtleButtonStyle())
-            }
-        }
-    }
-
-    @ViewBuilder private var result: some View {
-        switch (prompt.answer, login.status) {
-        case (.accepted, .enabled):
-            message("MacStats will open at login.", "Change it any time in Settings.")
-        case (.accepted, .requiresApproval):
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
+            switch (prompt.answer, login.status) {
+            case (.none, _):
+                message("Open MacStats at login?",
+                        "Your stats stay one click away after a restart. You can change this any time in Settings.")
+                buttons {
+                    Button(action: prompt.decline) { Text("No Thanks").frame(maxWidth: .infinity) }
+                        .buttonStyle(SubtleButtonStyle())
+                    Button(action: prompt.accept) { Text("Open at Login").frame(maxWidth: .infinity) }
+                        .buttonStyle(SubtleButtonStyle(prominent: true))
+                }
+            case (.accepted, .enabled):
+                message("MacStats will open at login.", "Change it any time in Settings.")
+            case (.accepted, .requiresApproval):
                 message("One more step", "Allow MacStats in Login Items to finish.")
-                HStack {
-                    Spacer()
-                    Button("Open Login Items") { login.openLoginItems() }
+                buttons {
+                    Button(action: prompt.dismiss) { Text("Done").frame(maxWidth: .infinity) }
+                        .buttonStyle(SubtleButtonStyle())
+                    Button {
+                        login.openLoginItems()
+                        prompt.dismiss()
+                    } label: { Text("Open Login Items").frame(maxWidth: .infinity) }
+                        .buttonStyle(SubtleButtonStyle(prominent: true))
+                }
+            case (.accepted, _):
+                message("Couldn't turn it on.", "You can try again in Settings → Launch at login.")
+                buttons {
+                    Button(action: prompt.dismiss) { Text("Done").frame(maxWidth: .infinity) }
                         .buttonStyle(SubtleButtonStyle())
                 }
             }
-        case (.accepted, _):
-            message("Couldn't turn it on.", "You can try again in Settings → Launch at login.")
-        default:
-            message("No problem.", "You can turn it on any time in Settings.")
         }
+        .padding(Design.cardPadding)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(PromptSurface())
+        .animation(.snappy(duration: 0.25), value: prompt.answer)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
     }
 
     private func message(_ title: String, _ detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.callout.weight(.semibold))
-            Text(detail).font(.caption)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.headline)
+            Text(detail)
+                .font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
     }
+
+    private func buttons<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        HStack(spacing: 8) { content() }
+    }
 }
 
-/// A slightly transparent window-colour layer under the usual card tint + hairline: 90 % of
-/// `windowBackgroundColor`, enough that even a pure white (dark mode) or black (light mode)
-/// backdrop can't pull primary text under 4.5:1.
-private struct PromptBackground: View {
-    static let baseOpacity = 0.9
-
+/// The card's surface: a system material (it floats over the dimmed cards, so a plain tint
+/// would let their text show through), the cards' hairline and one soft shadow. The material
+/// turns solid by itself with Reduce Transparency. Same surface as the tour's callouts.
+private struct PromptSurface: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Design.cardCornerRadius, style: .continuous)
-        shape.fill(Color(nsColor: .windowBackgroundColor).opacity(Self.baseOpacity))
-            .overlay(CardBackground())
+        shape.fill(.regularMaterial)
+            .overlay(shape.strokeBorder(Color.primary.opacity(Design.cardHairline), lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
     }
 }
 

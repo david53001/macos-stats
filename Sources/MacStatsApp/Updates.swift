@@ -1,17 +1,21 @@
 import AppKit
 import Sparkle
+import UserNotifications
 
 /// Auto-updates via Sparkle 2 (docs/sparkle-updates/README.md).
 ///
 /// Configuration lives in `Resources/Info.plist`: `SUFeedURL` (the appcast attached to the
 /// latest GitHub release), `SUPublicEDKey` (updates must be signed with the matching EdDSA key)
 /// and `SUEnableAutomaticChecks` (check daily without first asking permission). The app is not
-/// sandboxed, so Sparkle installs in-process via its bundled `Autoupdate` / `Updater.app`; the
-/// framework's XPC services (only for sandboxed apps) are shipped, signed, but unused.
+/// sandboxed, so Sparkle installs via its bundled `Autoupdate` / `Updater.app`; the framework's
+/// XPC services (only for sandboxed apps) are removed by `Scripts/bundle.sh`.
 ///
 /// MacStats is a menu-bar app with no windows of its own, so scheduled checks use Sparkle's
-/// "gentle reminders": a found update is shown *behind* the user's windows instead of taking
-/// focus, and Settings → Updates says it's waiting until the user looks at it.
+/// "gentle reminders": a found update's window opens *behind* the user's windows instead of
+/// taking focus. So that it isn't missed, MacStats also posts one notification for it and, until
+/// the user looks at it, shows a dot on the panel's Settings gear and "Version X is available."
+/// in Settings → Updates. Clicking the notification or "Show Update…" brings Sparkle's window
+/// forward.
 @MainActor
 final class Updates: NSObject, ObservableObject {
     static let shared = Updates()
@@ -37,6 +41,8 @@ final class Updates: NSObject, ObservableObject {
 
     /// Starts the updater (and its schedule). Called once at launch.
     func start() {
+        // Clicks on our update notification come here (the alert notifications don't need any).
+        UNUserNotificationCenter.current().delegate = self
         controller.startUpdater()
         canCheckObservation = controller.updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { [weak self] updater, _ in
             let value = updater.canCheckForUpdates
@@ -44,9 +50,28 @@ final class Updates: NSObject, ObservableObject {
         }
     }
 
-    /// "Check for Updates…": always shows Sparkle's window with the result.
+    /// "Check for Updates…" / "Show Update…": shows Sparkle's window with the result, or brings
+    /// the waiting update's window forward.
     func checkForUpdates() {
+        NSApp.activate()   // a menu-bar app: otherwise the window can open behind others
         controller.checkForUpdates(nil)
+    }
+
+    nonisolated static let notificationID = "MacStats.updateAvailable"
+
+    /// One notification per scheduled find that Sparkle shows in the background. Needs the
+    /// notification permission MacStats already asks for (alerts); without it this does nothing.
+    private func postUpdateNotification(version: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "MacStats \(version) is available"
+        content.body = "Click to see what's new and install it."
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: Self.notificationID, content: content, trigger: nil))
+    }
+
+    private func clearPending() {
+        pendingVersion = nil
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [Self.notificationID])
     }
 
     /// Settings → Updates → "Check automatically" (Sparkle stores it in our defaults as
@@ -72,15 +97,31 @@ extension Updates: SPUStandardUserDriverDelegate {
                                                                state: SPUUserUpdateState) {
         guard !state.userInitiated else { return }
         let version = update.displayVersionString
-        Task { @MainActor in self.pendingVersion = version }
+        Task { @MainActor in
+            self.pendingVersion = version
+            if handleShowingUpdate { self.postUpdateNotification(version: version) }
+        }
     }
 
     nonisolated func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
-        Task { @MainActor in self.pendingVersion = nil }
+        Task { @MainActor in self.clearPending() }
     }
 
     nonisolated func standardUserDriverWillFinishUpdateSession() {
-        Task { @MainActor in self.pendingVersion = nil }
+        Task { @MainActor in self.clearPending() }
+    }
+}
+
+extension Updates: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        let isUpdate = response.notification.request.identifier == Updates.notificationID
+            && response.actionIdentifier == UNNotificationDefaultActionIdentifier
+        Task { @MainActor in
+            if isUpdate { self.checkForUpdates() }
+            completionHandler()
+        }
     }
 }
 

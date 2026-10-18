@@ -28,14 +28,27 @@ cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
 # Sparkle (auto-updates): the executable finds it through its @executable_path/../Frameworks
-# rpath (Package.swift). ditto keeps the framework's symlinks. SwiftPM also adds an rpath to its
-# own build folder (…/PackageFrameworks, searched first); drop it, so the app can only load the
-# embedded copy (and doesn't carry a path from this Mac).
-ditto "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
-otool -l "$APP/Contents/MacOS/MacStats" | awk '/cmd LC_RPATH/ { getline; getline; print $2 }' |
+# rpath (Package.swift). ditto keeps the framework's symlinks. Its XPC services are only for
+# sandboxed apps (MacStats isn't; Sparkle's docs say they may be removed then), so they go.
+FW="$APP/Contents/Frameworks/Sparkle.framework"
+ditto "$BIN_DIR/Sparkle.framework" "$FW"
+rm -rf "$FW/XPCServices" "$FW/Versions/B/XPCServices"
+
+# SwiftPM also bakes in rpaths to folders on this Mac: its build folder (…/PackageFrameworks,
+# searched first) and the Command Line Tools' Swift folders. Sparkle is the only @rpath library
+# (the Swift runtime is in /usr/lib/swift since macOS 12), so drop every absolute rpath except
+# /usr/lib/swift: the app can only load the embedded Sparkle and carries no path from this Mac.
+EXE="$APP/Contents/MacOS/MacStats"
+if otool -L "$EXE" | awk 'NR > 1 { print $1 }' | grep '^@rpath/' | grep -qv '^@rpath/Sparkle.framework/'; then
+    echo "error: a new @rpath library needs one of the rpaths removed below:" >&2
+    otool -L "$EXE" | grep '@rpath/' >&2
+    exit 1
+fi
+otool -l "$EXE" | awk '/cmd LC_RPATH/ { getline; getline; print $2 }' |
 while read -r RPATH; do
     case "$RPATH" in
-        /*/PackageFrameworks) install_name_tool -delete_rpath "$RPATH" "$APP/Contents/MacOS/MacStats" ;;
+        /usr/lib/swift) ;;
+        /*) install_name_tool -delete_rpath "$RPATH" "$EXE" ;;
     esac
 done
 

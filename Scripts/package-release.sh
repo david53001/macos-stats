@@ -14,6 +14,12 @@
 #
 # The optional notes file (Markdown) becomes both the GitHub release notes and the text Sparkle
 # shows in its update window; without one, a short default pointing to the release page is used.
+#
+# Refuses to package (each check has an override, for dry runs only):
+#   - uncommitted changes                                   ALLOW_DIRTY=1
+#   - HEAD isn't origin/main (what the release will be tagged from)   ALLOW_NOT_MAIN=1
+#   - HEAD lacks a branch listed in MUST_CONTAIN below      ALLOW_MISSING_BRANCHES=1
+#   - a GitHub release with this tag already exists         (no override: bump the version)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$ROOT/dist"
@@ -30,6 +36,48 @@ TAG="v$VERSION"
 [ -x "$SPARKLE_BIN/sign_update" ] || { echo "error: Sparkle tools not found in $SPARKLE_BIN" >&2; exit 1; }
 [[ "$BUILD" =~ ^[0-9]+$ ]] || { echo "error: CFBundleVersion must be a whole number (got '$BUILD')" >&2; exit 1; }
 [ -z "$NOTES_FILE" ] || [ -f "$NOTES_FILE" ] || { echo "error: notes file '$NOTES_FILE' not found" >&2; exit 1; }
+
+# What gets packaged must be exactly what is committed and pushed to main.
+if [ -n "$(git -C "$ROOT" status --porcelain)" ] && [ "${ALLOW_DIRTY:-0}" != 1 ]; then
+    echo "error: uncommitted changes (git status); commit them first, or ALLOW_DIRTY=1 for a dry run" >&2
+    exit 1
+fi
+if [ "${ALLOW_NOT_MAIN:-0}" != 1 ]; then
+    git -C "$ROOT" fetch -q origin main || { echo "error: can't fetch origin/main to compare with HEAD" >&2; exit 1; }
+    if [ "$(git -C "$ROOT" rev-parse HEAD)" != "$(git -C "$ROOT" rev-parse origin/main)" ]; then
+        echo "error: HEAD is not origin/main; merge and push first, or ALLOW_NOT_MAIN=1 for a dry run" >&2
+        exit 1
+    fi
+fi
+
+# Branches whose features the owner already runs (installed from them) but that aren't on main
+# yet. A release without them would take those features away from every copy Sparkle updates.
+# Checked only where the branch exists (locally or as origin/<name>); remove a name once it's
+# merged into main for good. Details: docs/sparkle-updates/README.md, STATUS / NEXT STEPS.
+MUST_CONTAIN=(feat/stability-tour)
+if [ "${ALLOW_MISSING_BRANCHES:-0}" != 1 ]; then
+    for BRANCH in "${MUST_CONTAIN[@]}"; do
+        for REF in "refs/heads/$BRANCH" "refs/remotes/origin/$BRANCH"; do
+            git -C "$ROOT" rev-parse -q --verify "$REF" >/dev/null || continue
+            if ! git -C "$ROOT" merge-base --is-ancestor "$REF" HEAD; then
+                echo "error: HEAD doesn't contain $REF; merge it first (or ALLOW_MISSING_BRANCHES=1 for a dry run)" >&2
+                exit 1
+            fi
+        done
+    done
+fi
+
+if ! command -v gh >/dev/null; then
+    echo "error: gh (GitHub CLI) not found; it's needed to check for and publish the release" >&2
+    exit 1
+fi
+if GH_OUT="$(gh release view "$TAG" --repo "$REPO" 2>&1)"; then
+    echo "error: release $TAG already exists on $REPO; bump CFBundleShortVersionString in $PLIST" >&2
+    exit 1
+elif ! grep -qi "not found" <<<"$GH_OUT"; then
+    echo "error: couldn't check whether release $TAG exists: $GH_OUT" >&2
+    exit 1
+fi
 
 # Sparkle only offers an update whose CFBundleVersion is higher than the installed one, so
 # refuse a build number that isn't above the currently published feed's (best effort: skipped
@@ -71,7 +119,7 @@ cat > "$DIST/appcast.xml" <<XML
       <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>$MIN_OS</sparkle:minimumSystemVersion>
       <description sparkle:format="markdown"><![CDATA[
-$(cat "$NOTES_OUT")
+$(sed 's/]]>/]]]]><![CDATA[>/g' "$NOTES_OUT")
 ]]></description>
       <enclosure url="https://github.com/$REPO/releases/download/$TAG/MacStats.app.zip"
                  type="application/octet-stream" $SIGNATURE_ATTRS />
