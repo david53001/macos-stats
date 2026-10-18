@@ -4,7 +4,7 @@ import MacStatsCore
 
 /// Top of the popover. Shows the overview, or the drill-in when a breakdown is active.
 /// Owns the popover open/close lifecycle that drives the refresh pipeline, and hosts the
-/// guided tour over the overview.
+/// guided tour and the one-time login question over it (never both at once: `AppModel`).
 struct RootView: View {
     @ObservedObject var model: AppModel
     /// Observed directly. The drill-in switch below depends on `store.activeBreakdownMetric`,
@@ -13,6 +13,8 @@ struct RootView: View {
     @ObservedObject var store: MetricsStore
     /// Observed here only (not by the overview), so a tour step never re-renders the cards.
     @ObservedObject var tour: TourController
+    /// The one-time "Open MacStats at login?" card over the screens (`LoginPrompt.swift`).
+    @ObservedObject var loginPrompt: LoginPrompt
     /// The in-popover Settings screen (pushed from the overview footer); reset on close.
     @State private var showingSettings = false
     /// The open breakdown shows the "Click to expand · Right-click to quit" hint (first few drill-ins).
@@ -21,7 +23,8 @@ struct RootView: View {
     var body: some View {
         // Both screens have the same fixed size, so the window never resizes; switching
         // between them is an Apple-style push (breakdown slides in from the trailing edge,
-        // the overview drifts back a little and fades), clipped to the panel.
+        // the overview drifts back a little and fades), clipped to the panel. The login card,
+        // when due, floats over them inside that same frame: it never changes the window's size.
         ZStack {
             if showingSettings {
                 SettingsView(onTour: replayFromSettings, onBack: { showingSettings = false })
@@ -48,11 +51,15 @@ struct RootView: View {
         }
         .frame(width: Design.panelWidth, height: Design.panelHeight)
         .tourHost(tour, showing: !showingSettings && store.activeBreakdownMetric == nil)
+        .environment(\.loginPromptActive, loginPrompt.isShowing)
+        .overlayPreferenceValue(LoginPromptAnchorKey.self) { LoginPromptOverlay(prompt: loginPrompt, anchors: $0) }
         .clipped()
         .background(PanelBackdrop())   // the Opacity setting (Appearance.swift)
         .background(PanelWindowObserver { model.panelWindowChanged($0) })
         .animation(.snappy(duration: 0.3), value: store.activeBreakdownMetric)
         .animation(.snappy(duration: 0.3), value: showingSettings)
+        // A tour started during this open (chip, `?`, Settings → General → Take the Tour): the open isn't a use.
+        .onChange(of: tour.isActive) { _, active in if active { loginPrompt.tourShown() } }
         // The tour pauses and resumes with the refresh pipeline's open/closed (`AppModel`), which
         // also follows the window, not only these.
         .onAppear { model.setPanelAppeared(true) }

@@ -1,25 +1,55 @@
 import Foundation
 import ServiceManagement
+import MacStatsCore
 
-/// Enrolls MacStats to launch at login — exactly once. The first launch registers the app
-/// via `SMAppService`; a UserDefaults flag records that we've done so, so if the user later
-/// removes MacStats from System Settings → General → Login Items, we never re-add it.
+/// Launch at login, via `SMAppService.mainApp`. MacStats never turns it on by itself: the user
+/// does, with the Settings switch or by answering the one-time "Open MacStats at login?" card
+/// (`LoginPrompt.swift`, rules in `MacStatsCore/LaunchAtLoginPrompt.swift`). Up to 1.0.x the
+/// first launch registered silently (flag `didRegisterLoginItem`); that is gone, and the flag is
+/// now only read, to keep from asking those users.
+///
+/// The system's status is the only source of truth (no mirrored flag); both the switch and the
+/// card observe this one object, so they always agree.
 ///
 /// Only effective for the bundled, signed `MacStats.app` (the API keys off the app bundle and
 /// its code signature); the bare `swift build` binary can't register and fails harmlessly.
-enum LoginItem {
-    private static let didRegisterKey = "didRegisterLoginItem"
+@MainActor
+final class LaunchAtLogin: ObservableObject {
+    static let shared = LaunchAtLogin()
 
-    /// Register at login on first launch only. Safe to call on every launch.
-    static func registerOnce() {
-        let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: didRegisterKey) else { return }
+    /// The system's current record for MacStats (`.enabled`, `.notRegistered`, `.requiresApproval`, …).
+    @Published private(set) var status: SMAppService.Status = SMAppService.mainApp.status
+
+    private init() {}
+
+    /// Re-reads the status (the user may have changed it in System Settings → Login Items).
+    func refresh() {
+        let current = SMAppService.mainApp.status
+        if current != status { status = current }
+    }
+
+    /// Turns launch at login on or off, then publishes the real status, so a failed call leaves
+    /// the switch showing what the system actually has. Any explicit choice also counts as the
+    /// answer to the one-time question, so the card never asks someone who already chose.
+    @discardableResult
+    func setEnabled(_ enabled: Bool) -> SMAppService.Status {
+        LaunchAtLoginPrompt().markAsked()
         do {
-            try SMAppService.mainApp.register()
-            defaults.set(true, forKey: didRegisterKey)   // only record success, so an unbundled run can retry
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
         } catch {
-            // A login-item failure must never crash or interrupt launch (e.g. the unbundled binary).
-            NSLog("MacStats: launch-at-login registration failed: \(error.localizedDescription)")
+            // Never fatal (e.g. the unbundled binary); the status read below shows the outcome.
+            NSLog("MacStats: launch-at-login \(enabled ? "register" : "unregister") failed: \(error.localizedDescription)")
         }
+        refresh()
+        return status
+    }
+
+    /// System Settings → General → Login Items, where macOS asks for approval when needed.
+    func openLoginItems() {
+        SMAppService.openSystemSettingsLoginItems()
     }
 }

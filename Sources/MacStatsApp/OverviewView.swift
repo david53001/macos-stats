@@ -42,6 +42,7 @@ struct OverviewView: View {
             .help("Click to see which apps use memory \u{00B7} The dot turns yellow when your Mac runs low, "
                   + "red when very low (macOS\u{2019}s memory pressure)")
             .tourAnchor("overview.memory", radius: Design.cardCornerRadius)
+            .loginPromptAnchor()   // the login question covers Memory + Network (LoginPrompt.swift)
             StatCard(label: "Network", value: networkValue,
                      number: store.cardNetwork?.downBytesPerSec ?? 0, meta: networkMeta) {
                 // Dynamic scale with a 10 KB/s floor, so an idle link draws flat.
@@ -50,6 +51,7 @@ struct OverviewView: View {
             }
             .help("↓ download and ↑ upload speed, right now")
             .tourAnchor("overview.network", radius: Design.cardCornerRadius)
+            .loginPromptAnchor()
             StatCard(label: "Battery", value: batteryValue,
                      number: Double(store.battery?.percent ?? 0), meta: batteryMeta,
                      onTap: store.battery == nil ? nil : { onSelect(.energy) }) {

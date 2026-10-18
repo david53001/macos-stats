@@ -68,7 +68,7 @@ public enum TourCatalog {
     public static let takeTheTour = "Take the Tour"
     public static let buttons = [noThanks, showMeAround, skipTour, back, next, done, takeTheTour]
 
-    /// Settings → Help (the button beside it says Take the Tour).
+    /// Settings → General, last row (the button beside it says Take the Tour).
     public static let helpRow = "What each card shows"
 }
 

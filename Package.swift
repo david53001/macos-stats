@@ -4,6 +4,11 @@ import PackageDescription
 let package = Package(
     name: "MacStats",
     platforms: [.macOS(.v14)],
+    dependencies: [
+        // Auto-updates (docs/sparkle-updates/README.md). Exact pin: the bundled framework,
+        // the release tools in ~/Developer/Sparkle/2.10.0 and the appcast format must agree.
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.0"),
+    ],
     targets: [
         .target(
             name: "CAppleSensors",
@@ -12,7 +17,9 @@ let package = Package(
         .target(name: "MacStatsCore", dependencies: ["CAppleSensors"]),
         .executableTarget(
             name: "MacStatsApp",
-            dependencies: ["MacStatsCore"]
+            dependencies: ["MacStatsCore", .product(name: "Sparkle", package: "Sparkle")],
+            // Sparkle.framework is embedded in MacStats.app/Contents/Frameworks by bundle.sh.
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]
         ),
         .testTarget(
             name: "MacStatsCoreTests",

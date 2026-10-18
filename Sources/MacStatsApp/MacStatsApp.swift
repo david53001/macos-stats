@@ -14,6 +14,9 @@ final class AppModel: ObservableObject {
     let store = MetricsStore(historyWindow: 60)
     /// The welcome card, guided tour and their persistence (`TourController`).
     private(set) lazy var tour = TourController(hasBattery: { [store] in store.battery != nil })
+    /// The one-time "Open MacStats at login?" card (`LoginPrompt.swift`); kept off while the tour
+    /// is on screen (see `updateVisibility`).
+    let loginPrompt = LoginPrompt()
 
     private var timer: Timer?                    // open-popover tick (one-shot, rescheduled)
     private var idleTimer: Timer?                // closed-popover sampler (repeating)
@@ -118,15 +121,19 @@ final class AppModel: ObservableObject {
     private let alertsEnabled = true            // no Settings UI yet; default on
 
     init() {
-        LoginItem.registerOnce()
+        // Launch at login is no longer turned on silently at first launch: `loginPrompt` asks once.
         if tour.defersPermissionPrompts {
             // A new user: the welcome card explains both prompts first, then they fire.
             tour.onIntroFinished = { [weak self] in
+                #if !SPARKLE_E2E_TEST   // the update test build (docs/sparkle-updates) must not leave a prompt behind
                 self?.notifier.requestAuthorization()
+                #endif
                 self?.refreshTrashSize()
             }
         } else {
+            #if !SPARKLE_E2E_TEST
             notifier.requestAuthorization()
+            #endif
         }
         Keys.legacy.forEach(UserDefaults.standard.removeObject(forKey:))
         store.pausePublishing()   // closed: record without re-rendering (see setVisibility)
@@ -163,7 +170,11 @@ final class AppModel: ObservableObject {
             panelShown = shown
             if shown {
                 tour.panelOpened()
+                // After the tour has decided: its welcome, a resumed step or its chip keep the
+                // login card for a later open.
+                loginPrompt.panelOpened(tourActive: tour.isActive, offersTour: tour.offersTour)
             } else {
+                loginPrompt.panelClosed()
                 tour.panelClosed()
                 exitBreakdown()   // stop per-process scanning + clear nav state
             }

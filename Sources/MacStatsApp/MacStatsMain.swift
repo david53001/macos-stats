@@ -12,18 +12,21 @@ struct MacStatsApp: App {
             bundleID: Bundle.main.bundleIdentifier)
         let model = AppModel()
         _model = StateObject(wrappedValue: model)
+        Updates.shared.start()
         // Hovering the menu-bar icon takes a fresh sample, so a click opens on current numbers.
         StatusItemHover.install { model.prewarm() }
         // A new user hasn't found the icon yet: open the panel once (the welcome card points at
         // it), as soon as the hover hook has found the status button.
+        #if !SPARKLE_E2E_TEST   // the update test's throwaway copy (docs/sparkle-updates) stays closed
         if TourController.welcomePending() {
             StatusItemHover.openPanelWhenFound()
         }
+        #endif
     }
 
     var body: some Scene {
         MenuBarExtra {
-            RootView(model: model, store: model.store, tour: model.tour)
+            RootView(model: model, store: model.store, tour: model.tour, loginPrompt: model.loginPrompt)
         } label: {
             MenuBarLabel()
         }
