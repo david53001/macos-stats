@@ -42,7 +42,12 @@ bash $P/probe.sh $R /tmp/macstats-probe $P/ProbeScenarios-screens.swift
 ```
 
 On the integration branch (`integrate/stability-tour-sparkle`, which has the guided tour) use
-`ProbeScenarios-tour.swift` from its copy of this folder: same scenarios plus the tour/chip cases.
+`ProbeScenarios-tour.swift` (only in that branch's copy of this folder): the guided-tour part
+(chip, tour started, tour resumed + skipped: no card, tour opens not uses), then the same M1 and
+Return parts, plus **M1 guard**: with the card up, Settings is forced under it from code and Esc
+must still answer the card (the Settings/breakdown back buttons drop their Esc while the card is
+up). The new-user run: `PROBE_SCENARIO=welcome bash $P/probe.sh $R /tmp/macstats-probe-welcome
+$P/ProbeScenarios-tour.swift $P/seed-welcome.sh` (welcome card first, the card only after it).
 
 ## Log columns
 
@@ -83,3 +88,22 @@ R3-after-return | asked=Y showing=Y login=3 -> Return (Done): showing=n
 ```
 
 Frame 320x404 on every line. Not checked here: the dim click (screen locked, see above).
+
+## Results 2026-10-18, `integrate/stability-tour-sparkle` (screen locked, light and dark identical)
+
+`results-integration/probe-{light,dark}.log`, `welcome-{light,dark}.log`;
+`light-G1-settings-under-card.png`, `light-T7-settings.png` (GENERAL ends with "Guided tour"),
+`dark-S2-reopened.png`.
+
+```
+openT1-chip  | uses=3 showing=n chip=Y   -> closedT1-chip uses=4      (chip: no card, a use)
+openT2-tour  | tour=Y                    -> closedT2 uses=4           (tour: not a use)
+T3-after-skip| showing=n                 -> closedT3 uses=4           (resumed + skipped: no card)
+closedT4     | uses=5 showing=Y                                       (5th real use: due)
+openS2       | showing=Y screen=overview -> S2-after-esc asked=Y showing=n   (M1, Settings)
+openB2       | showing=Y screen=overview -> B2-after-esc asked=Y showing=n   (M1, breakdown)
+G1-settings-under-card | showing=Y screen=settings
+G1-after-esc | asked=Y showing=n screen=settings                      (Esc answered the card; Settings stayed)
+R1/R2/R3     | as on feat/sparkle-updates
+welcome: openW1/openW2 tour=Y showing=n (blocked); openW3 showing=Y; closedW3 asked=Y
+```

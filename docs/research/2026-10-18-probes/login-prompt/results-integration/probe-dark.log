@@ -1,0 +1,78 @@
+  # scenario basic
+launch | uses=4 asked=n quick=0 showing=n visible=n key=n frame=nil breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+  # screen locked: posting the panel's occlusion notification after each toggle
+open1 | uses=4 asked=n quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closed1 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+open2 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+after-dim-click | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closed2 | uses=5 asked=n quick=1 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+open3 | uses=5 asked=n quick=1 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closed3 | uses=5 asked=n quick=2 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+open4 | uses=5 asked=n quick=2 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closed4 | uses=5 asked=Y quick=3 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+open5 | uses=5 asked=Y quick=3 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+after-ctl-click | uses=5 asked=Y quick=3 showing=n visible=Y key=n frame=320x404 breakdown=cpu screen=breakdown answer=none login=0 chip=n tour=n
+closed5 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+open6 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+after-esc | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closed6 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+open7 | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closed7 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+open8 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closed8 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+open9 | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closed9 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+  # tour part: uses=3, chip offered
+openT1-chip | uses=3 asked=n quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=Y tour=n
+closedT1-chip | uses=4 asked=n quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=Y tour=n
+openT2-tour | uses=4 asked=n quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=Y
+closedT2 | uses=4 asked=n quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openT3-resumed | uses=4 asked=n quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=Y
+T3-after-skip | uses=4 asked=n quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closedT3 | uses=4 asked=n quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openT4 | uses=4 asked=n quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closedT4 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openT5 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+T5-after-dim | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closedT5 | uses=5 asked=n quick=1 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openT6 | uses=5 asked=n quick=1 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closedT6 | uses=5 asked=Y quick=1 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openT7-settings | uses=5 asked=Y quick=1 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=settings answer=none login=0 chip=n tour=n
+closedT7 | uses=5 asked=Y quick=1 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+  # M1: close from Settings, reopen with the card due, Esc
+openS1 | uses=5 asked=Y quick=1 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+S1-navigated | uses=5 asked=Y quick=1 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=settings answer=none login=0 chip=n tour=n
+closedS1 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openS2 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+S2-after-esc | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closedS2 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+  # M1: close from the CPU breakdown, reopen with the card due, Esc
+openB1 | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+B1-navigated | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=cpu screen=breakdown answer=none login=0 chip=n tour=n
+closedB1 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openB2 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+B2-after-esc | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closedB2 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+  # M1 guard: card up, Settings forced under it, Esc
+openG0 | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closedG0 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openG1 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+G1-settings-under-card | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=settings answer=none login=0 chip=n tour=n
+G1-after-esc | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=settings answer=none login=0 chip=n tour=n
+closedG1 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+  # Return on the card (login-item service stubbed)
+openR0 | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closedR0 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openR1 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+R1-after-return | uses=5 asked=Y quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=1 chip=n tour=n
+R1-later | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=1 chip=n tour=n
+closedR1 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openR2 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+R2-after-return | uses=5 asked=Y quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=2 chip=n tour=n
+  # stub: openSystemSettingsLoginItems
+R2-after-open-login-items | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=2 chip=n tour=n
+closedR2 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openR3 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+R3-after-return | uses=5 asked=Y quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=3 chip=n tour=n
+R3-after-done | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=3 chip=n tour=n
+closedR3 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n

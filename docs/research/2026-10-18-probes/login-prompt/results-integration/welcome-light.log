@@ -1,0 +1,14 @@
+  # scenario welcome
+launch | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=nil breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+  # screen locked: posting the panel's occlusion notification after each toggle
+openW1-welcome | uses=5 asked=n quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=Y
+closedW1-welcome | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openW2-welcome | uses=5 asked=n quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=Y
+W2-after-nothanks | uses=5 asked=n quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closedW2 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openW3 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closedW3 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openW4 | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+closedW4 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n
+openW5-settings | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=settings answer=none login=0 chip=n tour=n
+closedW5 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0 chip=n tour=n

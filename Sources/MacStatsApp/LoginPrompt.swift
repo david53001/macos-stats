@@ -83,8 +83,9 @@ final class LoginPrompt: ObservableObject {
 /// The question over a dimmed panel (the panel keeps its size). The card covers the Memory and
 /// Network cards edge to edge (their bounds come from `.loginPromptAnchor()` in the overview), so
 /// its edges line up with the cards' and no value is cut in half (centred if they ever aren't on
-/// screen; `LoginCardGate` keeps the card to the overview). The dim takes clicks and hovers, so nothing under it opens by accident; a click on it
-/// just puts the card away. Same dim strength as the guided tour on `feat/stability-tour`.
+/// screen; `LoginCardGate` keeps the card to the overview). The dim takes clicks and hovers, so
+/// nothing under it opens by accident; a click on it just puts the card away. Same dim strength as
+/// the guided tour on `feat/stability-tour`.
 ///
 /// Launch at login turned on elsewhere (System Settings) while the card is up isn't watched: the
 /// status is re-read whenever the panel closes (opening System Settings closes it), and the card
