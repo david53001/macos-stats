@@ -68,8 +68,9 @@ public enum TourCatalog {
     public static let takeTheTour = "Take the Tour"
     public static let buttons = [noThanks, showMeAround, skipTour, back, next, done, takeTheTour]
 
-    /// Settings → General, last row (the button beside it says Take the Tour).
-    public static let helpRow = "What each card shows"
+    /// Settings → General, last row (the button beside it says Take the Tour). Named like the
+    /// other setting rows ("Launch at login"), since it sits in GENERAL.
+    public static let helpRow = "Guided tour"
 }
 
 /// What the app should do after a tour action.

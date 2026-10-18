@@ -1,0 +1,54 @@
+  # scenario basic
+launch | uses=4 asked=n quick=0 showing=n visible=n key=n frame=nil breakdown=nil screen=overview answer=none login=0
+  # screen locked: posting the panel's occlusion notification after each toggle
+open1 | uses=4 asked=n quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+closed1 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+open2 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+after-dim-click | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+closed2 | uses=5 asked=n quick=1 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+open3 | uses=5 asked=n quick=1 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+closed3 | uses=5 asked=n quick=2 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+open4 | uses=5 asked=n quick=2 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+closed4 | uses=5 asked=Y quick=3 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+open5 | uses=5 asked=Y quick=3 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+after-ctl-click | uses=5 asked=Y quick=3 showing=n visible=Y key=n frame=320x404 breakdown=cpu screen=breakdown answer=none login=0
+closed5 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+open6 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+after-esc | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+closed6 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+open7 | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+closed7 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+open8 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+closed8 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+open9 | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+closed9 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+  # M1: close from Settings, reopen with the card due, Esc
+openS1 | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+S1-navigated | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=settings answer=none login=0
+closedS1 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+openS2 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+S2-after-esc | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+closedS2 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+  # M1: close from the CPU breakdown, reopen with the card due, Esc
+openB1 | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+B1-navigated | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=cpu screen=breakdown answer=none login=0
+closedB1 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+openB2 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+B2-after-esc | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+closedB2 | uses=5 asked=Y quick=0 showing=n visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+  # Return on the card (login-item service stubbed)
+openR0 | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+closedR0 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+openR1 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+R1-after-return | uses=5 asked=Y quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=1
+R1-later | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=1
+closedR1 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+openR2 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+R2-after-return | uses=5 asked=Y quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=2
+  # stub: openSystemSettingsLoginItems
+R2-after-open-login-items | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=2
+closedR2 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+openR3 | uses=5 asked=n quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=none login=0
+R3-after-return | uses=5 asked=Y quick=0 showing=Y visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=3
+R3-after-done | uses=5 asked=Y quick=0 showing=n visible=Y key=n frame=320x404 breakdown=nil screen=overview answer=accepted login=3
+closedR3 | uses=5 asked=n quick=0 showing=Y visible=n key=n frame=320x404 breakdown=nil screen=overview answer=none login=0

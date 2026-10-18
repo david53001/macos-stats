@@ -7,6 +7,8 @@ import MacStatsCore
 struct SettingsView: View {
     var onTour: () -> Void = {}
     let onBack: () -> Void
+    /// The login card is up over the panel: its No Thanks owns Esc then.
+    @Environment(\.loginPromptActive) private var loginPromptActive
 
     var body: some View {
         VStack(spacing: Design.cardSpacing) {
@@ -19,7 +21,7 @@ struct SettingsView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .keyboardShortcut(.cancelAction)   // Esc goes back
+                .keyboardShortcut(loginPromptActive ? nil : .cancelAction)   // Esc goes back
                 Spacer()
             }
 
@@ -132,7 +134,7 @@ private struct UpdatesCard: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 Spacer(minLength: 8)
-                Button(updates.pendingVersion == nil ? "Check for Updates…" : "Show Update…") {
+                Button(updates.actionTitle) {
                     updates.checkForUpdates()
                 }
                 .buttonStyle(SubtleButtonStyle())   // like Default and Take the Tour (squircle pass)

@@ -20,6 +20,8 @@ struct BreakdownView: View {
     let onBack: () -> Void
     /// A row's context menu opened (the quit hint has done its job).
     var onMenuUsed: () -> Void = {}
+    /// The login card is up over the panel: its No Thanks owns Esc then.
+    @Environment(\.loginPromptActive) private var loginPromptActive
 
     /// Names + small icons, resolved once per app/process and freed when the breakdown closes.
     @StateObject private var apps: AppInfoCache
@@ -94,7 +96,7 @@ struct BreakdownView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .keyboardShortcut(.cancelAction)   // Esc goes back
+                .keyboardShortcut(loginPromptActive ? nil : .cancelAction)   // Esc goes back
                 Spacer()
                 Text(liveTotal)
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()

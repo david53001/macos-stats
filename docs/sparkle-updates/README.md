@@ -80,17 +80,29 @@ Before: 1.0.x turned launch at login on silently at first launch (`LoginItem.reg
 flag `didRegisterLoginItem`). That is **removed**. Now:
 
 - A **use** = one open of the menu-bar panel that stayed on screen ≥ 1 s (a click-and-close
-  glance doesn't count). Opens are tracked from the panel window's occlusion notifications
-  (`isVisible`), because SwiftUI `onAppear`/`onDisappear` don't follow a `MenuBarExtra` window
-  reliably (finding from `feat/stability-tour`, `docs/research/2026-10-06-probes/visibility/` there).
+  glance doesn't count). Opens and closes follow the panel's **window**, because SwiftUI
+  `onAppear`/`onDisappear` don't follow a `MenuBarExtra` window reliably (finding from
+  `feat/stability-tour`, `docs/research/2026-10-06-probes/visibility/` there). On the branch that
+  ships (`integrate/stability-tour-sparkle`, below) that is `AppModel.updateVisibility`: open =
+  SwiftUI showed the content (`onAppear`) and the window is ordered in, read from the window's
+  occlusion and became-key notifications (`PanelWindowObserver` in `RootView.swift`); it tells the
+  tour first, then `LoginPrompt.panelOpened` / `panelClosed`. On `feat/sparkle-updates` alone,
+  `PanelVisibilityObserver` (occlusion notifications, `isVisible`) calls
+  `AppModel.panelVisibilityChanged`, which does the same minus the tour.
+- **Every close returns the panel to the overview** (Settings and any breakdown are reset in
+  `AppModel` at the close; `onDisappear` used to do it and didn't fire), and the card is shown
+  **only over the overview** (`LoginCardGate`, MacStatsCore, tested): an open that lands anywhere
+  else keeps it due for a later open. Round 3 found the card sitting over Settings after a close
+  from there, where Esc went back under the card.
 - After the **5th** use, the **next** open shows the question: a card **floating over the panel's
   own content**, covering the Memory and Network cards edge to edge (their bounds come from
-  `.loginPromptAnchor()` in `OverviewView`; its text is centred vertically in that height, and it
-  is centred in the panel if those cards aren't on screen), so no value is cut in half, over a dim (black 30 % light / 40 % dark, as the guided tour on
+  `.loginPromptAnchor()` in `OverviewView`; its text is centred vertically in that height; a
+  centred fallback exists but the gate keeps the card to the overview), so no value is cut in half, over a dim (black 30 % light / 40 % dark, as the guided tour on
   `feat/stability-tour`): "Open MacStats at login?" / "Your stats stay one click away after a
   restart. You can change this any time in Settings." with **No Thanks** and **Open at Login**
   (accent-filled, the primary action). It is drawn *inside* the panel's fixed 320 × 404 pt frame
-  (`RootView`: `screens.overlay { LoginPromptOverlay }`), so **the window never changes size**
+  (`RootView`: `.overlayPreferenceValue(LoginPromptAnchorKey.self) { LoginPromptOverlay(…) }`),
+  so **the window never changes size**
   (round 1 found the old card-above-the-screens layout left the window 494 pt tall for good). It
   is decided while the panel is closed, so it's there from the open's first frame. It's inside the
   panel the user just opened, not a window or alert, so it can't take focus from typing.
@@ -106,6 +118,9 @@ flag `didRegisterLoginItem`). That is **removed**. Now:
   opening System Settings closes it). Nothing watches it while the card is up.
 - **Keyboard**, as in a macOS alert: Return = the accent button (Open at Login, Open Login Items;
   Done when it's the only button), Esc = No Thanks / Done. (Esc used to close the whole panel.)
+  The screens under the card give up their own Esc while it is up (on the integration branch the
+  Settings and breakdown back buttons use `.keyboardShortcut(loginPromptActive ? nil : .cancelAction)`),
+  so Esc can only ever mean the card's button.
 - **When it counts as asked** (`LaunchAtLoginPromptSession`, MacStatsCore, unit-tested): on an
   answer, or once the card has been on screen ≥ 1 s (then closing the panel or clicking the dim
   uses it up). A glance (click-and-close, or a click on the dim within 1 s) leaves it due for the
@@ -139,15 +154,22 @@ flag `didRegisterLoginItem`). That is **removed**. Now:
 | `didRegisterLoginItem` | Bool | Legacy, **read only**: 1.0.x auto-enabled launch at login |
 
 Code: rules + open/close cycle (pure, tested) `Sources/MacStatsCore/LaunchAtLoginPrompt.swift`
-(`LaunchAtLoginPrompt`, `LaunchAtLoginPromptSession`); tests
-`Tests/MacStatsCoreTests/LaunchAtLoginPromptTests.swift`; overlay + card + model + window observer
-`Sources/MacStatsApp/LoginPrompt.swift`; `LaunchAtLogin` object `Sources/MacStatsApp/LoginItem.swift`;
+(`LaunchAtLoginPrompt`, `LaunchAtLoginPromptSession`); which opens may show the card and which
+are uses (pure, tested) `Sources/MacStatsCore/LoginCardGate.swift`; tests
+`Tests/MacStatsCoreTests/LaunchAtLoginPromptTests.swift`, `Tests/MacStatsCoreTests/LoginCardGateTests.swift`;
+overlay + card + model `Sources/MacStatsApp/LoginPrompt.swift` (on `feat/sparkle-updates` alone also
+`PanelVisibilityObserver`); open/close + the reset to the overview `AppModel` in
+`Sources/MacStatsApp/MacStatsApp.swift`; `LaunchAtLogin` object `Sources/MacStatsApp/LoginItem.swift`;
 placement `Sources/MacStatsApp/RootView.swift`; `SubtleButtonStyle(prominent:)` in `StatCard.swift`.
 
 To see the card on a dev build without waiting for 5 uses (only on a Mac where you're happy to
 change MacStats' own settings): `defaults write com.macstats.MacStats launchAtLoginPromptUses -int 5;
 defaults delete com.macstats.MacStats launchAtLoginPromptAsked; defaults delete com.macstats.MacStats launchAtLoginPromptQuickDismissals; defaults delete com.macstats.MacStats didRegisterLoginItem`,
 make sure launch at login is off, relaunch, open the panel.
+
+**Live probe** (drives the real panel of a scratch copy with its own bundle id; re-run it after
+any change to the card or the open/close wiring): `docs/research/2026-10-18-probes/login-prompt/`
+(`README.md` there has the commands and the last results).
 
 ## Where the keys live (and their backups)
 
@@ -171,9 +193,9 @@ make sure launch at login is off, relaunch, open the panel.
 
 ## How to cut a release (step by step)
 
-All from the repo root on `main`, with this branch **and `feat/stability-tour`** merged (see
-STATUS / NEXT STEPS: a release without the stability-tour work would take features away from the
-copy the owner runs):
+All from the repo root on `main`, with this branch, **`feat/stability-tour`** (via
+`integrate/stability-tour-sparkle`) **and `fix/battery-health`** merged (see STATUS / NEXT STEPS:
+a release without them would take features away from the copy the owner runs; the script refuses):
 
 ```bash
 cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
@@ -211,7 +233,7 @@ Guards (it refuses before building; the overrides are for dry runs only, never f
 |---|---|
 | `git status --porcelain` is not empty (uncommitted or untracked files) | `ALLOW_DIRTY=1` |
 | `HEAD` isn't `origin/main` (after `git fetch origin main`) | `ALLOW_NOT_MAIN=1` |
-| `HEAD` doesn't contain a branch in the script's `MUST_CONTAIN` list (now `feat/stability-tour`, checked as a local and an `origin/` branch where they exist) | `ALLOW_MISSING_BRANCHES=1` |
+| `HEAD` doesn't contain a branch in the script's `MUST_CONTAIN` list (now `feat/stability-tour` and `fix/battery-health`, each checked as a local and an `origin/` branch where they exist; the tip at release time, so later commits on them count too) | `ALLOW_MISSING_BRANCHES=1` |
 | a GitHub release with tag `vX.Y.Z` already exists (`gh release view`), or `gh` can't tell | none: bump the version |
 | `CFBundleVersion` isn't a whole number, or isn't above the published appcast's | none |
 
@@ -236,6 +258,7 @@ Every installed copy reads `releases/latest/download/appcast.xml`: GitHub serves
 cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/sparkle-updates   # or the repo root after merging
 ./Scripts/sparkle-e2e-test.sh              # temp dir, deleted afterwards
 KEEP=1 ./Scripts/sparkle-e2e-test.sh /some/dir   # keep logs/builds for inspection
+E2E_UI=1 ./Scripts/sparkle-e2e-test.sh     # the path real users take, through Sparkle's windows
 ```
 
 It needs the "MacStats Code Signing" identity and the Sparkle key in the Keychain, takes about a
@@ -272,11 +295,27 @@ GOOD update installed (build 101): PASS
 BAD signature refused (still build 100): PASS
 ```
 
+**`E2E_UI=1` (UI mode)**: the OLD copy has no `SUAutomaticallyUpdate` and runs with
+`SPARKLE_E2E_UI=1`, which turns on `Sources/MacStatsApp/SparkleE2EUI.swift` (compiled only into
+the `-DSPARKLE_E2E_TEST` build; ported from JVoice / BetterScreenshot). The scheduled check must
+set `pendingVersion` (= the gear dot and "Show Update…"), post the "MacStats X is available"
+notification request and open Sparkle's update window: behind other windows without taking focus,
+or in front when Sparkle chose "immediate focus" (it does right after launch or when the Mac is
+idle, and then reports the user's attention at once). The driver then does what Show Update…
+does, clicks **Install Update** and **Install and Relaunch** in Sparkle's own windows and the script
+checks the installed copy is build 101, passes `codesign --verify --deep --strict` and is running
+again. The test app's windows are made fully transparent (nothing shows on screen) and it hands
+keyboard focus back to the app that was in front; snapshots of Sparkle's windows go to
+`<work-dir>/ui/` (keep them with `KEEP=1`). The notification is requested but not shown: the test
+build never asks for the notification permission.
+
 ### Manual checklist for the first real update (1.2.0 → 1.2.1)
 
-The end-to-end test sets `SUAutomaticallyUpdate` and installs at once; real users get Sparkle's
-window instead. The first time a real later release exists, check on a Mac running the previous
-release (owner):
+The UI mode above covers Sparkle's windows, the dot/"Show Update…" state and Install and
+Relaunch on a throwaway copy. What only a real release on the owner's Mac shows (owner, hard gate
+for 1.2.1): the notification on screen and its click, the window really opening *behind* the
+frontmost app (the UI mode usually gets "immediate focus"), the gear dot on real glass, and the
+Finder permission surviving the update. On a Mac running the previous release:
 
 1. Wait for (or force: `defaults write com.macstats.MacStats SULastCheckTime -date "2000-01-01 00:00:00 +0000"`,
    then relaunch MacStats) the scheduled check. Expect Sparkle's update window to open **without

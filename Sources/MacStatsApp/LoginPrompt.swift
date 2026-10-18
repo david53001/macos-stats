@@ -10,9 +10,10 @@ import MacStatsCore
 /// inside a panel the user just opened, so it can't take focus from what they were typing, and
 /// it is drawn inside the panel's fixed 320 × 404 pt frame, so the window never changes size.
 /// Whether it shows is decided while the panel is closed (at launch and at each close), so it is
-/// there from the open's first frame. It never shows in an open the guided tour, its welcome card
-/// or its "Take the Tour" chip has (`AppModel.updateVisibility`), and an open the tour took part
-/// in isn't a use.
+/// there from the open's first frame. It shows only over the overview, never in an open the guided
+/// tour, its welcome card or its "Take the Tour" chip has, and an open the tour took part in isn't a
+/// use (`LoginCardGate`, MacStatsCore, tested; fed by `AppModel.updateVisibility`, which also returns
+/// the panel to the overview at every close).
 @MainActor
 final class LoginPrompt: ObservableObject {
     enum Answer { case none, accepted }
@@ -22,10 +23,10 @@ final class LoginPrompt: ObservableObject {
     @Published private(set) var answer: Answer = .none
 
     private var session: LaunchAtLoginPromptSession
+    /// Which opens may show the card and which count as uses (MacStatsCore, tested).
+    private var gate = LoginCardGate()
     /// Bumped on every open/close, so a delayed auto-dismiss can't reach a later open.
     private var generation = 0
-    /// The tour was on screen at some point in this open.
-    private var tourSeen = false
 
     init() {
         let session = LaunchAtLoginPromptSession(isEnabled: Self.isEnabled)
@@ -33,25 +34,23 @@ final class LoginPrompt: ObservableObject {
         isShowing = session.isShowing
     }
 
-    /// The panel opened (`AppModel`, which follows the window): `tourActive` = the tour or its
-    /// welcome card is up, `offersTour` = the header shows the "Take the Tour" chip. Either way
-    /// the card waits for an open of its own.
-    func panelOpened(tourActive: Bool, offersTour: Bool) {
+    /// The panel opened (`AppModel`, which follows the window), showing `screen`, after the tour
+    /// decided: `tourActive` = the tour or its welcome card is up, `offersTour` = the header shows
+    /// the "Take the Tour" chip. Off the overview or with either, the card waits for a later open.
+    func panelOpened(screen: PanelScreen, tourActive: Bool, offersTour: Bool) {
         guard !session.isPanelOnScreen else { return }
         generation += 1
-        tourSeen = tourActive
-        session.panelShown(at: Date(), blocked: tourActive || offersTour)
+        session.panelShown(at: Date(), blocked: gate.opened(on: screen, tourActive: tourActive, offersTour: offersTour))
         isShowing = session.isShowing
     }
 
     /// The tour started during this open (chip, `?`, Settings → General → Take the Tour).
-    func tourShown() { tourSeen = true }
+    func tourShown() { gate.tourStarted() }
 
     func panelClosed() {
         guard session.isPanelOnScreen else { return }
         generation += 1
-        session.panelHidden(at: Date(), countsAsUse: !tourSeen, isEnabled: Self.isEnabled)
-        tourSeen = false
+        session.panelHidden(at: Date(), countsAsUse: gate.closed(), isEnabled: Self.isEnabled)
         answer = .none
         isShowing = session.isShowing
     }
@@ -90,10 +89,11 @@ final class LoginPrompt: ObservableObject {
 
 /// The question over a dimmed panel (the panel keeps its size). The card covers the Memory and
 /// Network cards edge to edge (their bounds come from `.loginPromptAnchor()` in the overview), so
-/// its edges line up with the cards' and no value is cut in half; centred if those aren't on
-/// screen. The dim takes clicks and hovers, so nothing under it opens by accident; a click on it
-/// just puts the card away. The dim is the tour's: same strength, and the panel's own squircle
-/// (`Design.panelCornerRadius`, continuous; the window itself is rounded by `PanelShape`).
+/// its edges line up with the cards' and no value is cut in half (centred if they ever aren't on
+/// screen; `LoginCardGate` keeps the card to the overview). The dim takes clicks and hovers, so
+/// nothing under it opens by accident; a click on it just puts the card away. The dim is the
+/// tour's: same strength, and the panel's own squircle (`Design.panelCornerRadius`, continuous;
+/// the window itself is rounded by `PanelShape`).
 ///
 /// Launch at login turned on elsewhere (System Settings) while the card is up isn't watched: the
 /// status is re-read whenever the panel closes (opening System Settings closes it), and the card

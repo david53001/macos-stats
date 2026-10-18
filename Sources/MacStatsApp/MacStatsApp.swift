@@ -17,6 +17,16 @@ final class AppModel: ObservableObject {
     /// The one-time "Open MacStats at login?" card (`LoginPrompt.swift`); kept off while the tour
     /// is on screen (see `updateVisibility`).
     let loginPrompt = LoginPrompt()
+    /// The in-popover Settings screen (pushed from the overview footer). Here, not in `RootView`,
+    /// so a real close can reset it (`updateVisibility`): SwiftUI's `onDisappear` doesn't fire when
+    /// the `MenuBarExtra` window is ordered out.
+    @Published var showingSettings = false
+
+    /// The screen the panel shows right now.
+    var panelScreen: PanelScreen {
+        if showingSettings { return .settings }
+        return store.activeBreakdownMetric == nil ? .overview : .breakdown
+    }
 
     private var timer: Timer?                    // open-popover tick (one-shot, rescheduled)
     private var idleTimer: Timer?                // closed-popover sampler (repeating)
@@ -171,11 +181,14 @@ final class AppModel: ObservableObject {
             if shown {
                 tour.panelOpened()
                 // After the tour has decided: its welcome, a resumed step or its chip keep the
-                // login card for a later open.
-                loginPrompt.panelOpened(tourActive: tour.isActive, offersTour: tour.offersTour)
+                // login card for a later open, and so would any screen but the overview.
+                loginPrompt.panelOpened(screen: panelScreen, tourActive: tour.isActive, offersTour: tour.offersTour)
             } else {
                 loginPrompt.panelClosed()
                 tour.panelClosed()
+                // Every close goes back to the overview, so the next open starts there (and the
+                // login card, shown only over the overview, is never over Settings).
+                showingSettings = false
                 exitBreakdown()   // stop per-process scanning + clear nav state
             }
         }

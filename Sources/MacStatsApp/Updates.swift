@@ -54,8 +54,18 @@ final class Updates: NSObject, ObservableObject {
     /// the waiting update's window forward.
     func checkForUpdates() {
         NSApp.activate()   // a menu-bar app: otherwise the window can open behind others
+        showUpdateWindow()
+    }
+
+    /// The Sparkle half of `checkForUpdates` (the e2e test's UI mode calls it without activating
+    /// the app, which would take focus from whoever runs the test).
+    func showUpdateWindow() {
         controller.checkForUpdates(nil)
     }
+
+    /// The Settings → Updates button: "Show Update…" while a scheduled find waits to be seen
+    /// (the gear carries a dot then), otherwise "Check for Updates…".
+    var actionTitle: String { pendingVersion == nil ? "Check for Updates…" : "Show Update…" }
 
     nonisolated static let notificationID = "MacStats.updateAvailable"
 
@@ -92,18 +102,37 @@ final class Updates: NSObject, ObservableObject {
 extension Updates: SPUStandardUserDriverDelegate {
     nonisolated var supportsGentleScheduledUpdateReminders: Bool { true }
 
+    #if SPARKLE_E2E_TEST
+    /// Only to log Sparkle's choice for the e2e UI mode; returns the default (Sparkle shows it).
+    nonisolated func standardUserDriverShouldHandleShowingScheduledUpdate(_ update: SUAppcastItem,
+                                                                         andInImmediateFocus immediateFocus: Bool) -> Bool {
+        NSLog("SPARKLE-E2E UI scheduled update %@, immediate focus %d", update.displayVersionString, immediateFocus ? 1 : 0)
+        return true
+    }
+    #endif
+
     nonisolated func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool,
                                                                forUpdate update: SUAppcastItem,
                                                                state: SPUUserUpdateState) {
+        #if SPARKLE_E2E_TEST
+        NSLog("SPARKLE-E2E UI will show %@: handled by Sparkle %d, user-initiated %d",
+              update.displayVersionString, handleShowingUpdate ? 1 : 0, state.userInitiated ? 1 : 0)
+        #endif
         guard !state.userInitiated else { return }
         let version = update.displayVersionString
         Task { @MainActor in
             self.pendingVersion = version
             if handleShowingUpdate { self.postUpdateNotification(version: version) }
+            #if SPARKLE_E2E_TEST
+            SparkleE2EUI.start(notificationPosted: handleShowingUpdate)
+            #endif
         }
     }
 
     nonisolated func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
+        #if SPARKLE_E2E_TEST
+        NSLog("SPARKLE-E2E UI user attention for %@", update.displayVersionString)
+        #endif
         Task { @MainActor in self.clearPending() }
     }
 
@@ -128,7 +157,8 @@ extension Updates: UNUserNotificationCenterDelegate {
 #if SPARKLE_E2E_TEST
 /// Only in the throwaway build of `Scripts/sparkle-e2e-test.sh` (`-DSPARKLE_E2E_TEST`): log each
 /// step to stderr for the script, and install a downloaded update right away instead of on quit
-/// (the script can't quit the app gracefully without an Apple-event permission prompt).
+/// (the script can't quit the app gracefully without an Apple-event permission prompt), except in
+/// the `E2E_UI=1` mode (`SparkleE2EUI`), which leaves that to Sparkle's own "Install and Relaunch".
 extension Updates: SPUUpdaterDelegate {
     nonisolated func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
         NSLog("SPARKLE-E2E found %@ (build %@)", item.displayVersionString, item.versionString)
@@ -144,6 +174,10 @@ extension Updates: SPUUpdaterDelegate {
 
     nonisolated func updater(_ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem,
                              immediateInstallationBlock immediateInstallHandler: @escaping () -> Void) -> Bool {
+        guard !SparkleE2EUI.isOn else {   // as for real users: Sparkle's window offers Install and Relaunch
+            NSLog("SPARKLE-E2E ready to install %@; leaving it to Sparkle's window (UI mode)", item.versionString)
+            return false
+        }
         NSLog("SPARKLE-E2E ready to install %@; installing now", item.versionString)
         immediateInstallHandler()
         return true
