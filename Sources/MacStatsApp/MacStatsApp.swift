@@ -71,6 +71,11 @@ final class AppModel: ObservableObject {
         typicalWatts: UserDefaults.standard.object(forKey: Keys.typicalWatts) as? Double,
         typicalSeconds: UserDefaults.standard.double(forKey: Keys.typicalSeconds))
     private var lastTelemetry: BatteryTelemetry?
+    /// macOS's own "Maximum Capacity" (System Settings' health figure), read off the main
+    /// thread at launch and then hourly; health falls back to the gauge figure until it's known.
+    private var macOSHealthPercent: Int?
+    private var lastHealthRead: Date?
+    private let healthReadInterval: TimeInterval = 60 * 60
     private var lastBatteryState: BatteryState?
     private var powerSourceObserver: CFRunLoopSource?
     private enum Keys {
@@ -197,7 +202,7 @@ final class AppModel: ObservableObject {
             lastBatteryState = sample.state
             if !discharging { estimator.ingest(watts: 0, at: 0, discharging: false) }
         }
-        let telemetry = smartBattery.read()
+        var telemetry = smartBattery.read()
         if let telemetry, telemetry.updateTime != lastTelemetry?.updateTime {
             if let watts = averageWatts(from: lastTelemetry, to: telemetry) {
                 estimator.ingest(watts: watts, at: TimeInterval(telemetry.updateTime), discharging: discharging)
@@ -209,8 +214,24 @@ final class AppModel: ObservableObject {
         if discharging, let wh = telemetry?.remainingWh, let minutes = estimator.minutesLeft(remainingWh: wh) {
             sample.timeToEmptyMinutes = minutes
         }
+        if telemetry != nil { readMacOSHealthIfDue() }
+        telemetry?.reportedHealthPercent = macOSHealthPercent
         store.setBattery(sample)
         store.setBatteryTelemetry(telemetry, expectedWatts: discharging ? estimator.expectedWatts : nil)
+    }
+
+    /// Starts a background read of macOS's "Maximum Capacity" when the last one is an hour old;
+    /// the next battery refresh shows it.
+    private func readMacOSHealthIfDue() {
+        let now = Date()
+        if let last = lastHealthRead, now.timeIntervalSince(last) < healthReadInterval { return }
+        lastHealthRead = now
+        DispatchQueue.global(qos: .utility).async {
+            let percent = readMaximumCapacityPercent()
+            DispatchQueue.main.async { [weak self] in
+                if let percent { self?.macOSHealthPercent = percent }
+            }
+        }
     }
 
     /// Re-reads the battery the moment macOS reports a power-source change (plug/unplug,
