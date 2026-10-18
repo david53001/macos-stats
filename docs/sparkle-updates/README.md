@@ -313,8 +313,9 @@ release (owner):
      rendered with "1.12.10": one line, the card doesn't grow.
   7. Prompt copy/hierarchy: "No Thanks", accent-filled "Open at Login", the header stays at the
      top (card is centred over the dim), result text top-aligned in a card sized by its content.
-  8. Card across Settings/drill-ins: impossible now (the dim blocks them); also goes away if
-     launch at login gets turned on elsewhere.
+  8. Card across Settings/drill-ins: impossible now (the dim blocks them). (Round 1 also claimed
+     it goes away if launch at login is turned on elsewhere; round 2 found that never really
+     fired, see below.)
   9. E2E covers only auto-install: manual checklist added above.
   10. `package-release.sh`: dirty tree / not origin/main / existing tag refused, `]]>` escaped.
   11. Docs: the two wrong statements are gone; `XPCServices/` is now removed from the bundle.
@@ -332,26 +333,101 @@ release (owner):
   never shown again. Off-screen renders of all four card states and of Settings with a pending
   update, light and dark. Guards of `package-release.sh` each tried: dirty → refused; not main →
   refused; missing `feat/stability-tour` → refused; `v1.0.1` → "already exists".
+- **Review round 2** (independent reviewer, **8.0 / 10**; report
+  `docs/sparkle-updates/REVIEW-round2.md` + `docs/sparkle-updates/review-round2/`, uncommitted as
+  the reviewer left them). Fixed in commit `7e055bd` (this branch) and on the integration branch
+  (next section):
+  1. MEDIUM, stability-tour not merged / merged UI unverified: **trial merge done on a separate
+     branch `integrate/stability-tour-sparkle`** (worktree
+     `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/integrate-tour-sparkle`),
+     conflicts resolved, the card gated off while the tour / welcome / chip has the panel, tour
+     opens not counted, dim drawn with the panel squircle, then tested and live-probed (below).
+     **Not merged into `main` and not pushed: the owner approves that merge** (NEXT STEPS 1).
+  2. MEDIUM, release steps vs guards: README and `CLAUDE.md` now say bump → `test.sh` → commit →
+     `git push origin main` → `package-release.sh notes.md` → the printed `gh` command, which now
+     has `--target <HEAD sha>`.
+  3. Reflexive dismisser: the 3rd quick dismissal counts as asked
+     (`launchAtLoginPromptQuickDismissals`, test `threeQuickDismissalsCountAsAsked`).
+  4. Keyboard: Return = Open at Login / Open Login Items (Done when it's the only button), Esc = No
+     Thanks / Done (`keyboardShortcut(.defaultAction / .cancelAction)`).
+  5. Card cutting the Memory value: the card now covers the Memory and Network cards edge to edge
+     (anchored to their bounds, content centred), centred only off the overview. Rendered: its
+     edges sit exactly on the card boundaries (y 109–249 pt), light and dark, on both branches.
+  6. Docs: the "goes if turned on elsewhere" claim is gone (and the `onChange` that practically
+     never fired is removed: the status is re-read at every close); the 2026-10-01 progress note has a
+     "Superseded" banner.
+  7. Test count in `CLAUDE.md` updated (136 here, 394 on the integration branch).
+  8. Shadow: kept, because it is exactly the tour's `TourSurface` shadow (black 18 %, radius 12,
+     y 4); the surface now also copies the tour's Reduce Transparency fill, so both floating
+     surfaces in the panel are identical (comment in `PromptSurface`).
+  9. `bundle.sh` removes `Headers`, `PrivateHeaders`, `Modules` from the embedded framework; e2e
+     re-run: GOOD PASS + BAD PASS.
+- Verified after round 2 (2026-10-18), this branch: `./Scripts/test.sh` **136 tests pass**; release
+  bundle (`MACSTATS_REQUIRE_IDENTITY=1`) passes `codesign --verify --deep --strict`, framework has
+  only `Autoupdate`, `Resources`, `Sparkle`, `Updater.app`; `./Scripts/sparkle-e2e-test.sh` GOOD PASS +
+  BAD PASS (Code 4005/3002). **Live probe** (scratch copy, bundle id `com.macstats.MacStats.r3probe`,
+  Finder stubbed, feed dead, harness clicks the app's own `NSStatusBarButton`, synthesizes clicks
+  and Esc into the panel window, deleted afterwards), light and dark, identical: frame **320 × 404
+  on every open and close**; 5th use → due; dim click 0.35 s in → card gone, quick 1, still due; two
+  0.3 s glances → quick 2 (due), quick 3 → **asked**; control click on CPU with no card → CPU
+  breakdown; settled card + **Esc → asked, card gone, panel stays open**; 1.6 s look → asked.
+  Return was not pressed live (it would register a real login item for the probe).
+
+### Integration with `feat/stability-tour` (branch `integrate/stability-tour-sparkle`)
+
+Made 2026-10-18 from local `feat/stability-tour` (9a29b2c, one docs commit ahead of
+`origin/feat/stability-tour`) + this branch (merge commit `eea8832`). Nothing else touched: `main`,
+`feat/stability-tour` and this branch are unchanged by it. Conflict resolutions:
+
+| File | Resolution |
+|---|---|
+| `Resources/Info.plist` | 1.2.0 / build 4 (the installed copy is 1.1.0 / 3) |
+| `StatCard.swift` | the tour's `SubtleButtonStyle` (`cornerRadius`, `height`, `prominent`) |
+| `OverviewView.swift` | tour anchors and `.loginPromptAnchor()` on Memory + Network |
+| `MacStatsApp.swift` | `tour` + `loginPrompt`; `LoginItem.registerOnce()` stays removed (the tour branch still called it); notification request skipped in the e2e build on both paths |
+| `MacStatsMain.swift` | `RootView(…, tour:, loginPrompt:)`; the new-user auto-open is skipped in the e2e build |
+| `RootView.swift` | the tour's version + the login overlay after `.tourHost` |
+| `SettingsView.swift` | GENERAL (Launch at login + a **Take the Tour** row: the tour's HELP card folded in, because four cards + footer overflowed 404 pt and hid Quit), UPDATES, APPEARANCE; "Check for Updates…" uses `SubtleButtonStyle` like Default (squircle pass); gear: the tour's width + radius and the update dot |
+| `LoginPrompt.swift` | driven by `AppModel.updateVisibility` (the tour's window-aware open/close) instead of its own observer, which is removed; dim = the panel's 16 pt continuous squircle (as `TourDimShape`; the window itself is rounded by `PanelShape`) |
+| `LaunchAtLoginPrompt.swift` | `panelShown(at:blocked:)`, `panelHidden(at:countsAsUse:isEnabled:)` + 2 tests |
+
+Rules on the merged code: the card never shows in an open the tour, its welcome card or the
+"Take the Tour" chip has (decided at the open, after the tour; it stays due); an open the tour or
+welcome took part in (at the open, or started during it) is not a use; a chip-only open is a use.
+
+Verified there (2026-10-18): `./Scripts/test.sh` **394 tests pass**; release build signs and
+verifies; `./Scripts/sparkle-e2e-test.sh` GOOD PASS + BAD PASS. Live probe (same harness), light and
+dark, identical, **frame 320 × 404 on every one of ~50 opens/closes**: the whole round-2 sequence
+above gives the same results (and a close now also leaves the breakdown, as the tour branch does);
+chip open → no card, counted as a use (3 → 4); tour started mid-open → paused on close, not a use;
+resumed tour open + Skip → no card mid-open, not a use (still 4); next real open → 5 → due; card +
+dim click → quick 1; 1.5 s look → asked; Settings shows all three cards and Quit. New-user run
+(`tourAudience=new`, 5 uses): welcome open → no card (twice), No Thanks, next open → card.
+Renders: the card over Memory + Network with the squircle dim, the welcome card, the tour step 1,
+the chip, Settings (light + dark).
+
 - **Not tested** (needs the owner or a real release): the dim + material on real Liquid Glass
   (off-screen renders don't draw the glass), the real notification and its click, Sparkle's own
-  window and "Install and Relaunch" (checklist above), `.requiresApproval` on screen.
+  window and "Install and Relaunch" (checklist above), `.requiresApproval` on screen, Return on the
+  card (it would register a login item on this Mac).
+- Note (2026-10-18 13:57): during this session `~/Applications/MacStats.app` was rebuilt from
+  `.claude/worktrees/battery-health` (`fix/battery-health`, debug build, ad-hoc, 1.1.0 / 3) and
+  relaunched by another session; none of this work's scripts write there (they all set
+  `MACSTATS_APP`).
 
 **NEXT STEPS (in this order):**
 
-1. **Hard step before any release:** get `feat/stability-tour` (which contains
-   `fix/readings-accuracy`) and this branch into `main`. The installed copy is 1.1.0 build 3
-   from `feat/stability-tour` (readings accuracy, stability fixes, squircle panel, guided tour,
-   373 tests); 1.2.0 from this branch alone would remove all of that from every copy Sparkle
-   updates. Expected conflicts: `RootView.swift`, `LoginItem.swift`, `SettingsView.swift`,
-   `StatCard.swift` (`SubtleButtonStyle`: take the tour's version, it already has `prominent`),
-   `Info.plist` (keep 1.2.0 / build ≥ 4), `bundle.sh`. After merging: put `LoginPromptOverlay`
-   under the tour's host so the two never show at once (don't show the login card while the
-   tour, its welcome card or the "Take the Tour" chip is up; count a tour open as a use only
-   after the tour ended); draw the dim with the tour's panel squircle (`PanelShape`, 16 pt)
-   instead of a plain rectangle; re-run the live probe there (a harness like the one described
-   above: `performClick` on the app's own `NSStatusBarButton`, log the `MenuBarExtraWindow`
-   frame on each open).
+1. **Owner: approve the integration.** Review `integrate/stability-tour-sparkle` (worktree above;
+   `git log feat/stability-tour..integrate/stability-tour-sparkle`, `git diff feat/stability-tour
+   integrate/stability-tour-sparkle -- Sources`). If OK: merge it into `main`
+   (`git switch main && git merge --no-ff integrate/stability-tour-sparkle`), then remove
+   `feat/stability-tour` from `MUST_CONTAIN` in `Scripts/package-release.sh` only once it is on main
+   for good. `fix/battery-health` (installed right now) is a separate branch: decide whether it
+   goes into main before 1.2.0 too, or add it to `MUST_CONTAIN`. If the tour branch gets more
+   commits first, merge `feat/stability-tour` into the integration branch again (or redo the merge
+   with the resolutions in the table above).
 2. Push `main`, then cut 1.2.0 with the steps above. 1.0.1 users get 1.2.0 via the curl
-   installer once; Sparkle takes over from there. Then run the manual checklist with 1.2.1.
+   installer once; Sparkle takes over from there. Then run the manual checklist with 1.2.1, and
+   check the card once on real glass (`defaults write … launchAtLoginPromptUses -int 5` etc., above).
 3. Port the same template to JVoice and BetterScreenshot (their own repos; they already have
    stable identities; enforce `--latest=false` on their Windows releases).
