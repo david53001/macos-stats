@@ -33,10 +33,12 @@ struct SettingsView: View {
 }
 
 /// "General" → Launch at login: a switch backed directly by `SMAppService.mainApp.status`
-/// (`LoginItem.swift`). Re-read each time Settings opens, since the user may have changed it in
-/// System Settings. Only when macOS needs the user's approval do we offer a jump to Login Items.
+/// (`LoginItem.swift`, shared with the one-time prompt card). Re-read each time Settings opens,
+/// since the user may have changed it in System Settings. Only when macOS needs the user's
+/// approval do we offer a jump to Login Items.
 private struct GeneralCard: View {
-    @State private var status: SMAppService.Status = LoginItem.status
+    @ObservedObject private var login = LaunchAtLogin.shared
+    private var status: SMAppService.Status { login.status }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -49,7 +51,7 @@ private struct GeneralCard: View {
                 Spacer()
                 Toggle("Launch at login", isOn: Binding(
                     get: { status == .enabled },
-                    set: { status = LoginItem.setEnabled($0) }   // re-reads, so a failure reverts
+                    set: { login.setEnabled($0) }   // re-reads, so a failure reverts
                 ))
                 .labelsHidden()
                 .toggleStyle(.switch)
@@ -60,7 +62,7 @@ private struct GeneralCard: View {
                 HStack {
                     Text("Needs your approval in Login Items.")
                     Spacer()
-                    Button("Open") { SMAppService.openSystemSettingsLoginItems() }
+                    Button("Open") { login.openLoginItems() }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 }
@@ -77,7 +79,7 @@ private struct GeneralCard: View {
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(CardBackground())
-        .onAppear { status = LoginItem.status }
+        .onAppear { login.refresh() }
     }
 }
 

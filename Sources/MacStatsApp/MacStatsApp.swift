@@ -12,6 +12,7 @@ import MacStatsCore
 @MainActor
 final class AppModel: ObservableObject {
     let store = MetricsStore(historyWindow: 60)
+    let loginPrompt = LoginPrompt()
 
     private var timer: Timer?                    // open-popover tick (one-shot, rescheduled)
     private var idleTimer: Timer?                // closed-popover sampler (repeating)
@@ -61,7 +62,7 @@ final class AppModel: ObservableObject {
     private let alertsEnabled = true            // no Settings UI yet; default on
 
     init() {
-        LoginItem.registerOnce()
+        // Launch at login is no longer turned on silently at first launch: `loginPrompt` asks once.
         notifier.requestAuthorization()
         sample(at: Date())   // just stores the first baseline; history starts at the next sample
         readSlowSensors()    // so even the first open has battery + temperature on frame one

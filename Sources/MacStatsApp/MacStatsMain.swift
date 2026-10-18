@@ -13,7 +13,7 @@ struct MacStatsApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            RootView(model: model, store: model.store)
+            RootView(model: model, store: model.store, loginPrompt: model.loginPrompt)
         } label: {
             MenuBarLabel()
         }
