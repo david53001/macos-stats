@@ -12,7 +12,7 @@ curl -fsSL https://raw.githubusercontent.com/david53001/macos-stats/main/install
 ```
 
 It installs MacStats to `~/Applications` and opens it. From version 1.2.0 on, MacStats keeps
-itself up to date: it checks once a day and offers each new version (Settings > Updates has
+itself up to date: it checks once a day and offers each new version (Settings → Updates has
 **Check for Updates…** and an on/off switch). Running the same command again also updates;
 your settings are kept.
 
@@ -52,7 +52,7 @@ A short guided tour shows you around on first use; replay it with **?** in the p
 What changed in each version: [`CHANGELOG.md`](CHANGELOG.md).
 
 After you've used it a few times, MacStats asks once whether to open at login; you can change
-that any time in Settings > Launch at login. It sends
+that any time in Settings → General → Launch at login. It sends
 a notification when the CPU stays very busy or memory runs low. It does almost no work
 while the panel is closed.
 

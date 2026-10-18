@@ -400,14 +400,16 @@ scripts):
   the manual Sparkle checklist above with the real 1.2.0 → 1.3.0 update.
 
 **Review round 1 of 1.3.0 (2026-10-18): 7.5 / 10, all findings fixed in the commit after `55aa4d3`.**
-Report: `docs/release-1.3.0/REVIEW-round1.md` + `docs/release-1.3.0/REVIEW-round1/` (renders and
-the off-screen harness `run.sh` / `ReviewRender.swift`), left untracked as the reviewer left them.
+Report (not in the repo: it contains local paths): moved to
+`~/Backups/2026-10-18-release-1.3.0-reviews/MacStats/` on the owner's Mac (`REVIEW-round1.md` +
+`REVIEW-round1/` with renders and the off-screen harness `run.sh` / `ReviewRender.swift`; round 2,
+**9.0 / 10**, next to it).
 Fixes:
 
 - **M1** Settings clipped Quit MacStats when launch at login needs approval: the hint row is now
   caption height, "Needs your approval." + an accent **Open Login Items** link (`.buttonStyle(.link)`)
   instead of a `SubtleButtonStyle` **Open** button (`SettingsView.swift`, `GeneralCard`). Re-rendered
-  with the reviewer's harness (`SCENARIOS=card bash docs/release-1.3.0/REVIEW-round1/run.sh <worktree> <scratch-dir>`):
+  with the reviewer's harness (`SCENARIOS=card bash <that folder>/REVIEW-round1/run.sh <worktree> <scratch-dir>`):
   default, needs approval, needs approval + update pending ("Version 1.10.12 is available.") and
   enabled, dark and light: the panel is 320 × 404 on every line of the log and Quit sits at the
   normal 8 pt bottom inset in every state. Renders + log: `docs/release-1.3.0/fix-round1/`.
