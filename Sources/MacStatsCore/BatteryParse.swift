@@ -22,6 +22,10 @@ public struct BatterySample: Equatable {
     /// still calculating. `parseBattery` fills in macOS's figure; the app replaces it with
     /// a measured one (`minutesToTarget`).
     public var timeToFullMinutes: Int?
+    /// macOS's own figures (`parseBattery`), kept after the app replaces the two above, for the
+    /// rows' tooltips. macOS's time to full always counts to 100 %, even with a charge limit.
+    public var macOSTimeToEmptyMinutes: Int?
+    public var macOSTimeToFullMinutes: Int?
     /// The end-of-charge limit when below 100 (the user's charge limit); nil for a full charge
     /// or when unknown. Set by the app (`chargeStop`).
     public var chargeLimitPercent: Int?
@@ -36,11 +40,22 @@ public struct BatterySample: Equatable {
     /// Where the current charge stops below 100 %: the hold, else the limit.
     public var chargeStopPercent: Int? { chargeHoldPercent ?? chargeLimitPercent }
 
+    /// The user's charge limit when charging has stopped at it ("Charged to 85% Limit" in the
+    /// macOS battery menu). macOS only reports "not charging"; the shown percent can sit one
+    /// below the limit (raw 84.0 % shows as 84 or 85), so within one counts.
+    public var heldAtLimitPercent: Int? {
+        guard state == .notCharging, chargeHoldPercent == nil, let limit = chargeLimitPercent,
+              percent >= limit - 1 else { return nil }
+        return limit
+    }
+
     public init(percent: Int, state: BatteryState, timeToEmptyMinutes: Int? = nil,
                 timeToFullMinutes: Int? = nil) {
         self.percent = percent; self.state = state
         self.timeToEmptyMinutes = timeToEmptyMinutes
         self.timeToFullMinutes = timeToFullMinutes
+        self.macOSTimeToEmptyMinutes = timeToEmptyMinutes
+        self.macOSTimeToFullMinutes = timeToFullMinutes
     }
 }
 

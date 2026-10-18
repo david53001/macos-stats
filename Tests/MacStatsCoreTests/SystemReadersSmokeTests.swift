@@ -38,6 +38,21 @@ import Foundation
         // nil is acceptable (e.g. a desktop Mac with no battery)
     }
 
+    @Test func ownCoalitionCountsOwnCPUInNanoseconds() {
+        // Live check of the private struct layout and units: our coalition grows at least by
+        // our own spin (Mach units left unconverted would read ~42× low on Apple Silicon).
+        let id = readCoalitionID(getpid())
+        guard id != 0, let before = readCoalitionUsage(id) else { return }   // older/newer macOS: estimate path
+        let start = clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID)
+        var x = 0.0
+        while clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID) - start < 200_000_000 { x += 1 }
+        let spun = clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID) - start
+        let after = readCoalitionUsage(id)!
+        #expect(x > 0)
+        #expect(after.cpuTimeNs >= before.cpuTimeNs + spun * 9 / 10)
+        #expect(after.energyNj >= before.energyNj)
+    }
+
     @Test func memoryPressureLevelIsKnown() {
         let level = readMemoryPressureLevel()
         #expect([1, 2, 4].contains(level))

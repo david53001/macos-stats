@@ -139,10 +139,27 @@ public struct ProcessDelta: Equatable {
     public var childCreditNs: UInt64
     /// The part of `energyNj` estimated for `childCreditNs` (capped along with it).
     public var childCreditEnergyNj: UInt64
+    /// For a process that started this interval: its children it had already reaped (part of
+    /// `cpuNs`), and their estimated energy (part of `energyNj`).
+    public var reapedNewNs: UInt64
+    public var reapedNewEnergyNj: UInt64
 
-    public init(cpuNs: UInt64, energyNj: UInt64, childCreditNs: UInt64 = 0, childCreditEnergyNj: UInt64 = 0) {
+    public init(cpuNs: UInt64, energyNj: UInt64, childCreditNs: UInt64 = 0, childCreditEnergyNj: UInt64 = 0,
+                reapedNewNs: UInt64 = 0, reapedNewEnergyNj: UInt64 = 0) {
         self.cpuNs = cpuNs; self.energyNj = energyNj
         self.childCreditNs = childCreditNs; self.childCreditEnergyNj = childCreditEnergyNj
+        self.reapedNewNs = reapedNewNs; self.reapedNewEnergyNj = reapedNewEnergyNj
+    }
+
+    /// What the process itself did, by its own counters (no credit for children).
+    public var ownNs: UInt64 { cpuNs - childCreditNs - reapedNewNs }
+    public var ownEnergyNj: UInt64 { energyNj - childCreditEnergyNj - reapedNewEnergyNj }
+
+    /// Drops the credit for children (when its coalition accounts for them exactly).
+    mutating func removeChildCredit() {
+        cpuNs = ownNs
+        energyNj = ownEnergyNj
+        childCreditNs = 0; childCreditEnergyNj = 0; reapedNewNs = 0; reapedNewEnergyNj = 0
     }
 }
 
@@ -242,7 +259,8 @@ public final class ProcessSampler {
                 deltas[p.pid] = ProcessDelta(cpuNs: p.cpuTimeNs &- min(old.cpuTimeNs, p.cpuTimeNs),
                                              energyNj: p.energyNj &- min(old.energyNj, p.energyNj))
             } else if p.startTime != 0, p.startTime >= lastAbsTime {
-                deltas[p.pid] = ProcessDelta(cpuNs: p.cpuTimeNs + p.childCPUTimeNs, energyNj: p.energyNj)
+                deltas[p.pid] = ProcessDelta(cpuNs: p.cpuTimeNs + p.childCPUTimeNs, energyNj: p.energyNj,
+                                             reapedNewNs: p.childCPUTimeNs)
                 if p.childCPUTimeNs > 0 { reapedByNew[p.pid] = p.childCPUTimeNs }
             } else {
                 deltas[p.pid] = ProcessDelta(cpuNs: 0, energyNj: 0)
@@ -301,7 +319,7 @@ public final class ProcessSampler {
         var ownNs: [Int32: UInt64] = [:]
         ownNs.reserveCapacity(deltas.count)
         for (pid, d) in deltas {
-            let own = d.cpuNs - d.childCreditNs - (reapedByNew[pid] ?? 0)
+            let own = d.ownNs
             ownNs[pid] = own
             ownTotal += Double(own)
             energyTotal += Double(d.energyNj)
@@ -323,7 +341,9 @@ public final class ProcessSampler {
                 deltas[pid]?.childCreditEnergyNj += nj
             }
             for (pid, ns) in reapedByNew {
-                deltas[pid]?.energyNj += UInt64(Double(ns) * njPerNs)
+                let nj = UInt64(Double(ns) * njPerNs)
+                deltas[pid]?.energyNj += nj
+                deltas[pid]?.reapedNewEnergyNj += nj
             }
         }
         return deltas
@@ -369,6 +389,8 @@ public final class BreakdownScanner: @unchecked Sendable {
         let work: [ProcessKey: Work]
         /// Exit credit (ns) per app: work by processes that exited during the interval.
         let exitedNs: [Int32: Double]
+        /// Their energy (nJ) per app, when their coalition measured it (energy only).
+        let exitedNj: [Int32: Double]
     }
 
     private let cores: Double
@@ -389,6 +411,12 @@ public final class BreakdownScanner: @unchecked Sendable {
     /// nil when it can't be read, so that isn't retried every scan.
     private var names: [ProcessKey: String?] = [:]
     private let nameOf: (Int32) -> String?
+    /// Exact work of exited helpers from coalition counters, in place of the estimates (see
+    /// `CoalitionTracker`). Processes read without a coalition id (0) always use the estimates.
+    private let coalitionUsage: (UInt64) -> CoalitionUsage?
+    private var coalitions = CoalitionTracker()
+    /// The previous scan's coalition per process, for processes that have exited since.
+    private var lastCoalitions: [Int32: UInt64] = [:]
 
     /// `windowSeconds`: the span rows are averaged over; 0 = the latest interval only, nil = the
     /// metric's own (`trailingWindowSeconds`, `energyWindowSeconds`). `fastAttack`: restart the window
@@ -397,20 +425,56 @@ public final class BreakdownScanner: @unchecked Sendable {
                 windowSeconds: TimeInterval? = nil, fastAttack: Bool = true,
                 responsible: @escaping (Int32) -> Int32? = responsiblePID(for:),
                 allParents: @escaping () -> [Int32: Int32] = readAllParentPIDs,
-                nameOf: @escaping (Int32) -> String? = processName) {
+                nameOf: @escaping (Int32) -> String? = processName,
+                coalitionUsage: @escaping (UInt64) -> CoalitionUsage? = readCoalitionUsage) {
         self.cores = Double(max(1, cores))
         self.windowSeconds = windowSeconds.map { max(0, $0) }
         self.fastAttack = fastAttack
         self.attributor = ProcessAttributor(responsible: responsible, allParents: allParents)
         self.nameOf = nameOf
+        self.coalitionUsage = coalitionUsage
     }
 
     public func scan(_ processes: [RawProcess], appPIDs: Set<Int32>, fallbackAppPIDs: Set<Int32> = [],
                      metric: BreakdownMetric, time: TimeInterval, absTime: UInt64,
                      cpuTicks: CPUTicks) -> Result {
         let owners = attributor.owners(for: processes, appPIDs: appPIDs, fallbackAppPIDs: fallbackAppPIDs)
-        let deltas = sampler.ingest(processes, time: time, absTime: absTime)
+        var deltas = sampler.ingest(processes, time: time, absTime: absTime)
         let elapsed = sampler.elapsedSeconds
+        let previousCoalitions = lastCoalitions
+        var coalitionOf: [Int32: UInt64] = [:]
+        // Per app: work by its coalitions' members that no live process accounts for.
+        var coalitionNs: [Int32: Double] = [:], coalitionNj: [Int32: Double] = [:]
+        var covered = Set<UInt64>()
+        if metric != .memory {
+            var lowestMember: [UInt64: Int32] = [:]   // the app's main process is usually the lowest pid
+            var liveNs: [UInt64: Double] = [:], liveNj: [UInt64: Double] = [:]
+            for p in processes where p.coalitionID != 0 {
+                coalitionOf[p.pid] = p.coalitionID
+                lowestMember[p.coalitionID] = min(lowestMember[p.coalitionID] ?? p.pid, p.pid)
+                if let d = deltas?[p.pid] {
+                    liveNs[p.coalitionID, default: 0] += Double(d.ownNs)
+                    liveNj[p.coalitionID, default: 0] += Double(d.ownEnergyNj)
+                }
+            }
+            var readings: [UInt64: CoalitionUsage] = [:]
+            if coalitions.isEnabled {
+                for id in lowestMember.keys { readings[id] = coalitionUsage(id) }
+            }
+            let residuals = coalitions.residuals(readings: readings, liveNs: liveNs, liveNj: liveNj,
+                                                 elapsed: deltas == nil ? 0 : elapsed)
+            covered = Set(residuals.keys)
+            for (id, r) in residuals {
+                let app = lowestMember[id].flatMap { owners[$0] } ?? BreakdownGroup.otherProcesses
+                coalitionNs[app, default: 0] += r.ns
+                coalitionNj[app, default: 0] += r.nj
+            }
+            // Their coalition has these processes' exited children exactly: no estimate on top.
+            for p in processes where covered.contains(p.coalitionID) {
+                deltas?[p.pid]?.removeChildCredit()
+            }
+        }
+        lastCoalitions = coalitionOf
         // Ticks that didn't move (a failed or stale read) span no time: that read 0 % over
         // 25 % of rows. No header for that scan rather than a wrong one.
         let total = lastTicks.flatMap { $0 == cpuTicks ? nil : cpuBusyPercent(previous: $0, current: cpuTicks) }
@@ -426,6 +490,8 @@ public final class BreakdownScanner: @unchecked Sendable {
         // scan read 510 % of one core for a tab's shell under an 11 % header. Real credit
         // (builds' short-lived compilers) fits in the budget: it is part of that remainder.
         var creditScale = 1.0
+        var coalitionScale = 1.0
+        let coalitionTotal = coalitionNs.values.reduce(0, +)
         var exitCredit: [Int32: UInt64] = [:]
         if let deltas, let total, elapsed > 0 {
             var credit = 0.0, own = 0.0
@@ -437,11 +503,19 @@ public final class BreakdownScanner: @unchecked Sendable {
             if credit > 0 {
                 creditScale = min(1, max(0, machineNs - own) / credit)
             }
+            // Exact, but read a few ms after the processes: never past what the machine did.
+            if coalitionTotal > 0 {
+                coalitionScale = min(1, max(0, machineNs - own - credit * creditScale) / coalitionTotal)
+            }
             if metric == .cpu {
-                let unexplained = max(0, machineNs - own - credit * creditScale)
+                let unexplained = max(0, machineNs - own - credit * creditScale - coalitionTotal * coalitionScale)
                 let baseline = (lastSystemPercent ?? 0) * nsPerPercent
-                exitCredit = exitWorkCredit(unexplained: sampler.unexplainedExitNs,
-                                            orphans: sampler.orphanExitNs, previousOwners: previousOwners,
+                // Exits in a covered coalition are already in its residual.
+                exitCredit = exitWorkCredit(unexplained: sampler.unexplainedExitNs.filter {
+                                                !covered.contains(coalitionOf[$0.key] ?? 0) },
+                                            orphans: sampler.orphanExitNs.filter {
+                                                !covered.contains(previousCoalitions[$0.key] ?? 0) },
+                                            previousOwners: previousOwners,
                                             alive: { deltas[$0] != nil }, budgetNs: unexplained - baseline)
                 for (pid, ns) in exitCredit where sampler.unexplainedExitNs[pid] != nil {
                     sampler.addDebt(min(ns, sampler.unexplainedExitNs[pid] ?? 0), to: pid)
@@ -472,6 +546,11 @@ public final class BreakdownScanner: @unchecked Sendable {
                 exitedNs[owners[pid] ?? BreakdownGroup.otherProcesses, default: 0] += Double(ns)
                 rowsNs += Double(ns)
             }
+            for (app, ns) in coalitionNs where ns > 0 {
+                exitedNs[app, default: 0] += ns * coalitionScale
+                rowsNs += ns * coalitionScale
+            }
+            let exitedNj = metric == .energy ? coalitionNj.filter { $0.value > 0 } : [:]
             if metric == .cpu, let total {
                 // Exit credit's baseline: System over this interval alone, not the window.
                 lastSystemPercent = max(0, total - rowsNs / nsPerPercent)
@@ -497,7 +576,7 @@ public final class BreakdownScanner: @unchecked Sendable {
                 }
             }
             window.append(Interval(elapsed: elapsed, busyNs: total.map { $0 * nsPerPercent }, work: work,
-                                   exitedNs: exitedNs))
+                                   exitedNs: exitedNs, exitedNj: exitedNj))
             // Keep the newest intervals that cover the window (10 % slack for timer jitter).
             let span = metric == .memory ? 0
                 : windowSeconds ?? (metric == .energy ? energyWindowSeconds : trailingWindowSeconds)
@@ -527,6 +606,7 @@ public final class BreakdownScanner: @unchecked Sendable {
                 }
             }
             for (app, credit) in interval.exitedNs { exitedNs[app, default: 0] += credit }
+            for (app, nj) in interval.exitedNj { exitedNj[app, default: 0] += nj }
         }
         let windowTotal: Double? = window.isEmpty || window.contains { $0.busyNs == nil } ? nil
             : window.reduce(0) { $0 + ($1.busyNs ?? 0) } / (span * cores * 1_000_000_000) * 100

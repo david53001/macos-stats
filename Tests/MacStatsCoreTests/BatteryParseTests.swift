@@ -134,6 +134,25 @@ import IOKit.ps
         #expect(BatteryTelemetry(updateTime: 1, nominalMAh: 4600, designMAh: 4563).healthPercent == 100)
     }
 
+    @Test func heldAtTheUserLimitIsRecognised() {
+        // pmset at the stop: "85%; AC attached; not charging", powerd's limit 85.
+        var b = BatterySample(percent: 85, state: .notCharging)
+        b.chargeLimitPercent = 85
+        #expect(b.heldAtLimitPercent == 85)
+        b.percent = 84                       // raw 84.0 % can show as 84
+        #expect(b.heldAtLimitPercent == 85)
+        b.percent = 60                       // held well below it: a weak adapter, not the limit
+        #expect(b.heldAtLimitPercent == nil)
+        b.percent = 85
+        b.chargeHoldPercent = 80             // Optimized Charging's pause is shown on its own
+        #expect(b.heldAtLimitPercent == nil)
+        var charging = BatterySample(percent: 84, state: .charging, timeToFullMinutes: 64)
+        charging.chargeLimitPercent = 85
+        charging.timeToFullMinutes = 2       // the app's time to the limit
+        #expect(charging.heldAtLimitPercent == nil)
+        #expect(charging.macOSTimeToFullMinutes == 64)   // macOS's to-100 % figure is kept
+    }
+
     @Test func reportedHealthWinsOverTheGauge() {
         // 4429 / 4563 = 97 % from the gauge while System Settings said 99 %.
         var t = BatteryTelemetry(updateTime: 1, nominalMAh: 4429, designMAh: 4563)
