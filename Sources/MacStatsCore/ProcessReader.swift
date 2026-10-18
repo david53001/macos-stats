@@ -11,7 +11,8 @@ import Darwin
 /// Two reads per process: a short BSD info (parent, owner) and one rusage read, which carries
 /// CPU time, footprint, energy (reported only when `includeEnergy`), reaped children's CPU
 /// time and the start time.
-public func readRawProcesses(includeEnergy: Bool = false) -> [RawProcess] {
+/// `includeCoalition` adds a third read per process: its resource coalition (`readCoalitionID`).
+public func readRawProcesses(includeEnergy: Bool = false, includeCoalition: Bool = false) -> [RawProcess] {
     let uid = getuid()
 
     // First call sizes the buffer (bytes), then fetch with headroom for races.
@@ -43,7 +44,8 @@ public func readRawProcesses(includeEnergy: Bool = false) -> [RawProcess] {
                 memoryBytes: usage.ri_phys_footprint,
                 energyNj: includeEnergy ? usage.ri_energy_nj : 0,
                 childCPUTimeNs: machToNs(usage.ri_child_user_time + usage.ri_child_system_time),
-                startTime: usage.ri_proc_start_abstime
+                startTime: usage.ri_proc_start_abstime,
+                coalitionID: includeCoalition ? readCoalitionID(pid) : 0
             ))
         } else {
             // Rare: fall back to task info (CPU time + resident size).
@@ -118,6 +120,48 @@ private let responsibilityFunction: ResponsibilityFunction? = {
     let rtldDefault = UnsafeMutableRawPointer(bitPattern: -2)   // RTLD_DEFAULT
     guard let symbol = dlsym(rtldDefault, "responsibility_get_pid_responsible_for_pid") else { return nil }
     return unsafeBitCast(symbol, to: ResponsibilityFunction.self)
+}()
+
+/// The resource coalition `pid` belongs to, 0 if unknown. A coalition is the kernel's group for
+/// an app and the helpers it starts (Activity Monitor's Energy tab groups by it); children join
+/// their parent's. `PROC_PIDCOALITIONINFO` (20) isn't in the public headers; its reply is the
+/// coalition ids by type (resource first) and three reserved words, 40 bytes.
+public func readCoalitionID(_ pid: Int32) -> UInt64 {
+    var info = (UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0))
+    let size = Int32(MemoryLayout.size(ofValue: info))
+    guard proc_pidinfo(pid, 20, 0, &info, size) == size else { return 0 }
+    return info.0
+}
+
+/// A coalition's cumulative counters: every task that was ever in it, exited ones included.
+public struct CoalitionUsage: Equatable, Sendable {
+    public var cpuTimeNs: UInt64
+    public var energyNj: UInt64
+
+    public init(cpuTimeNs: UInt64, energyNj: UInt64) {
+        self.cpuTimeNs = cpuTimeNs; self.energyNj = energyNj
+    }
+}
+
+/// Reads a resource coalition's counters via libSystem's `coalition_info_resource_usage`
+/// (exported, not in a public header; looked up at runtime, nil if missing or the call fails).
+/// The reply is XNU's `struct coalition_resource_usage` (open source, `sys/coalition.h`):
+/// `cpu_time` (Mach time units) at word 3, `energy` (nJ) at 11, and `cpu_time_eqos_len` at 23,
+/// the number of QoS classes (7). That length is checked as a layout guard: if a macOS changes
+/// the struct, the words move and this returns nil, so the breakdown keeps its own estimate.
+public func readCoalitionUsage(_ id: UInt64) -> CoalitionUsage? {
+    guard id != 0, let fn = coalitionUsageFunction else { return nil }
+    var words = [UInt64](repeating: 0, count: 64)
+    let ok = words.withUnsafeMutableBytes { fn(id, $0.baseAddress!, $0.count) == 0 }
+    guard ok, (1...16).contains(words[23]) else { return nil }
+    return CoalitionUsage(cpuTimeNs: machToNs(words[3]), energyNj: words[11])
+}
+
+private typealias CoalitionUsageFunction = @convention(c) (UInt64, UnsafeMutableRawPointer, Int) -> Int32
+private let coalitionUsageFunction: CoalitionUsageFunction? = {
+    let rtldDefault = UnsafeMutableRawPointer(bitPattern: -2)   // RTLD_DEFAULT
+    guard let symbol = dlsym(rtldDefault, "coalition_info_resource_usage") else { return nil }
+    return unsafeBitCast(symbol, to: CoalitionUsageFunction.self)
 }()
 
 /// A process's display name: its full name (`proc_name`, 32 characters, so "Code Helper

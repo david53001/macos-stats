@@ -23,6 +23,21 @@ workflow runs there.
   "unknown" (`Sources/MacStatsApp/TrashActions.swift`).
 - 375 tests pass (`./Scripts/test.sh`); reinstalled with `./Scripts/bundle.sh`.
 
+- Owner decisions (2026-10-18): (1) keep MacStats' steady times and show macOS's own figure in
+  the row tooltips (done: `BatterySample.macOSTimeToEmptyMinutes` / `macOSTimeToFullMinutes`,
+  `Sources/MacStatsApp/BatteryDetailsCard.swift`); (2) use coalition counters with a safe
+  fallback (done, see below).
+- Charge limit at the stop: macOS reports only "not charging", so MacStats said "Plugged in, not
+  charging" at the owner's 85 % limit. Now it says "Charged to 85% limit" / card "at 85% limit"
+  (`BatterySample.heldAtLimitPercent`, `Sources/MacStatsCore/BatteryParse.swift`). The limit itself was
+  already detected from powerd's file (`manualChargeLimit` 85).
+- Exited processes' CPU/energy are now exact from the kernel's coalition counters
+  (`docs/design/breakdown-stability.md` rule 4a). Live headless probe (scratch, not in repo): a
+  shell restarting 0.3 s `yes` processes: app total equal to the old estimate (15.8 %), but the
+  ~12 % now shows on "Finished processes" (was credited to the reaping shell). Rows always equalled
+  the header (the old estimate overshot it in 3 of 11 scans: 34.8 % vs 24.0 %). Energy is measured
+  (~5.1 W vs the estimate's 4.9 W; in one burst the estimate read 15.2 W vs 10.9 W measured). 388 tests pass.
+
 ## Findings (three read-only audits, live on the M3, 2026-10-18)
 
 Verdicts: KEEP = already Apple's number (or Apple's raw sensor with no Apple screen to match);
@@ -43,7 +58,7 @@ DESIGN CHOICE = MacStats' own on purpose; SWITCH = changed.
 | Trash | Finder AppleScript size | SWITCH (units + undercount, done) |
 | Per-app CPU, memory | `proc_pid_rusage` CPU time / physical footprint | KEEP (matched `top`/`footprint` within 0.5) |
 | Per-app watts | `ri_energy_nj` (kernel-measured CPU energy) | KEEP. Activity Monitor's "Energy Impact" isn't readable without Apple entitlements (only `top`, a setuid tool) |
-| Exited processes' CPU/energy | own estimate | PROPOSAL, not done: the kernel's per-app "coalition" counters (`syscall 459`, no root needed) count exited helpers exactly, but their struct isn't in public headers and adopting them rewrites the breakdown's accounting, so it needs the owner's OK first |
+| Exited processes' CPU/energy | was own estimate | SWITCH (done, owner OK'd): kernel coalition counters via `coalition_info_resource_usage`, with layout/consistency guards and the old estimate as fallback |
 
 Optional polish noted, not done: Apple's held-at-limit wording ("Charged to 85% Limit", from
 `ChargerData.NotChargingReason` bit 0x1000000) instead of "Plugged in, not charging"; dead code
@@ -51,5 +66,4 @@ Optional polish noted, not done: Apple's held-at-limit wording ("Charged to 85% 
 
 ## Next steps
 
-- Owner decisions: time-left tooltip with macOS's figure? coalition counters for exited processes?
 - Merge: see the handoff for the Sparkle session (merge `fix/battery-health` after `feat/sparkle-updates`).

@@ -629,7 +629,7 @@ private final class BreakdownScanSession: @unchecked Sendable {
         let time = Date().timeIntervalSinceReferenceDate
         let absTime = mach_absolute_time()
         let ticks = readCPUTicks()
-        let raw = readRawProcesses(includeEnergy: metric == .energy)
+        let raw = readRawProcesses(includeEnergy: metric == .energy, includeCoalition: metric != .memory)
         // CPU and energy have no real values until the second scan ("Measuring…" until then).
         return scanner.scan(raw, appPIDs: anchors.apps, fallbackAppPIDs: anchors.fallbacks,
                             metric: metric, time: time, absTime: absTime, cpuTicks: ticks)

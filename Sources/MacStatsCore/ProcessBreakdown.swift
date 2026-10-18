@@ -22,11 +22,14 @@ public struct RawProcess: Equatable {
     /// When the process started, in Mach absolute time (`ri_proc_start_abstime`); 0 if unknown.
     /// Tells a reused pid from the process that had it before.
     public let startTime: UInt64
+    /// Its resource coalition (`readCoalitionID`); 0 if unknown or not read.
+    public let coalitionID: UInt64
 
     public init(pid: Int32, ppid: Int32, cpuTimeNs: UInt64, memoryBytes: UInt64, energyNj: UInt64 = 0,
-                childCPUTimeNs: UInt64 = 0, startTime: UInt64 = 0) {
+                childCPUTimeNs: UInt64 = 0, startTime: UInt64 = 0, coalitionID: UInt64 = 0) {
         self.pid = pid; self.ppid = ppid; self.cpuTimeNs = cpuTimeNs; self.memoryBytes = memoryBytes
         self.energyNj = energyNj; self.childCPUTimeNs = childCPUTimeNs; self.startTime = startTime
+        self.coalitionID = coalitionID
     }
 }
 
