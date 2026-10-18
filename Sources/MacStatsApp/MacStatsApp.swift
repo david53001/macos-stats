@@ -90,6 +90,11 @@ final class AppModel: ObservableObject {
         capacity: 10, values: UserDefaults.standard.array(forKey: Keys.nominalRecent) as? [Int] ?? [])
     private var nominalPeakMAh: Int?
     private var savedNominalValues: [Int] = []
+    /// macOS's own "Maximum Capacity" (System Settings' health figure), read off the main
+    /// thread at launch and then hourly; health falls back to the gauge peak until it's known.
+    private var macOSHealthPercent: Int?
+    private var lastHealthRead: Date?
+    private let healthReadInterval: TimeInterval = 60 * 60
     private var lastBatteryState: BatteryState?
     private var lastEstimatorSave: Date?
     /// `typicalSeconds` as last written (or loaded), so unchanged values aren't rewritten.
@@ -340,10 +345,26 @@ final class AppModel: ObservableObject {
             break
         }
         if let peak = nominalPeakMAh { telemetry?.nominalMAh = peak }
+        if telemetry != nil { readMacOSHealthIfDue() }
+        telemetry?.reportedHealthPercent = macOSHealthPercent
         store.setBattery(sample)
         store.setBatteryTelemetry(telemetry, powerWatts: lastIntervalWatts,
                                   averageWatts: state == .discharging ? estimator.sessionAverageWatts : nil,
                                   averageSinceUnplug: sessionStartedAtUnplug)
+    }
+
+    /// Starts a background read of macOS's "Maximum Capacity" when the last one is an hour old;
+    /// the next battery refresh shows it.
+    private func readMacOSHealthIfDue() {
+        let now = Date()
+        if let last = lastHealthRead, now.timeIntervalSince(last) < healthReadInterval { return }
+        lastHealthRead = now
+        DispatchQueue.global(qos: .utility).async {
+            let percent = readMaximumCapacityPercent()
+            DispatchQueue.main.async { [weak self] in
+                if let percent { self?.macOSHealthPercent = percent }
+            }
+        }
     }
 
     /// Where charging stops (`ChargeLimitResolver`), nil on battery. powerd's policy file

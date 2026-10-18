@@ -134,6 +134,26 @@ import IOKit.ps
         #expect(BatteryTelemetry(updateTime: 1, nominalMAh: 4600, designMAh: 4563).healthPercent == 100)
     }
 
+    @Test func reportedHealthWinsOverTheGauge() {
+        // 4429 / 4563 = 97 % from the gauge while System Settings said 99 %.
+        var t = BatteryTelemetry(updateTime: 1, nominalMAh: 4429, designMAh: 4563)
+        #expect(t.healthPercent == 97)
+        t.reportedHealthPercent = 99
+        #expect(t.healthPercent == 99)
+    }
+
+    @Test func parsesSystemProfilerMaximumCapacity() {
+        let json = Data("""
+        {"SPPowerDataType":[{"_name":"spbattery_information","sppower_battery_health_info":
+        {"sppower_battery_cycle_count":135,"sppower_battery_health":"Good",
+        "sppower_battery_health_maximum_capacity":"99%"}},{"_name":"sppower_information"}]}
+        """.utf8)
+        #expect(parseMaximumCapacityPercent(systemProfilerJSON: json) == 99)
+        // No battery (desktop Mac) or no such field (older macOS): nil, the gauge figure stays.
+        #expect(parseMaximumCapacityPercent(systemProfilerJSON: Data(#"{"SPPowerDataType":[{"_name":"sppower_information"}]}"#.utf8)) == nil)
+        #expect(parseMaximumCapacityPercent(systemProfilerJSON: Data("not json".utf8)) == nil)
+    }
+
     @Test func remainingEnergyAllowsForTheVoltageSag() {
         // A 2-cell pack (Intel MacBook Air): end at 7.0 V.
         let t = BatteryTelemetry(updateTime: 1, voltageMV: 8_000, currentMAh: 2_000)
