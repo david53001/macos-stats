@@ -57,10 +57,13 @@ fi
 # yet. A release without them would take those features away from every copy Sparkle updates.
 # Checked only where the branch exists (locally or as origin/<name>); remove a name once it's
 # merged into main for good. Details: docs/sparkle-updates/README.md, STATUS / NEXT STEPS.
-# 2026-10-18 (v1.2.0): the owner chose "Route A": ship Sparkle + only the battery-health and
-# Trash fixes cherry-picked from fix/battery-health; feat/stability-tour (and the parts of
-# fix/battery-health that need it) ship later together. So nothing is listed for now. When that
-# later release is cut from a merge of them, list any branch the owner runs that is still unmerged.
+# 2026-10-18 (v1.2.0): "Route A" shipped Sparkle + only the battery-health and Trash fixes
+# cherry-picked from fix/battery-health.
+# 2026-10-18 (v1.3.0, branch release/1.3.0): feat/stability-tour (via the approved trial merge
+# integrate/stability-tour-sparkle) and all of fix/battery-health are merged, and
+# feat/launch-at-login's one commit is in as the cherry-pick be260a6. Nothing the owner runs is
+# left unmerged, so the list is empty. Add a branch here whenever the owner installs and runs
+# one that isn't on main yet.
 MUST_CONTAIN=()
 if [ "${ALLOW_MISSING_BRANCHES:-0}" != 1 ]; then
     for BRANCH in ${MUST_CONTAIN[@]+"${MUST_CONTAIN[@]}"}; do

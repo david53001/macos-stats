@@ -3,9 +3,13 @@
 Written 2026-10-18 for a fresh session with no context. MacStats is a SwiftPM menu-bar app
 (no Xcode project; Command Line Tools only) in
 `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats`, GitHub
-`david53001/macos-stats` (**public** repo). This work is on branch `feat/sparkle-updates`
+`david53001/macos-stats` (**public** repo). This work was built on branch `feat/sparkle-updates`
 (worktree `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/sparkle-updates`),
-based on `origin/main` (1.0.1). MacStats is the first of three sibling apps (MacStats, JVoice,
+based on `origin/main` (1.0.1), merged into `main` and released as **v1.2.0** on 2026-10-18. The
+next release, **1.3.0** (stability fixes + guided tour + the rest of `fix/battery-health`), is
+prepared on branch `release/1.3.0` (worktree
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/release-1.3.0`);
+its state is the first item of STATUS / NEXT STEPS below. MacStats is the first of three sibling apps (MacStats, JVoice,
 BetterScreenshot) to get this; the same approach is meant to be copied to the other two.
 
 ## Glossary
@@ -193,9 +197,9 @@ any change to the card or the open/close wiring): `docs/research/2026-10-18-prob
 
 ## How to cut a release (step by step)
 
-All from the repo root on `main`, with this branch, **`feat/stability-tour`** (via
-`integrate/stability-tour-sparkle`) **and `fix/battery-health`** merged (see STATUS / NEXT STEPS:
-a release without them would take features away from the copy the owner runs; the script refuses):
+All from the repo root on `main`. Every branch the owner runs must be merged first, or a release
+would take features away from the copy the owner runs (the script's `MUST_CONTAIN` list; empty
+since 1.3.0, which merges `feat/stability-tour` and `fix/battery-health`):
 
 ```bash
 cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
@@ -233,7 +237,7 @@ Guards (it refuses before building; the overrides are for dry runs only, never f
 |---|---|
 | `git status --porcelain` is not empty (uncommitted or untracked files) | `ALLOW_DIRTY=1` |
 | `HEAD` isn't `origin/main` (after `git fetch origin main`) | `ALLOW_NOT_MAIN=1` |
-| `HEAD` doesn't contain a branch in the script's `MUST_CONTAIN` list (now `feat/stability-tour` and `fix/battery-health`, each checked as a local and an `origin/` branch where they exist; the tip at release time, so later commits on them count too) | `ALLOW_MISSING_BRANCHES=1` |
+| `HEAD` doesn't contain a branch in the script's `MUST_CONTAIN` list (empty since 1.3.0; each listed branch is checked as a local and an `origin/` branch where they exist, at its tip at release time, so later commits on them count too) | `ALLOW_MISSING_BRANCHES=1` |
 | a GitHub release with tag `vX.Y.Z` already exists (`gh release view`), or `gh` can't tell | none: bump the version |
 | `CFBundleVersion` isn't a whole number, or isn't above the published appcast's | none |
 
@@ -309,25 +313,91 @@ keyboard focus back to the app that was in front; snapshots of Sparkle's windows
 `<work-dir>/ui/` (keep them with `KEEP=1`). The notification is requested but not shown: the test
 build never asks for the notification permission.
 
-### Manual checklist for the first real update (1.2.0 → 1.2.1)
+### Manual checklist for the first real update (1.2.0 → 1.3.0)
 
 The UI mode above covers Sparkle's windows, the dot/"Show Update…" state and Install and
 Relaunch on a throwaway copy. What only a real release on the owner's Mac shows (owner, hard gate
-for 1.2.1): the notification on screen and its click, the window really opening *behind* the
+for the first update after 1.2.0, now 1.3.0): the notification on screen and its click, the window really opening *behind* the
 frontmost app (the UI mode usually gets "immediate focus"), the gear dot on real glass, and the
 Finder permission surviving the update. On a Mac running the previous release:
 
 1. Wait for (or force: `defaults write com.macstats.MacStats SULastCheckTime -date "2000-01-01 00:00:00 +0000"`,
    then relaunch MacStats) the scheduled check. Expect Sparkle's update window to open **without
-   taking focus** (behind the frontmost app), and one notification "MacStats 1.2.1 is available".
+   taking focus** (behind the frontmost app), and one notification "MacStats 1.3.0 is available".
 2. Open the panel: the footer gear has a small accent dot. Settings → UPDATES says
-   "Version 1.2.1 is available." on one line, with **Show Update…**.
+   "Version 1.3.0 is available." on one line, with **Show Update…**.
 3. Click the notification (or **Show Update…**): Sparkle's window comes to the front.
-4. Click **Install Update**, then **Install and Relaunch**. MacStats relaunches as 1.2.1; the dot
+4. Click **Install Update**, then **Install and Relaunch**. MacStats relaunches as 1.3.0; the dot
    and the line are gone; the Trash card still works without a new Finder permission prompt.
 5. Repeat once with **Remind Me Later**: the dot disappears when the window closes.
 
 ## STATUS / NEXT STEPS
+
+### Release 1.3.0 (branch `release/1.3.0`): read this first
+
+State on 2026-10-18 (evening). Branch `release/1.3.0`, worktree
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/release-1.3.0`,
+made from local `main` = `origin/main` = `68a5d15` (the v1.2.0 release). **Not pushed, not tagged,
+not released, not installed** (the owner's session does that after review).
+
+What is on it, all by `git merge` (no rebase, no squash, `main`'s history untouched):
+
+1. `018c9c6` merge of `integrate/stability-tour-sparkle` (the trial merge above, whose resolutions
+   the owner approved, incl. the tour's HELP card folded into GENERAL so Quit fits). It brings all
+   of `feat/stability-tour` (139 commits: stability fixes, guided tour, the readings-accuracy
+   v1.1.0 work). Only conflicts: `main`'s Route A cherry-picks `4a4c7e0` / `c461e09` (battery
+   health, Trash) against the tour's code in `MacStatsApp.swift`, `OverviewView.swift`,
+   `TrashActions.swift`, `BatteryTelemetry.swift`, `BatteryParseTests.swift`. Each was resolved to
+   the integration branch's file plus the *original* commits `986064e` + `ee64f39` applied to it
+   (`git merge-file`, base `9a29b2c`), so the fix exists once, in `fix/battery-health`'s own form
+   on the tour code (the cherry-picks differ from it only in comments and one `let`/`var`).
+2. `f2af532` merge of `fix/battery-health` (`cb4bdeb`). `986064e` / `ee64f39` merged as no-ops (no
+   duplicated or half-reverted hunks); new: `cd3d417` ("Charged to 85% limit", macOS's own times in
+   the tooltips) and `220fb79` (exact finished-process CPU/energy from coalition counters).
+   Conflicts: `BatteryParseTests.swift` (kept the new test; the file is now byte-identical to
+   `fix/battery-health`'s) and `CLAUDE.md`.
+3. The release commit: version **1.3.0 / build 5** (`Resources/Info.plist`, build = `main`'s 4 + 1),
+   `CHANGELOG.md` (new, plain language; seeded with the earlier GitHub release notes; its 1.3.0
+   section is the release notes), README feature list, `CLAUDE.md` status, this section,
+   `MUST_CONTAIN` comment in `Scripts/package-release.sh` (list stays empty: every branch the owner
+   runs is now contained; `feat/launch-at-login`'s one commit is in as the cherry-pick `be260a6`).
+
+Check that the code is exactly "both sides" (no lost Sparkle or tour behaviour):
+`git diff fix/battery-health release/1.3.0 -- Sources Tests Package.swift Package.resolved Resources Scripts`
+equals `git diff feat/stability-tour integrate/stability-tour-sparkle -- (same paths)` except the
+`MUST_CONTAIN` lines of `package-release.sh` and the version bump. So the Sparkle updater, the
+5-use "open at login?" card (no silent `LoginItem.registerOnce()`), the tour gating of the card
+and everything on `fix/battery-health` are all in.
+
+Verified on `release/1.3.0` (2026-10-18, this Mac, macOS 26, SDK pinned to MacOSX26.5 by the
+scripts):
+
+- `./Scripts/test.sh`: **415 tests in 51 suites pass** (400 integration + 15 from
+  `fix/battery-health`).
+- `./Scripts/sparkle-e2e-test.sh`: `GOOD update installed (build 101): PASS`, `BAD signature
+  refused (still build 100): PASS` (Code 4005), installed copy passes `codesign --verify --deep
+  --strict`, Authority "MacStats Code Signing", relaunched; exit 0. Afterwards no test process,
+  no `com.macstats.MacStats.sparkletest` defaults, port 8765 free. (`E2E_UI=1` not re-run.)
+- `package-release.sh` dry run: DRYRUN_RESULT
+- Not done here (owner): a live look at the merged app (tour + card + Settings on real glass),
+  the manual Sparkle checklist above with the real 1.2.0 → 1.3.0 update.
+
+**NEXT STEPS for 1.3.0 (owner's session, in this order):**
+
+1. Review: `git log --first-parent main..release/1.3.0`, `git diff main release/1.3.0 -- Sources`.
+2. `git switch main && git merge --ff-only release/1.3.0` (main hasn't moved; otherwise
+   `git merge --no-ff release/1.3.0`), `./Scripts/test.sh`, `git push origin main`.
+3. Copy the 1.3.0 section of `CHANGELOG.md` into a notes file outside the repo, then
+   `./Scripts/package-release.sh /tmp/macstats-1.3.0-notes.md` (no `ALLOW_*`), and run the
+   `gh release create v1.3.0 … --target <sha> --latest` command it prints.
+4. On a Mac running 1.2.0, run the manual checklist above (1.2.0 → 1.3.0). Note: the copy in
+   `~/Applications` on this Mac is a 1.1.0 / build 3 dev build from `fix/battery-health`, which
+   has **no Sparkle** (that branch predates it), so it will never update itself. To run the
+   checklist here, first install 1.2.0 with the curl one-liner (it fetches the release marked
+   Latest, so do it *before* publishing 1.3.0), or just install 1.3.0 with the one-liner after
+   publishing and run the checklist on the next release.
+
+### Earlier history (Sparkle branch, review rounds 1-3, integration)
 
 - 2026-10-18: both features built and committed on `feat/sparkle-updates` (not merged, pushed,
   installed or released).
@@ -518,9 +588,9 @@ the chip, Settings (light + dark).
   relaunched by another session; none of this work's scripts write there (they all set
   `MACSTATS_APP`).
 
-**NEXT STEPS (in this order):**
+**NEXT STEPS as of v1.2.0 (in this order; 1 and 2 are DONE: Route A shipped 1.2.0, and `release/1.3.0` above merges the rest):**
 
-1. **Owner: approve the integration.** Review `integrate/stability-tour-sparkle` (worktree above;
+1. **(Done in `release/1.3.0`.) Owner: approve the integration.** Review `integrate/stability-tour-sparkle` (worktree above;
    `git log feat/stability-tour..integrate/stability-tour-sparkle`, `git diff feat/stability-tour
    integrate/stability-tour-sparkle -- Sources`). If OK: merge it into `main`
    (`git switch main && git merge --no-ff integrate/stability-tour-sparkle`), then remove
@@ -531,7 +601,7 @@ the chip, Settings (light + dark).
    from the list once it's on main). If the tour branch gets more
    commits first, merge `feat/stability-tour` into the integration branch again (or redo the merge
    with the resolutions in the table above).
-2. Push `main`, then cut 1.2.0 with the steps above. 1.0.1 users get 1.2.0 via the curl
+2. **(Done: v1.2.0 released 2026-10-18.)** Push `main`, then cut 1.2.0 with the steps above. 1.0.1 users get 1.2.0 via the curl
    installer once; Sparkle takes over from there. Then run the manual checklist with 1.2.1, and
    check the card once on real glass (`defaults write … launchAtLoginPromptUses -int 5` etc., above).
 3. Port the same template to JVoice and BetterScreenshot (their own repos; they already have

@@ -42,8 +42,14 @@ Click the graph icon in the menu bar to open the panel.
   your average power use rather than the last minute, so it doesn't swing between 3 and 13 hours.
 - **Trash**: size, with an Empty button
 
-Click CPU, Memory or Battery to see which apps use the most. Right-click an app to quit it.
-The Battery screen also shows power draw, battery health, cycle count and temperature.
+Click CPU, Memory or Battery to see which apps use the most; click an app to see its
+processes, and right-click an app or a process to quit it. The lists hold still while your
+pointer is over them. The Battery screen also shows power draw, battery health (the same
+"Maximum Capacity" as System Settings), cycle count and temperature, and with a charge limit on
+it counts the time to that limit.
+
+A short guided tour shows you around on first use; replay it with **?** in the panel's footer.
+What changed in each version: [`CHANGELOG.md`](CHANGELOG.md).
 
 After you've used it a few times, MacStats asks once whether to open at login; you can change
 that any time in Settings > Launch at login. It sends
