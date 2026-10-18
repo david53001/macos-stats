@@ -22,6 +22,7 @@ struct SettingsView: View {
             }
 
             GeneralCard()
+            UpdatesCard()
             AppearanceCard()
 
             Spacer(minLength: 0)
@@ -80,6 +81,53 @@ private struct GeneralCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(CardBackground())
         .onAppear { login.refresh() }
+    }
+}
+
+/// "Updates" → Sparkle (`Updates.swift`): the automatic daily check and "Check for Updates…".
+/// MacStats has no menu bar menu of its own, so this card is where the menu item lives.
+private struct UpdatesCard: View {
+    @ObservedObject private var updates = Updates.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("UPDATES")
+                .font(.caption2).fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Text("Check automatically").font(.callout)
+                Spacer()
+                Toggle("Check automatically", isOn: Binding(
+                    get: { updates.automaticallyChecks },
+                    set: { updates.automaticallyChecks = $0 }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            }
+
+            HStack {
+                Group {
+                    if let version = updates.pendingVersion {
+                        Text("MacStats \(version) is ready to install.")
+                    } else {
+                        Text("You have MacStats \(updates.currentVersion).")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                Spacer()
+                Button("Check for Updates…") { updates.checkForUpdates() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(!updates.canCheck)
+            }
+        }
+        .padding(.horizontal, Design.cardPadding)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CardBackground())
     }
 }
 

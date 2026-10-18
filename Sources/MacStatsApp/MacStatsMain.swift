@@ -7,6 +7,7 @@ struct MacStatsApp: App {
     init() {
         let model = AppModel()
         _model = StateObject(wrappedValue: model)
+        Updates.shared.start()
         // Hovering the menu-bar icon takes a fresh sample, so a click opens on current numbers.
         StatusItemHover.install { model.prewarm() }
     }

@@ -63,7 +63,9 @@ final class AppModel: ObservableObject {
 
     init() {
         // Launch at login is no longer turned on silently at first launch: `loginPrompt` asks once.
+        #if !SPARKLE_E2E_TEST   // the update test build (docs/sparkle-updates) must not leave a prompt behind
         notifier.requestAuthorization()
+        #endif
         sample(at: Date())   // just stores the first baseline; history starts at the next sample
         readSlowSensors()    // so even the first open has battery + temperature on frame one
         observePowerSource()
