@@ -1,0 +1,70 @@
+22:57:36.99 scan0 10.8 ms measuring=false
+22:57:37.51 scan1 5.5 ms header=2.2% rowsum=6.1 GB rows=53
+   Code [14106] 1.9 GB procs=32
+      - Code Helper (Plugin) 14126 352 MB
+      - claude 14424 339 MB
+      - Code Helper 14109 225 MB
+      - Code Helper (Renderer) 14112 223 MB
+      - sourcekit-lsp 14330 180 MB
+      - Code 14106 99 MB
+      - Code Helper 14123 67 MB
+      - SourceKitService 26561 63 MB
+      - Code Helper 14125 59 MB
+      - node 14509 58 MB
+      - Code Helper 14124 55 MB
+      - sourcekit-lsp 26538 44 MB
+      - MTLCompilerService 14116 40 MB
+      - Code Helper 14133 35 MB
+      - MTLCompilerService 14111 33 MB
+      - node 14700 33 MB
+      - codex 14480 25 MB
+      - Code Helper (Plugin) 14280 19 MB
+      - copilot-runtime 14278 11 MB
+      - Code Helper 14110 9 MB
+      - chrome_crashpad_handler 14108 5 MB
+      - h2 90860 3 MB
+      - zsh 14138 2 MB
+      - caffeinate 87072 2 MB
+      - zsh 90776 2 MB
+      - zsh 90861 1 MB
+      - zsh 90859 1 MB
+      - zsh 90672 1 MB
+      - zsh 85107 1 MB
+      - sleep 85108 1 MB
+      - sleep 90673 1 MB
+      - sleep 90862 1 MB
+   Dock [1309] 262 MB procs=3
+      - DockHelper 2465 213 MB
+      - Dock 1309 47 MB
+      - PlugInLibraryService 53494 2 MB
+   Spotlight [1393] 234 MB procs=4
+      - Spotlight 1393 194 MB
+      - MTLCompilerService 1401 18 MB
+      - MTLCompilerService 1400 16 MB
+      - StocksKitService 1482 6 MB
+   BetterScreenshot [9268] 186 MB procs=3
+      - BetterScreenshot 9268 156 MB
+      - MTLCompilerService 41505 17 MB
+      - MTLCompilerService 41506 13 MB
+   JVoice [12175] 143 MB procs=2
+      - JVoice 12175 132 MB
+      - com.apple.SafariPlatformSupport 12261 12 MB
+   Finder [1311] 134 MB procs=6
+      - Finder 1311 85 MB
+      - MTLCompilerService 8838 18 MB
+      - MTLCompilerService 8839 17 MB
+      - QuickLookUIService 1316 8 MB
+      - CSExattrCryptoService 55464 3 MB
+      - PlugInLibraryService 53495 2 MB
+   Notification Centre [1202] 94 MB procs=3
+      - NotificationCenter 1202 57 MB
+      - MTLCompilerService 1283 19 MB
+      - MTLCompilerService 1284 18 MB
+   Control Centre [1168] 92 MB procs=3
+      - ControlCenter 1168 62 MB
+      - MTLCompilerService 1366 15 MB
+      - MTLCompilerService 1365 14 MB
+   Dock Extra [1342] 53 MB procs=3
+      - MTLCompilerService 1346 19 MB
+      - com.apple.dock.extra 1342 18 MB
+      - MTLCompilerService 1345 16 MB

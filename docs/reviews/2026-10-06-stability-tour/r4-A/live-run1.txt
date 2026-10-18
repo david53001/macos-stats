@@ -1,0 +1,46 @@
+BURST start t=44.0 pid=2151
+BURSTROW t=44.0 yes shown=0.0% (1 core=12.5%) app=58374 rank=2 appShown=1.6 header=8
+BURSTROW t=46.0 yes shown=3.1% (1 core=12.5%) app=58374 rank=0 appShown=4.5 header=10
+BURSTROW t=48.0 yes shown=6.3% (1 core=12.5%) app=58374 rank=0 appShown=7.4 header=12
+BURSTROW t=50.0 yes shown=9.4% (1 core=12.5%) app=58374 rank=0 appShown=10.0 header=14
+BURSTROW t=52.0 yes shown=12.0% (1 core=12.5%) app=58374 rank=0 appShown=13.0 header=17
+BURSTROW t=54.0 yes shown=12.0% (1 core=12.5%) app=58374 rank=0 appShown=13.0 header=17
+BURSTROW t=56.0 yes shown=12.0% (1 core=12.5%) app=58374 rank=0 appShown=13.0 header=17
+BURSTROW t=58.0 yes shown=12.0% (1 core=12.5%) app=58374 rank=0 appShown=13.0 header=17
+BURST stop t=60.0
+BURSTROW t=60.0 yes not listed
+BURSTROW t=62.0 yes not listed
+BURSTROW t=64.0 yes not listed
+BURSTROW t=66.0 yes not listed
+BURSTROW t=68.0 yes not listed
+BURSTROW t=70.0 yes not listed
+BURSTROW t=72.0 yes not listed
+BURSTROW t=74.0 yes not listed
+BURSTROW t=76.0 yes not listed
+BURSTROW t=78.0 yes not listed
+CARDS 109 s, 219 ticks: text changes/min CPU=19.8 Mem=0.0 Down=3.3 Up=9.9
+CARDS CPU |card - 2 s reading|: mean=0.69 pp, p95=2.03 pp, max=2.86 pp
+CARDS burst: pre-median 7.8%, card reached +70% of one core at t=46.0 (2.0 s after start)
+CARDS burst end: card back within +30% of one core at t=61.0 (1.0 s after stop)
+CARDS longest stretch with card ≥ 3 pp off the reading: 0.0 s
+BREAKDOWN cpu away: 54 scans/1.8 min | top-8 order changed 5 (2.8/min), of which reorders of existing rows 5, new entries 0 | inversion scans 3 (longest run 1) | top-8 text changes 10.4% of row-scans (3.1 per row/min) | A-B-A flips 2 | max rel |shown-exact| 0.25
+  away cpu: expanded app 58374: process-order changes 26, dropped to ≤1 process (view collapses) 0, app vanished 0, block sizes [28, 32, 33, 34]
+BREAKDOWN cpu hover: 54 scans/1.8 min | top-8 order changed 2 (1.1/min), of which reorders of existing rows 2, new entries 0 | inversion scans 13 (longest run 11) | top-8 text changes 10.4% of row-scans (3.1 per row/min) | A-B-A flips 2 | max rel |shown-exact| 0.25
+  hover cpu: frozen scan pairs 19, order moved while frozen 0, expanded block grew while frozen 0
+  hover cpu: max 'Ended' placeholders in one frozen scan 0
+  hover cpu: at unfreeze, 0 of top-8 positions changed
+  hover cpu: expanded app 58374: process-order changes 15, dropped to ≤1 process (view collapses) 0, app vanished 0, block sizes [28, 31, 33]
+BREAKDOWN memory away: 55 scans/1.8 min | top-8 order changed 0 (0.0/min), of which reorders of existing rows 0, new entries 0 | inversion scans 0 (longest run 0) | top-8 text changes 0.2% of row-scans (0.1 per row/min) | A-B-A flips 0 | max rel |shown-exact| 0.02
+  away memory: expanded app 58374: process-order changes 6, dropped to ≤1 process (view collapses) 0, app vanished 0, block sizes [28, 31, 33, 34]
+BREAKDOWN memory hover: 55 scans/1.8 min | top-8 order changed 0 (0.0/min), of which reorders of existing rows 0, new entries 0 | inversion scans 0 (longest run 0) | top-8 text changes 0.2% of row-scans (0.1 per row/min) | A-B-A flips 0 | max rel |shown-exact| 0.02
+  hover memory: frozen scan pairs 19, order moved while frozen 0, expanded block grew while frozen 0
+  hover memory: max 'Ended' placeholders in one frozen scan 0
+  hover memory: at unfreeze, 0 of top-8 positions changed
+  hover memory: expanded app 58374: process-order changes 4, dropped to ≤1 process (view collapses) 0, app vanished 0, block sizes [28, 31, 33]
+BREAKDOWN energy away: 54 scans/1.8 min | top-8 order changed 0 (0.0/min), of which reorders of existing rows 0, new entries 0 | inversion scans 0 (longest run 0) | top-8 text changes 5.9% of row-scans (1.8 per row/min) | A-B-A flips 0 | max rel |shown-exact| 0.13
+  away energy: expanded app 58374: process-order changes 9, dropped to ≤1 process (view collapses) 0, app vanished 0, block sizes [28, 32, 33, 34]
+BREAKDOWN energy hover: 54 scans/1.8 min | top-8 order changed 0 (0.0/min), of which reorders of existing rows 0, new entries 0 | inversion scans 0 (longest run 0) | top-8 text changes 5.9% of row-scans (1.8 per row/min) | A-B-A flips 0 | max rel |shown-exact| 0.13
+  hover energy: frozen scan pairs 19, order moved while frozen 0, expanded block grew while frozen 0
+  hover energy: max 'Ended' placeholders in one frozen scan 0
+  hover energy: at unfreeze, 0 of top-8 positions changed
+  hover energy: expanded app 58374: process-order changes 7, dropped to ≤1 process (view collapses) 0, app vanished 0, block sizes [28, 32, 33]

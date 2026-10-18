@@ -1,0 +1,6 @@
+MacStats readNetCounters delta during an 8 MB curl download: rx 8544499 tx 29639 over 0.99 s (8.6 MB/s down)
+netstat -ib delta (same window, only interface with traffic): en0 rx 8544226 tx 29467
+--- netstat before
+en0        1500  <Link#11>   da:3e:b8:c4:d0:ce  7339237     0 7867388753  2971106     0 2239543961     0
+--- netstat after
+en0        1500  <Link#11>   da:3e:b8:c4:d0:ce  7345248     0 7875932979  2971390     0 2239573428     0

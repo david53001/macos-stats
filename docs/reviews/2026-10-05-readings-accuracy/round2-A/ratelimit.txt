@@ -1,0 +1,8 @@
+# earlier run (21:4x, same binary):
+interval=333000us calls=40 cpu_ticks unchanged=8 vm unchanged=5
+interval=250000us calls=40 cpu_ticks unchanged=5 vm unchanged=0
+interval=500000us calls=40 cpu_ticks unchanged=0 vm unchanged=0
+# later run:
+interval=333000us calls=40 cpu_ticks unchanged=1 vm unchanged=1
+interval=500000us calls=40 cpu_ticks unchanged=0 vm unchanged=0
+interval=1000000us calls=40 cpu_ticks unchanged=0 vm unchanged=0

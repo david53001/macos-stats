@@ -1,0 +1,11 @@
+IOPS percent=80 state=notCharging macOS TTE=nil TTF=nil
+policy=PowerdChargePolicy(limit: h.ChargeLimitHint.limit(85), hold: Optional(80))
+target=limit(80)
+instantWatts=Optional(7.533) remainingWh=Optional(40.00818) health=Optional(99) cycles=Optional(128) tempC=Optional(29.99) adapter=Optional(30)
+raw SoC=79.01066485137281 nominal=4534 design=4563
+typical=Optional(3.432372546009533) over 5209.0s; if unplugged now (session<2min): minutesLeft=Optional(699)
+naive Wh (V now × mAh)=43.45536
+gauge step 60s interval=Optional(60.0) intervalWatts=Optional(3.7350517241379313) instant=Optional(2.866) count+58
+gauge step 60s interval=Optional(60.0) intervalWatts=Optional(7.251603448275862) instant=Optional(19.578) count+58
+gauge step 60s interval=Optional(60.0) intervalWatts=Optional(7.979241379310345) instant=Optional(12.353) count+58
+gauge step 60s interval=Optional(60.0) intervalWatts=Optional(4.020810344827586) instant=Optional(2.252) count+58

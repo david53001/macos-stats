@@ -1,0 +1,8 @@
+[cpuB8] first shown t=2.0, 149 scans | first re-sort slots 2 | top-8 order chg/min 3.6, slot chg/min 8.3, flat(14) slot chg/min 27.8
+    inversion scans 10/149, missorted pairs 0 | top-8 text chg/min 15.4 (flip-backs 2.2), s between changes per row 35.1 | err steps p95 1.63 max 6.61
+    expanded app moves/min 2.8, child top-5 order chg/min 4.1, child text chg/min 6.1, collapses 0
+    inversion scans 10/149, missorted pairs 0 | top-8 text chg/min 15.4 (flip-backs 2.2), s between changes per row 35.1 | err steps p95 1.63 max 6.61
+[energyB8] first shown t=2.0, 149 scans | first re-sort slots 0 | top-8 order chg/min 0.2, slot chg/min 1.2, flat(14) slot chg/min 28.4
+    inversion scans 1/149, missorted pairs 0 | top-8 text chg/min 4.3 (flip-backs 0.6), s between changes per row 126.9 | err steps p95 0.30 max 5.78
+    expanded app moves/min 0.0, child top-5 order chg/min 19.7, child text chg/min 5.7, collapses 0
+    inversion scans 1/149, missorted pairs 0 | top-8 text chg/min 4.3 (flip-backs 0.6), s between changes per row 126.9 | err steps p95 0.30 max 5.78

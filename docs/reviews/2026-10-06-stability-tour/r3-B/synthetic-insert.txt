@@ -1,0 +1,7 @@
+synthetic, frozen, expanded app 100 gains pid 103:
+  before: ["a100", "p100", "p101", "p102", "a200", "a300"]
+  after:  ["a100", "p100", "p101", "p102", "p103", "a200", "a300"]
+synthetic, frozen, expanded app with 5 shown gains a 6th:
+  before: ["a100", "p100", "p101", "p102", "p103", "p104", "a200"]
+  after:  ["a100", "p100", "p101", "p102", "p103", "p104", "m100", "a200"]
+done

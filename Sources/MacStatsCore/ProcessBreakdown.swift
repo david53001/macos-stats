@@ -1,7 +1,7 @@
 import Foundation
 
 /// Which resource a breakdown ranks apps by.
-public enum BreakdownMetric: Equatable {
+public enum BreakdownMetric: Equatable, Sendable {
     case cpu
     case memory
     /// Watts of CPU energy per app (the Battery drill-in).
@@ -15,40 +15,85 @@ public struct RawProcess: Equatable {
     public let cpuTimeNs: UInt64    // cumulative user+system CPU time, nanoseconds
     public let memoryBytes: UInt64  // physical footprint (Activity Monitor's Memory); RSS fallback
     public let energyNj: UInt64     // cumulative CPU energy, nanojoules (0 unless requested)
+    /// Cumulative CPU time (ns) of exited children this process has reaped, including their
+    /// own reaped children. Lets a scan credit work done by processes that came and went
+    /// between two scans.
+    public let childCPUTimeNs: UInt64
+    /// When the process started, in Mach absolute time (`ri_proc_start_abstime`); 0 if unknown.
+    /// Tells a reused pid from the process that had it before.
+    public let startTime: UInt64
 
-    public init(pid: Int32, ppid: Int32, cpuTimeNs: UInt64, memoryBytes: UInt64, energyNj: UInt64 = 0) {
+    public init(pid: Int32, ppid: Int32, cpuTimeNs: UInt64, memoryBytes: UInt64, energyNj: UInt64 = 0,
+                childCPUTimeNs: UInt64 = 0, startTime: UInt64 = 0) {
         self.pid = pid; self.ppid = ppid; self.cpuTimeNs = cpuTimeNs; self.memoryBytes = memoryBytes
-        self.energyNj = energyNj
+        self.energyNj = energyNj; self.childCPUTimeNs = childCPUTimeNs; self.startTime = startTime
     }
 }
 
 /// A single process's usage, already attributed to its owning GUI app.
-public struct ProcessUsage: Equatable {
+public struct ProcessUsage: Equatable, Identifiable, Sendable {
     public let pid: Int32
-    public let appPID: Int32       // owning GUI app's pid (the grouping key)
+    public let appPID: Int32       // owning GUI app's pid (the grouping key), or a `BreakdownGroup`
+    /// Share of the whole machine (0...100, all cores together), the scale of the CPU card.
+    /// Activity Monitor's per-process figure (100 % = one core) is this × the core count.
     public let cpuPercent: Double
     public let memoryBytes: UInt64
     public let watts: Double
+    /// The process's start time (see `RawProcess.startTime`), so an action can check that the
+    /// pid still belongs to the same process before signalling it.
+    public let startTime: UInt64
+    /// The process's name, read during the scan (`processName`), so a row of a process that ends
+    /// before it is drawn still has one. nil if unreadable.
+    public let name: String?
 
-    public init(pid: Int32, appPID: Int32, cpuPercent: Double, memoryBytes: UInt64, watts: Double = 0) {
+    public var id: Int32 { pid }
+
+    public init(pid: Int32, appPID: Int32, cpuPercent: Double, memoryBytes: UInt64, watts: Double = 0,
+                startTime: UInt64 = 0, name: String? = nil) {
         self.pid = pid; self.appPID = appPID; self.cpuPercent = cpuPercent; self.memoryBytes = memoryBytes
-        self.watts = watts
+        self.watts = watts; self.startTime = startTime; self.name = name
+    }
+
+    public func value(for metric: BreakdownMetric) -> Double {
+        switch metric {
+        case .cpu: return cpuPercent
+        case .memory: return Double(memoryBytes)
+        case .energy: return watts
+        }
     }
 }
 
+/// Group keys for breakdown rows that aren't a single app (app pids are always > 0).
+public enum BreakdownGroup {
+    /// The user's processes that no running app is responsible for (agents, daemons).
+    public static let otherProcesses: Int32 = -1
+    /// CPU the machine used outside the user's processes: the kernel, WindowServer and other
+    /// users' daemons, which can't be read per process. No processes, no actions.
+    public static let system: Int32 = -2
+    /// The pid of an app's synthetic "Finished processes" child row (a `ProcessUsage`, not an app
+    /// row): CPU credited to the app for processes that exited before a scan could read their
+    /// last stretch (see `exitWorkCredit`). No process to act on.
+    public static let exitedProcesses: Int32 = -3
+}
+
 /// One app's summed usage across all of its processes.
-public struct AppUsage: Equatable, Identifiable {
+public struct AppUsage: Equatable, Identifiable, Sendable {
     public let appPID: Int32
-    public let pids: [Int32]
+    /// The app's processes, ranked by the breakdown's metric (ties by pid).
+    public let processes: [ProcessUsage]
     public let cpuPercent: Double
     public let memoryBytes: UInt64
     public let watts: Double
 
     public var id: Int32 { appPID }
+    public var pids: [Int32] { processes.map(\.pid) }
+    /// True for a real app (not the "Other processes" or "System" group).
+    public var isApp: Bool { appPID > 0 }
 
-    public init(appPID: Int32, pids: [Int32], cpuPercent: Double, memoryBytes: UInt64, watts: Double = 0) {
-        self.appPID = appPID; self.pids = pids; self.cpuPercent = cpuPercent; self.memoryBytes = memoryBytes
-        self.watts = watts
+    public init(appPID: Int32, processes: [ProcessUsage], cpuPercent: Double, memoryBytes: UInt64,
+                watts: Double = 0) {
+        self.appPID = appPID; self.processes = processes; self.cpuPercent = cpuPercent
+        self.memoryBytes = memoryBytes; self.watts = watts
     }
 
     public func value(for metric: BreakdownMetric) -> Double {
@@ -89,27 +134,50 @@ public func owningAppPID(for pid: Int32, ppid: [Int32: Int32], appPIDs: Set<Int3
     }
 }
 
-/// Groups already-attributed process usages by their owning app, sums CPU% and memory,
-/// and returns the apps sorted descending by the chosen metric. Input is assumed to be
-/// pre-filtered to app-owned processes (callers skip processes whose `owningAppPID` is nil),
-/// so the result contains only user apps.
+/// Groups already-attributed process usages by their owning app (or group), sums CPU%,
+/// memory and watts, and returns the rows sorted descending by the chosen metric, each with
+/// its processes ranked the same way.
 public func aggregate(_ processes: [ProcessUsage], by metric: BreakdownMetric) -> [AppUsage] {
-    var byApp: [Int32: (pids: [Int32], cpu: Double, mem: UInt64, watts: Double)] = [:]
+    var byApp: [Int32: (procs: [ProcessUsage], cpu: Double, mem: UInt64, watts: Double)] = [:]
     for p in processes {
-        var entry = byApp[p.appPID] ?? (pids: [], cpu: 0, mem: 0, watts: 0)
-        entry.pids.append(p.pid)
-        entry.cpu += p.cpuPercent
-        entry.mem += p.memoryBytes
-        entry.watts += p.watts
-        byApp[p.appPID] = entry
+        // Mutated in place: copying the entry out and back held two references to its array,
+        // so every append copied it (~52k copies a scan with ~320 "Other" processes).
+        byApp[p.appPID, default: (procs: [], cpu: 0, mem: 0, watts: 0)].procs.append(p)
+        byApp[p.appPID]!.cpu += p.cpuPercent
+        byApp[p.appPID]!.mem += p.memoryBytes
+        byApp[p.appPID]!.watts += p.watts
     }
     let apps = byApp.map { appPID, e in
-        AppUsage(appPID: appPID, pids: e.pids, cpuPercent: e.cpu, memoryBytes: e.mem, watts: e.watts)
+        AppUsage(appPID: appPID, processes: e.procs.sorted { ranksBefore($0.value(for: metric), $0.pid,
+                                                                         $1.value(for: metric), $1.pid) },
+                 cpuPercent: e.cpu, memoryBytes: e.mem, watts: e.watts)
     }
-    // Ties (e.g. many idle apps at 0% CPU) break by pid, so equal rows keep a stable order
-    // between scans instead of shuffling with dictionary iteration order.
-    return apps.sorted {
-        let (a, b) = ($0.value(for: metric), $1.value(for: metric))
-        return a != b ? a > b : $0.appPID < $1.appPID
+    return sortedRows(apps, by: metric)
+}
+
+/// Adds the "System" row to a CPU breakdown: what the whole machine used (`totalCPUPercent`,
+/// over the same interval as the rows) minus what the rows account for, so the rows add up
+/// to the header. Clamped at 0 (the two clocks differ slightly).
+public func addingSystemRow(to apps: [AppUsage], totalCPUPercent: Double) -> [AppUsage] {
+    let accounted = apps.reduce(0) { $0 + $1.cpuPercent }
+    let system = AppUsage(appPID: BreakdownGroup.system, processes: [],
+                          cpuPercent: max(0, totalCPUPercent - accounted), memoryBytes: 0)
+    return sortedRows(apps + [system], by: .cpu)
+}
+
+/// Descending by value. Ties (e.g. many idle apps at 0% CPU) break by pid, so equal rows keep
+/// a stable order between scans instead of shuffling; group rows (negative keys) go last.
+/// For memory the group rows always go last: "Other processes" (GBs of macOS agents) would
+/// otherwise sit above every app.
+private func sortedRows(_ apps: [AppUsage], by metric: BreakdownMetric) -> [AppUsage] {
+    apps.sorted {
+        if metric == .memory, ($0.appPID < 0) != ($1.appPID < 0) { return $0.appPID > 0 }
+        return ranksBefore($0.value(for: metric), $0.appPID, $1.value(for: metric), $1.appPID)
     }
+}
+
+private func ranksBefore(_ a: Double, _ aKey: Int32, _ b: Double, _ bKey: Int32) -> Bool {
+    if a != b { return a > b }
+    if (aKey < 0) != (bKey < 0) { return aKey > 0 }
+    return aKey < bKey
 }

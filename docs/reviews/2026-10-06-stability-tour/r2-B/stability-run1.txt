@@ -1,0 +1,66 @@
+run_s=150 phases: outside [0,67) inside [67,87) outside after
+card.cpu changes/min=49.2 flipbacks/min=4.8
+card.cpu held-vs-exact pp p50=0.31 p95=1.00 max=1.23
+card.cpu seconds-between-changes p50=1.0 min=0.5
+card.mem changes/min=8.0 flipbacks/min=0.8
+card.down changes/min=27.6 flipbacks/min=1.6
+card.up changes/min=32.0 flipbacks/min=4.0
+cpu.counted_s=123
+cpu.top8_order_changes_per_min=7.7
+cpu.top8_slot_changes_per_min=20.8
+cpu.row_text_changes_per_min_top8=81.3
+cpu.row_text_flipbacks_per_min_top8=12.1
+cpu.missorted_scans=28/65
+cpu.hold_err_steps_p50_p95_max=0.33/1.92/5.77
+cpu.hold_err_abs_p95_max=0.212/1.18
+cpu.expanded_app=Google Chrome
+cpu.expanded_moves=0
+cpu.expanded_vanished_scans=0
+cpu.expanded_auto_collapses=0
+cpu.expanded_child_top5_order_changes=9
+cpu.freeze_scans=10
+cpu.freeze_row_moves=0
+cpu.freeze_rows_removed=0
+cpu.freeze_rows_appended_max=0
+cpu.freeze_child_moves=0
+cpu.unfreeze_3.5s_slot_changes=7
+cpu.max_sum_vs_header_gap_pp=1.30
+memory.counted_s=124
+memory.top8_order_changes_per_min=0.0
+memory.top8_slot_changes_per_min=0.0
+memory.row_text_changes_per_min_top8=3.9
+memory.row_text_flipbacks_per_min_top8=0.5
+memory.missorted_scans=0/66
+memory.hold_err_steps_p50_p95_max=0.34/14.30/26.63
+memory.hold_err_abs_p95_max=4.01e+07/5.2e+07
+memory.expanded_app=Google Chrome
+memory.expanded_moves=0
+memory.expanded_vanished_scans=0
+memory.expanded_auto_collapses=0
+memory.expanded_child_top5_order_changes=5
+memory.freeze_scans=10
+memory.freeze_row_moves=0
+memory.freeze_rows_removed=0
+memory.freeze_rows_appended_max=0
+memory.freeze_child_moves=0
+memory.unfreeze_3.5s_slot_changes=0
+energy.counted_s=123
+energy.top8_order_changes_per_min=7.7
+energy.top8_slot_changes_per_min=20.3
+energy.row_text_changes_per_min_top8=44.5
+energy.row_text_flipbacks_per_min_top8=10.6
+energy.missorted_scans=27/65
+energy.hold_err_steps_p50_p95_max=0.03/0.43/1.27
+energy.hold_err_abs_p95_max=0.00521/0.127
+energy.expanded_app=Google Chrome
+energy.expanded_moves=0
+energy.expanded_vanished_scans=0
+energy.expanded_auto_collapses=0
+energy.expanded_child_top5_order_changes=8
+energy.freeze_scans=10
+energy.freeze_row_moves=0
+energy.freeze_rows_removed=0
+energy.freeze_rows_appended_max=0
+energy.freeze_child_moves=0
+energy.unfreeze_3.5s_slot_changes=5
+probe_process_cpu_pct=0.83 (3 breakdown scans + overview)

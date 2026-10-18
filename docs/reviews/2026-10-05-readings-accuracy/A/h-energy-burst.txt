@@ -1,0 +1,86 @@
+[20:47:44.924] scan 0: measuring (512 procs, 4.9 ms)
+[20:47:45.432] scan 1: header 31.7% rows-sum 0.18 procs 512 scan 1.2 ms
+   Code                       0.17 W   n=48
+       - bash                           2714 0.05 W
+       - bash                           2713 0.05 W
+       - Code Helper (Renderer)         14112 0.04 W
+       - h                              2839 0.03 W
+   Spotify                    0.01 W   n=13
+   Other processes            0.00 W   n=328
+   Claude                     0.00 W   n=14
+   Google Chrome              0.00 W   n=23
+   Finder                     0.00 W   n=6
+   Dock Extra                 0.00 W   n=3
+   Control Centre             0.00 W   n=3
+   Terminal                   0.00 W   n=1
+   ChatGPTHelper              0.00 W   n=1
+   loginwindow                0.00 W   n=1
+   WindowManager              0.00 W   n=1
+[20:47:46.444] scan 2: header 27.5% rows-sum 0.13 procs 512 scan 1.2 ms
+   Code                       0.13 W   n=48
+       - bash                           2713 0.05 W
+       - bash                           2714 0.05 W
+       - claude                         14424 0.02 W
+       - Code Helper (Renderer)         14112 0.01 W
+   Claude                     0.00 W   n=14
+   Spotify                    0.00 W   n=13
+   Other processes            0.00 W   n=328
+   Google Chrome              0.00 W   n=23
+   Notification Centre        0.00 W   n=3
+   coreautha                  0.00 W   n=3
+   BetterScreenshot           0.00 W   n=3
+   Spotlight                  0.00 W   n=4
+   Calendar                   0.00 W   n=4
+   ChatGPTHelper              0.00 W   n=1
+   loginwindow                0.00 W   n=1
+[20:47:47.454] scan 3: header 26.8% rows-sum 0.13 procs 512 scan 1.2 ms
+   Code                       0.13 W   n=48
+       - bash                           2714 0.05 W
+       - bash                           2713 0.05 W
+       - claude                         14424 0.02 W
+       - Code Helper                    14133 0.01 W
+   Claude                     0.00 W   n=14
+   Spotify                    0.00 W   n=13
+   Other processes            0.00 W   n=328
+   Google Chrome              0.00 W   n=23
+   Finder                     0.00 W   n=6
+   universalaccessd           0.00 W   n=1
+   Dock                       0.00 W   n=3
+   JVoice                     0.00 W   n=2
+   loginwindow                0.00 W   n=1
+   ChatGPTHelper              0.00 W   n=1
+   WindowManager              0.00 W   n=1
+[20:47:48.465] scan 4: header 27.8% rows-sum 0.15 procs 511 scan 1.4 ms
+   Code                       0.14 W   n=47
+       - bash                           2713 0.05 W
+       - bash                           2714 0.05 W
+       - claude                         14424 0.03 W
+       - Code Helper (Plugin)           14126 0.01 W
+   BetterScreenshot           0.00 W   n=3
+   Spotify                    0.00 W   n=13
+   Claude                     0.00 W   n=14
+   Other processes            0.00 W   n=328
+   Control Centre             0.00 W   n=3
+   Google Chrome              0.00 W   n=23
+   Dock                       0.00 W   n=3
+   Dock Extra                 0.00 W   n=3
+   Notification Centre        0.00 W   n=3
+   Terminal                   0.00 W   n=1
+   ChatGPTHelper              0.00 W   n=1
+[20:47:49.468] scan 5: header 34.0% rows-sum 0.28 procs 512 scan 1.2 ms
+   Code                       0.28 W   n=48
+       - claude                         14424 0.16 W
+       - bash                           2714 0.05 W
+       - bash                           2713 0.05 W
+       - codex                          14480 0.01 W
+   Spotify                    0.00 W   n=13
+   Claude                     0.00 W   n=14
+   Other processes            0.00 W   n=328
+   Google Chrome              0.00 W   n=23
+   JVoice                     0.00 W   n=2
+   Calendar                   0.00 W   n=4
+   coreautha                  0.00 W   n=3
+   Spotlight                  0.00 W   n=4
+   BetterScreenshot           0.00 W   n=3
+   ChatGPTHelper              0.00 W   n=1
+   loginwindow                0.00 W   n=1

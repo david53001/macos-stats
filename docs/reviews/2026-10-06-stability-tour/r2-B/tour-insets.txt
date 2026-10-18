@@ -1,0 +1,35 @@
+step1 cpu light: target=(8.0,36.0,304.0x67.0)pt  cutout inset L=3.0 R=3.0 T=3.0 B=3.0 pt; clear gap L/R/T/B=1.0/1.0/1.0/1.0 ring=2.0/2.0/2.0/2.0
+   corners TL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | TR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt)
+step2 memory light: target=(8.0,109.0,304.0x67.0)pt  cutout inset L=3.0 R=3.0 T=3.0 B=3.0 pt; clear gap L/R/T/B=1.0/1.0/1.0/1.0 ring=2.0/2.0/2.0/2.0
+   corners TL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | TR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt)
+step3 network light: target=(8.0,182.0,304.0x67.0)pt  cutout inset L=3.0 R=3.0 T=3.0 B=3.0 pt; clear gap L/R/T/B=1.0/1.0/1.0/1.0 ring=2.0/2.0/2.0/2.0
+   corners TL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | TR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt)
+step4 battery light: target=(8.0,255.0,304.0x67.0)pt  cutout inset L=3.0 R=3.0 T=3.0 B=3.0 pt; clear gap L/R/T/B=1.0/1.0/1.0/1.0 ring=2.0/2.0/2.0/2.0
+   corners TL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | TR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt)
+step5 footer light: target=(234.0,372.0,78.0x24.0)pt  cutout inset L=3.0 R=3.0 T=3.0 B=3.0 pt; clear gap L/R/T/B=1.0/1.0/1.0/1.0 ring=2.0/2.0/2.0/2.0
+   corners TL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | TR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt)
+after Done: phase=off seenVersion=1
+breakdown cpu light top8: -2(0), MacStats(1), Code(31), Google Chrome(32), WindowManager(1), Claude(15), Finder(5), -1(286)
+expand Code (31 processes) pressed=false
+breakdown memory light top8: Google Chrome(32), Code(31), Claude(15), Spotify(11), Spotlight(2), JVoice(2), Calendar(2), Dock(3)
+expand Google Chrome (32 processes) pressed=false
+breakdown energy light top8: MacStats(1), Code(31), Google Chrome(32), -1(286), BetterScreenshot(1), WindowManager(1), Claude(15), Spotify(11)
+expand Code (31 processes) pressed=false
+step1 cpu dark: target=(8.0,36.0,304.0x67.0)pt  cutout inset L=3.0 R=3.0 T=3.0 B=3.0 pt; clear gap L/R/T/B=1.0/1.0/1.0/1.0 ring=2.0/2.0/2.0/2.0
+   corners TL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | TR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt)
+step2 memory dark: target=(8.0,109.0,304.0x67.0)pt  cutout inset L=3.0 R=3.0 T=3.0 B=3.0 pt; clear gap L/R/T/B=1.0/1.0/1.0/1.0 ring=2.0/2.0/2.0/2.0
+   corners TL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | TR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt)
+step3 network dark: target=(8.0,182.0,304.0x67.0)pt  cutout inset L=3.0 R=3.0 T=3.0 B=3.0 pt; clear gap L/R/T/B=1.0/1.0/1.0/1.0 ring=2.0/2.0/2.0/2.0
+   corners TL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | TR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt)
+step4 battery dark: target=(8.0,255.0,304.0x67.0)pt  cutout inset L=3.0 R=3.0 T=3.0 B=3.0 pt; clear gap L/R/T/B=1.0/1.0/1.0/1.0 ring=2.0/2.0/2.0/2.0
+   corners TL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | TR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt)
+step5 footer dark: target=(234.0,372.0,78.0x24.0)pt  cutout inset L=3.0 R=3.0 T=3.0 B=3.0 pt; clear gap L/R/T/B=1.0/1.0/1.0/1.0 ring=2.0/2.0/2.0/2.0
+   corners TL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | TR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BL: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt) | BR: cutout-corner→ring 6px, ring ends 10px, card edge 10px (ring-inner→card gap along diagonal 0.0 pt)
+after Done: phase=off seenVersion=1
+breakdown cpu dark top8: -1(278), -2(0), MacStats(1), Code(29), Google Chrome(31), BetterScreenshot(1), Finder(5), WindowManager(1)
+expand Code (29 processes) pressed=false
+breakdown memory dark top8: Google Chrome(31), Code(28), Claude(15), Spotify(11), Spotlight(2), JVoice(2), Calendar(2), Dock(3)
+expand Google Chrome (31 processes) pressed=false
+breakdown energy dark top8: MacStats(1), Code(28), Google Chrome(30), WindowManager(1), -1(278), Finder(5), Claude(15), Spotify(11)
+expand Code (28 processes) pressed=false
+nobattery: at footer step progress=4 of 4

@@ -107,33 +107,40 @@ struct CardButtonStyle: ButtonStyle {
 
 /// Small secondary button (Empty, Quit) drawn in the same material language as the cards:
 /// a continuous-corner tinted surface that brightens on hover and dims when disabled.
+/// Buttons in the panel's corners pass `Design.cardCornerRadius` to stay concentric with it.
+/// `prominent` is the default action of a choice (the tour's Next, Show Me Around): the same
+/// shape and height on the accent colour, so it pairs with its secondary button exactly.
 struct SubtleButtonStyle: ButtonStyle {
-    /// The one primary action of a question (accent fill, white text), e.g. "Open at Login".
+    var cornerRadius: CGFloat = 6
+    /// 20 for the compact header chip; 24 everywhere else.
+    var height: CGFloat = 24
     var prominent = false
 
     func makeBody(configuration: Configuration) -> some View {
-        SubtleButton(configuration: configuration, prominent: prominent)
+        SubtleButton(configuration: configuration, cornerRadius: cornerRadius, height: height, prominent: prominent)
     }
 
     private struct SubtleButton: View {
         let configuration: Configuration
+        let cornerRadius: CGFloat
+        let height: CGFloat
         let prominent: Bool
         @Environment(\.isEnabled) private var isEnabled
         @State private var hovering = false
 
         var body: some View {
             let fill = configuration.isPressed ? 0.16 : hovering && isEnabled ? 0.12 : 0.08
-            let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+            let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             configuration.label
                 .font(.callout.weight(.medium))
                 .foregroundStyle(prominent ? AnyShapeStyle(.white)
                                  : isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
                 .padding(.horizontal, 10)
-                .frame(height: 24)
+                .frame(height: height)
                 .background(prominent
                     ? AnyShapeStyle(Color.accentColor.opacity(configuration.isPressed ? 0.75 : hovering ? 0.88 : 1))
                     : AnyShapeStyle(Color.primary.opacity(fill)), in: shape)
-                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .animation(.easeOut(duration: 0.12), value: hovering)
                 .onHover { hovering = $0 }
         }

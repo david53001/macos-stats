@@ -1,0 +1,5 @@
+Memory Used (card/header) = 10.396 GiB; inUseAtFullSize = 14.570 GiB; pressure=normal
+    5372.4 MiB  System & other [-2] n=0
+    2621.1 MiB  Other processes [-1] n=322
+  rows sum = 14.570 GiB
+PhysMem: 15G used (1657M wired, 2868M compressor), 704M unused.

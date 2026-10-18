@@ -1,0 +1,31 @@
+== stability metric=cpu seconds=60 counted_s=34 scans_counted=18 rows=50
+expanded_app=Code processes=26
+per_min: top8_order_changes=5.2 app_row_index_changes(top10)=19.1 expanded_app_index_changes=2 expanded_app_vanished=0
+per_min: expanded_children_reorders=3.5 expanded_children_set_changes=1.7 exited_row_toggles=0
+per_min: top8_row_text_changes=80.0 (flip-backs A>B>A total=0) header_text_changes=19.1 header_flipbacks=1
+inversions(top8, >max(2 steps,25%)): scans_with=2/18 pairs_total=3 max_gap=0.309 worst_top8=[5.0%,3.5%,1.0%,0.0%,0.1%,0.4%,0.2%,0.1%]
+shown_vs_exact top8: max=0.30 mean=0.050 (pp of Mac)
+pointer_window_20s: scans=9 row_under_pointer_changed(child_slot)=0 row_under_pointer_changed(row6)=0 any_flat_list_change=0
+cards per_min: cpu=45.0 (flipbacks 1) mem=7.0 (fb 0) down=13.0 (fb 0) up=16.0 (fb 0)
+card_cpu_vs_raw: max=1.23pp ticks_off_by>=2pp=0/120
+== stability metric=energy seconds=60 counted_s=34 scans_counted=19 rows=49
+expanded_app=Google Chrome processes=28
+per_min: top8_order_changes=3.5 app_row_index_changes(top10)=12.2 expanded_app_index_changes=2 expanded_app_vanished=0
+per_min: expanded_children_reorders=0.0 expanded_children_set_changes=1.7 exited_row_toggles=1
+per_min: top8_row_text_changes=41.7 (flip-backs A>B>A total=1) header_text_changes=0.0 header_flipbacks=0
+inversions(top8, >max(2 steps,25%)): scans_with=2/19 pairs_total=5 max_gap=0.048 worst_top8=[0.03 W,0.00 W,0.00 W,0.00 W,0.05 W,0.00 W,0.00 W,0.00 W]
+shown_vs_exact top8: max=0.67 mean=0.039 (W)
+pointer_window_20s: scans=9 row_under_pointer_changed(child_slot)=0 row_under_pointer_changed(row6)=0 any_flat_list_change=0
+cards per_min: cpu=25.0 (flipbacks 0) mem=5.0 (fb 0) down=3.0 (fb 0) up=9.0 (fb 0)
+card_cpu_vs_raw: max=1.23pp ticks_off_by>=2pp=0/120
+== stability metric=memory seconds=60 counted_s=34 scans_counted=19 rows=49
+expanded_app=Google Chrome processes=32
+per_min: top8_order_changes=0.0 app_row_index_changes(top10)=0.0 expanded_app_index_changes=0 expanded_app_vanished=0
+per_min: expanded_children_reorders=1.7 expanded_children_set_changes=5.2 exited_row_toggles=0
+per_min: top8_row_text_changes=8.7 (flip-backs A>B>A total=0) header_text_changes=0.0 header_flipbacks=0
+inversions(top8, >max(2 steps,25%)): scans_with=0/19 pairs_total=0 max_gap=0.000 worst_top8=[]
+shown_vs_exact top8: max=61.11 mean=10.216 (MiB)
+pointer_window_20s: scans=9 row_under_pointer_changed(child_slot)=0 row_under_pointer_changed(row6)=0 any_flat_list_change=0
+cards per_min: cpu=38.0 (flipbacks 0) mem=8.0 (fb 0) down=23.0 (fb 0) up=23.0 (fb 0)
+card_cpu_vs_raw: max=1.22pp ticks_off_by>=2pp=0/120
+done

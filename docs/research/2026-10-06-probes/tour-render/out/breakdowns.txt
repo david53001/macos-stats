@@ -1,0 +1,6 @@
+breakdown cpu light expanded Code (26 processes) at row 1
+breakdown memory light expanded Code (26 processes) at row 0
+breakdown energy light expanded Code (26 processes) at row 0
+breakdown cpu dark expanded Code (26 processes) at row 0
+breakdown memory dark expanded Code (26 processes) at row 0
+breakdown energy dark expanded Code (26 processes) at row 0

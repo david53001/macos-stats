@@ -1,21 +1,23 @@
 import SwiftUI
 import MacStatsCore
 
-/// The top card of the Battery drill-in: status, time left / to full, power, health.
-/// Label on the left, value on the right, in the card language of the rest of the popover.
+/// The top card of the Battery drill-in: time left / to full, power, health. Two label-value
+/// pairs per line, so the app list below keeps room for 4-5 rows; the status is in the header.
+/// In the card language of the rest of the popover.
 struct BatteryDetailsCard: View {
     @ObservedObject var store: MetricsStore
 
     var body: some View {
-        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
-            ForEach(rows, id: \.label) { row in
-                GridRow {
-                    Text(row.label).foregroundStyle(.secondary)
-                    Text(row.value)
-                        .monospacedDigit()
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .contentTransition(.interpolate)
-                        .animation(.easeInOut(duration: 0.25), value: row.value)
+        let items = rows
+        VStack(spacing: 4) {
+            ForEach(0..<(items.count + 1) / 2, id: \.self) { line in
+                HStack(spacing: 16) {
+                    pair(items[2 * line])
+                    if 2 * line + 1 < items.count {
+                        pair(items[2 * line + 1])
+                    } else {
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
+                    }
                 }
             }
         }
@@ -26,36 +28,75 @@ struct BatteryDetailsCard: View {
         .background(CardBackground())
     }
 
-    private var rows: [(label: String, value: String)] {
-        guard let b = store.battery else { return [("Status", "No battery")] }
+    private func pair(_ row: Row) -> some View {
+        HStack(spacing: 4) {
+            Text(row.label).foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+            Text(row.value)
+                .monospacedDigit()
+                .contentTransition(.interpolate)
+                .animation(.easeInOut(duration: 0.25), value: row.value)
+        }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .tooltip(row.help)
+    }
+
+    private struct Row {
+        let label: String
+        let value: String
+        var help: String? = nil
+    }
+
+    private var rows: [Row] {
+        guard let b = store.battery else { return [Row(label: "Status", value: "No battery")] }
         let t = store.batteryTelemetry
-        var rows: [(label: String, value: String)] = [("Status", b.statusText)]
+        var rows: [Row] = []
 
         switch b.state {
         case .discharging:
-            rows.append(("Time left", b.timeToEmptyMinutes.map(formatDuration) ?? "Calculating…"))
+            rows.append(Row(label: "Time left", value: b.timeToEmptyMinutes.map(timeLeft) ?? "Calculating…"))
         case .charging:
-            rows.append(("Time to full", b.timeToFullMinutes.map(formatDuration) ?? "Calculating…"))
+            rows.append(Row(label: b.chargeTargetLabel, value: b.timeToFullMinutes.map(formatTimeToFull)
+                            ?? (b.atChargeLimit ? "Almost done" : b.percent >= 90 ? "Almost full" : "Calculating…")))
         case .charged, .notCharging:
-            break
+            // Optimized Charging's pause is not the user's limit: show both.
+            if let hold = b.chargeHoldPercent {
+                rows.append(Row(label: "Paused at", value: "\(hold)%",
+                                help: "Optimized Charging is holding the charge here for now"))
+            }
+            if let limit = b.chargeLimitPercent { rows.append(Row(label: "Charge limit", value: "\(limit)%")) }
         }
 
-        if let now = t?.instantWatts {
-            var power = formatWatts(now)
-            if let avg = store.batteryExpectedWatts { power += " now · \(formatWatts(avg)) avg" }
-            rows.append(("Power", power))
+        // The gauge updates about once a minute; "Power" is that minute's average draw.
+        if let power = store.batteryPowerWatts {
+            rows.append(Row(label: "Power now", value: formatWatts(power), help: "Average over the last minute"))
+        }
+        // Awake time only: intervals that span sleep are left out (see `gaugeInterval`).
+        if let avg = store.batteryAverageWatts {
+            rows.append(Row(label: "Average", value: formatWatts(avg),
+                            help: (store.batteryAverageSinceUnplug ? "Since you unplugged" : "Since MacStats started")
+                                + ", counting only time the Mac was awake"))
         }
         if b.state.isPluggedIn, let adapter = t?.adapterWatts {
-            rows.append(("Adapter", "\(adapter) W"))
+            rows.append(Row(label: "Adapter", value: "\(adapter) W"))
         }
         if let health = t?.healthPercent {
-            let cycles = t?.cycleCount.map { " · \($0) cycles" } ?? ""
-            rows.append(("Health", "\(health)%\(cycles)"))
+            rows.append(Row(label: "Health", value: "\(health)%", help: "Capacity left compared with when new"))
+        }
+        if let cycles = t?.cycleCount {
+            rows.append(Row(label: "Cycles", value: "\(cycles)", help: "Full charges used so far"))
         }
         if let temp = t?.temperatureC {
-            rows.append(("Temperature", "\(Int(temp.rounded())) °C"))
+            rows.append(Row(label: "Temperature", value: "\(Int(temp.rounded())) °C"))
         }
         return rows
+    }
+
+    /// The card's wording ("5h 15m", "About 6h"), so both screens read the same estimate the same way.
+    private func timeLeft(_ minutes: Int) -> String {
+        let text = formatTimeLeft(minutes)
+        return text.prefix(1).uppercased() + text.dropFirst()
     }
 }
 
@@ -70,22 +111,27 @@ extension BatterySample {
         }
     }
 
+    /// "Time to full", "Time to 85%" when charging stops at a limit, or "Time to 100%" when
+    /// MacStats can't tell whether a limit will stop it sooner.
+    var chargeTargetLabel: String { "Time to \(chargeTargetName)" }
+
+    /// Charging, and already showing the percent it stops at (the last minute before it does).
+    var atChargeLimit: Bool { chargeStopPercent.map { percent >= $0 } ?? false }
+
+    private var chargeTargetName: String {
+        if let stop = chargeStopPercent { return "\(stop)%" }
+        return chargeTargetAssumed ? "100%" : "full"
+    }
+
     /// The Battery card's short secondary line (the card's text column is ~120 pt).
     var cardMeta: String {
         switch state {
-        case .charging: return timeToFullMinutes.map { "\(formatDuration($0)) to full" } ?? "charging"
+        case .charging:
+            return timeToFullMinutes.map { "\(formatTimeToFull($0)) to \(chargeTargetName)" }
+                ?? (atChargeLimit ? "almost done" : percent >= 90 ? "almost full" : "charging")   // no estimate in the last trickle
         case .charged: return "fully charged"
         case .notCharging: return "not charging"
-        case .discharging: return timeToEmptyMinutes.map { "\(formatDuration($0)) left" } ?? "calculating…"
+        case .discharging: return timeToEmptyMinutes.map { "\(formatTimeLeft($0)) left" } ?? "calculating…"
         }
     }
-}
-
-/// "6h 40m", or "45m" under an hour.
-func formatDuration(_ minutes: Int) -> String {
-    minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
-}
-
-func formatWatts(_ watts: Double) -> String {
-    String(format: watts < 10 ? "%.1f W" : "%.0f W", watts)
 }

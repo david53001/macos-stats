@@ -2,8 +2,47 @@ import Foundation
 import Darwin
 import IOKit.ps
 
-/// Reads cumulative aggregate CPU ticks via host_statistics(HOST_CPU_LOAD_INFO).
+/// Reads cumulative aggregate CPU ticks: the per-CPU counters of
+/// `host_processor_info(PROCESSOR_CPU_LOAD_INFO)`, summed.
+///
+/// Not `host_statistics(HOST_CPU_LOAD_INFO)`, which returns the same sums (checked equal, tick
+/// for tick) but is rate-limited for apps that aren't part of macOS: past a random budget of
+/// 2–10 calls per second it silently returns the previous reading. With a breakdown open the
+/// 0.5 s tick and the 1 s scan read ~3×/s, so 1–2 of 40 reads came back stale: one scan's
+/// header read 0 % over 25 % of rows, and the card spiked to 100 % for a tick. The per-CPU
+/// read had no stale value in 40 reads at 50/s. It costs ~90 µs against ~23 µs (at ≤ 3 reads/s,
+/// 0.02 % of one core); host_statistics remains the fallback.
 public func readCPUTicks() -> CPUTicks {
+    var cpuCount: natural_t = 0
+    var info: processor_info_array_t?
+    var infoCount: mach_msg_type_number_t = 0
+    guard host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &cpuCount, &info,
+                              &infoCount) == KERN_SUCCESS, let info else { return readHostCPUTicks() }
+    defer {
+        vm_deallocate(mach_task_self_, vm_address_t(bitPattern: info),
+                      vm_size_t(infoCount) * vm_size_t(MemoryLayout<integer_t>.stride))
+    }
+    return sumCPULoad(UnsafeBufferPointer(start: info, count: Int(infoCount)), cpuCount: Int(cpuCount))
+}
+
+/// Adds up per-CPU tick counters laid out as `PROCESSOR_CPU_LOAD_INFO` returns them
+/// (`CPU_STATE_MAX` values per CPU: user, system, idle, nice). Each counter is 32-bit and
+/// wraps, so the sums wrap too: `cpuBusyPercent`'s wrapping deltas stay exact.
+public func sumCPULoad<C: RandomAccessCollection>(_ counters: C, cpuCount: Int) -> CPUTicks
+    where C.Element == integer_t, C.Index == Int {
+    let stride = Int(CPU_STATE_MAX)
+    var ticks = CPUTicks(user: 0, system: 0, idle: 0, nice: 0)
+    for cpu in 0..<min(cpuCount, counters.count / stride) {
+        let base = counters.startIndex + cpu * stride
+        ticks.user &+= UInt32(bitPattern: counters[base + Int(CPU_STATE_USER)])
+        ticks.system &+= UInt32(bitPattern: counters[base + Int(CPU_STATE_SYSTEM)])
+        ticks.idle &+= UInt32(bitPattern: counters[base + Int(CPU_STATE_IDLE)])
+        ticks.nice &+= UInt32(bitPattern: counters[base + Int(CPU_STATE_NICE)])
+    }
+    return ticks
+}
+
+private func readHostCPUTicks() -> CPUTicks {
     var info = host_cpu_load_info()
     var count = mach_msg_type_number_t(MemoryLayout<host_cpu_load_info_data_t>.size / MemoryLayout<integer_t>.size)
     let kr = withUnsafeMutablePointer(to: &info) {
@@ -33,7 +72,8 @@ public func readVMRaw() -> VMRaw {
     var pageSize: vm_size_t = 0
     host_page_size(mach_host_self(), &pageSize)
     guard kr == KERN_SUCCESS else {
-        return VMRaw(free: 0, active: 0, inactive: 0, wired: 0, compressed: 0, pageSize: UInt64(pageSize))
+        return VMRaw(free: 0, active: 0, inactive: 0, wired: 0, compressed: 0,
+                     internal: 0, purgeable: 0, pageSize: UInt64(pageSize))
     }
     return VMRaw(
         free: UInt64(stats.free_count),
@@ -41,30 +81,62 @@ public func readVMRaw() -> VMRaw {
         inactive: UInt64(stats.inactive_count),
         wired: UInt64(stats.wire_count),
         compressed: UInt64(stats.compressor_page_count),
-        pageSize: UInt64(pageSize)
+        internal: UInt64(stats.internal_page_count),
+        purgeable: UInt64(stats.purgeable_count),
+        pageSize: UInt64(pageSize),
+        compressedOriginal: UInt64(stats.total_uncompressed_pages_in_compressor)
     )
 }
 
-/// Sums byte counters across all non-loopback link-layer interfaces via getifaddrs.
+/// Sums byte counters across all non-loopback interfaces.
+///
+/// Uses the `IFMIB_IFALLDATA` sysctl (`net.link.generic`), one call for every interface's
+/// 64-bit `if_data64`. `getifaddrs`' `if_data` counters are 32-bit and wrap every 4 GiB per
+/// interface (a dropped sample each time, or a blip to 0 on a fast download), and the
+/// `NET_RT_IFLIST2` dump hands unentitled apps the same values truncated to 32 bits and rounded
+/// to 4 KiB (measured on macOS 26: en0 7 708 354 392 B in `netstat` vs 3 413 385 216 there).
+/// This read matched `netstat -ib` to the byte and costs ~7 µs (getifaddrs: ~13 µs).
+/// Only physical links are summed (see `isCountedInterface`): VPN tunnels and bridges carry
+/// traffic that is counted again on the Wi-Fi/Ethernet interface underneath.
 public func readNetCounters() -> NetCounters {
+    var mib: [Int32] = [CTL_NET, PF_LINK, NETLINK_GENERIC, IFMIB_IFALLDATA, 0, IFDATA_GENERAL]
+    var size = 0
+    guard sysctl(&mib, u_int(mib.count), nil, &size, nil, 0) == 0, size > 0 else {
+        return NetCounters(rxBytes: 0, txBytes: 0)
+    }
+    let stride = MemoryLayout<ifmibdata>.stride
+    var interfaces = [ifmibdata](repeating: ifmibdata(), count: size / stride + 2)   // + room for a new one
+    size = interfaces.count * stride
+    guard sysctl(&mib, u_int(mib.count), &interfaces, &size, nil, 0) == 0 else {
+        return NetCounters(rxBytes: 0, txBytes: 0)
+    }
+    return sumInterfaceCounters(interfaces.prefix(size / stride))
+}
+
+/// Sums the 64-bit byte counters of `interfaces` that `isCountedInterface` keeps.
+func sumInterfaceCounters<C: Collection>(_ interfaces: C) -> NetCounters where C.Element == ifmibdata {
     var rx: UInt64 = 0
     var tx: UInt64 = 0
-    var ifap: UnsafeMutablePointer<ifaddrs>?
-    guard getifaddrs(&ifap) == 0 else { return NetCounters(rxBytes: 0, txBytes: 0) }
-    defer { freeifaddrs(ifap) }
-    var ptr = ifap
-    while let cur = ptr {
-        if let addr = cur.pointee.ifa_addr, Int32(addr.pointee.sa_family) == AF_LINK {
-            let name = String(cString: cur.pointee.ifa_name)
-            if !name.hasPrefix("lo"), let raw = cur.pointee.ifa_data {
-                let data = raw.assumingMemoryBound(to: if_data.self)
-                rx += UInt64(data.pointee.ifi_ibytes)
-                tx += UInt64(data.pointee.ifi_obytes)
-            }
+    for interface in interfaces {
+        let name = withUnsafeBytes(of: interface.ifmd_name) { bytes in
+            String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
         }
-        ptr = cur.pointee.ifa_next
+        guard isCountedInterface(name: name, flags: interface.ifmd_flags) else { continue }
+        rx &+= interface.ifmd_data.ifi_ibytes
+        tx &+= interface.ifmd_data.ifi_obytes
     }
     return NetCounters(rxBytes: rx, txBytes: tx)
+}
+
+/// Whether an interface's bytes count toward the Mac's network speed. Loopback never leaves
+/// the Mac. VPN tunnels (`utun*`: WireGuard, Tailscale, most VPN apps and macOS's own
+/// tunnels; `ipsec*`: IKEv2/IPsec) carry traffic that also crosses Wi-Fi/Ethernet encrypted,
+/// so counting both doubled a VPN user's speed. Bridges (`bridge*`: Internet Sharing,
+/// Thunderbolt Bridge) forward traffic their member interfaces already count. Physical links
+/// (`en*`, AirDrop's `awdl*`, …) stay in.
+public func isCountedInterface(name: String, flags: UInt32) -> Bool {
+    guard flags & UInt32(IFF_LOOPBACK) == 0 else { return false }
+    return !["utun", "ipsec", "bridge"].contains { name.hasPrefix($0) }
 }
 
 /// Reads the kernel's current memory-pressure level via sysctl.

@@ -5,7 +5,10 @@ import MacStatsCore
 /// The in-popover Settings screen, pushed from the overview's footer gear. Same fixed size,
 /// header and card styling as the per-app breakdown. Changes apply live to the popover itself.
 struct SettingsView: View {
+    var onTour: () -> Void = {}
     let onBack: () -> Void
+    /// The login card is up over the panel: its No Thanks owns Esc then.
+    @Environment(\.loginPromptActive) private var loginPromptActive
 
     var body: some View {
         VStack(spacing: Design.cardSpacing) {
@@ -18,10 +21,13 @@ struct SettingsView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .keyboardShortcut(loginPromptActive ? nil : .cancelAction)   // Esc goes back
                 Spacer()
             }
 
-            GeneralCard()
+            // Four cards and the footer fill the fixed 404 pt exactly, so Take the Tour (the
+            // stability-tour branch's own HELP card) is a row of GENERAL here.
+            GeneralCard(onTour: onTour)
             UpdatesCard()
             AppearanceCard()
 
@@ -36,8 +42,10 @@ struct SettingsView: View {
 /// "General" → Launch at login: a switch backed directly by `SMAppService.mainApp.status`
 /// (`LoginItem.swift`, shared with the one-time prompt card). Re-read each time Settings opens,
 /// since the user may have changed it in System Settings. Only when macOS needs the user's
-/// approval do we offer a jump to Login Items.
+/// approval do we offer a jump to Login Items. Its last row is Take the Tour, where a skipped
+/// tour can always be found again.
 private struct GeneralCard: View {
+    let onTour: () -> Void
     @ObservedObject private var login = LaunchAtLogin.shared
     private var status: SMAppService.Status { login.status }
 
@@ -64,8 +72,7 @@ private struct GeneralCard: View {
                     Text("Needs your approval in Login Items.")
                     Spacer()
                     Button("Open") { login.openLoginItems() }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .buttonStyle(SubtleButtonStyle())
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -74,6 +81,13 @@ private struct GeneralCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack {
+                Text(TourCatalog.helpRow).font(.callout)
+                Spacer()
+                Button(TourCatalog.takeTheTour, action: onTour)
+                    .buttonStyle(SubtleButtonStyle())
             }
         }
         .padding(.horizontal, Design.cardPadding)
@@ -123,8 +137,8 @@ private struct UpdatesCard: View {
                 Button(updates.actionTitle) {
                     updates.checkForUpdates()
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                .buttonStyle(SubtleButtonStyle())   // like Default and Take the Tour (squircle pass)
+                .fixedSize()                        // the version line gives way, never the button
                 .disabled(!updates.canCheck && updates.pendingVersion == nil)
             }
         }
@@ -150,8 +164,7 @@ private struct AppearanceCard: View {
                 Text("Opacity").font(.callout)
                 Spacer()
                 Button("Default") { opacity = UIOpacity.defaultValue }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(SubtleButtonStyle())
                     .disabled(UIOpacity.isDefault(opacity))
             }
 
@@ -165,7 +178,7 @@ private struct AppearanceCard: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
-            Text("How much of what's behind shows through the panel.")
+            Text("How much of what\u{2019}s behind shows through the panel.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -188,6 +201,7 @@ struct SettingsButton: View {
         let updateWaiting = updates.pendingVersion != nil
         Button(action: action) {
             Image(systemName: "gearshape")
+                .frame(width: Design.footerIconWidth)
                 .overlay(alignment: .topTrailing) {
                     if updateWaiting {
                         Circle().fill(Color.accentColor)
@@ -197,7 +211,7 @@ struct SettingsButton: View {
                 }
                 .accessibilityLabel(updateWaiting ? "Settings, update available" : "Settings")
         }
-        .buttonStyle(SubtleButtonStyle())
+        .buttonStyle(SubtleButtonStyle(cornerRadius: Design.cardCornerRadius))   // concentric, like Quit
         .help(updateWaiting ? "Settings · An update is available" : "Settings")
     }
 }

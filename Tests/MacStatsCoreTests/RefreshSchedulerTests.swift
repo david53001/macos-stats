@@ -28,10 +28,9 @@ import Foundation
         #expect(temperatureInterval > refreshInterval(for: .popoverOpen))
     }
 
-    @Test func breakdownRescansQuicklyThenSettles() {
-        #expect(breakdownFirstRescanDelay < breakdownScanInterval)
-        #expect(abs(breakdownFirstRescanDelay - 0.3) < 0.001)
-        #expect(abs(breakdownScanInterval - 1.0) < 0.001)
+    @Test func breakdownScansEveryTwoSeconds() {
+        #expect(abs(breakdownScanInterval - 2.0) < 0.001)
+        #expect(trailingWindowSeconds >= 2 * breakdownScanInterval - 0.001)
     }
 
     @Test func neverReadIsDue() {

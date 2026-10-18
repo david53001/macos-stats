@@ -1,0 +1,13 @@
+TOUR light step 1 cpu: target=(8.0, 36.0, 304.0, 67.0) cutout=(5.0, 33.0, 310.0, 73.0) radius=11.0 geomInsets L=3.0 R=3.0 T=3.0 B=3.0 | pixel outer(pt) L=3.0 R=3.0 T=3.0 B=3.0 gap(pt) L=1.0 R=1.0 T=1.0 B=1.0 ring(pt) L=2.0 R=2.0 T=2.0 B=2.0
+TOUR light step 2 memory: target=(8.0, 109.0, 304.0, 67.0) cutout=(5.0, 106.0, 310.0, 73.0) radius=11.0 geomInsets L=3.0 R=3.0 T=3.0 B=3.0 | pixel outer(pt) L=3.0 R=3.0 T=3.0 B=3.0 gap(pt) L=1.0 R=1.0 T=1.0 B=1.0 ring(pt) L=2.0 R=2.0 T=2.0 B=2.0
+TOUR light step 3 network: target=(8.0, 182.0, 304.0, 67.0) cutout=(5.0, 179.0, 310.0, 73.0) radius=11.0 geomInsets L=3.0 R=3.0 T=3.0 B=3.0 | pixel outer(pt) L=3.0 R=3.0 T=3.0 B=3.0 gap(pt) L=1.0 R=1.0 T=1.0 B=1.0 ring(pt) L=2.0 R=2.0 T=2.0 B=2.0
+TOUR light step 4 battery: target=(8.0, 255.0, 304.0, 67.0) cutout=(5.0, 252.0, 310.0, 73.0) radius=11.0 geomInsets L=3.0 R=3.0 T=3.0 B=3.0 | pixel outer(pt) L=3.0 R=3.0 T=3.0 B=3.0 gap(pt) L=1.0 R=1.0 T=1.0 B=1.0 ring(pt) L=2.0 R=2.0 T=2.0 B=2.0
+TOUR light step 5 footer: target=(234.0, 372.0, 78.0, 24.0) cutout=(231.0, 369.0, 84.0, 30.0) radius=11.0 geomInsets L=3.0 R=3.0 T=3.0 B=3.0 | pixel outer(pt) L=3.0 R=3.0 T=3.0 B=3.0 gap(pt) L=1.0 R=1.0 T=1.0 B=1.0 ring(pt) L=2.0 R=2.0 T=2.0 B=2.0
+EXPAND clicked app 58374 with 26 processes at y=130.0
+TOUR dark step 1 cpu: target=(8.0, 36.0, 304.0, 67.0) cutout=(5.0, 33.0, 310.0, 73.0) radius=11.0 geomInsets L=3.0 R=3.0 T=3.0 B=3.0 | pixel outer(pt) L=3.0 R=3.0 T=3.0 B=3.0 gap(pt) L=1.0 R=1.0 T=1.0 B=1.0 ring(pt) L=2.0 R=2.0 T=2.0 B=2.0
+TOUR dark step 2 memory: target=(8.0, 109.0, 304.0, 67.0) cutout=(5.0, 106.0, 310.0, 73.0) radius=11.0 geomInsets L=3.0 R=3.0 T=3.0 B=3.0 | pixel outer(pt) L=3.0 R=3.0 T=3.0 B=3.0 gap(pt) L=1.0 R=1.0 T=1.0 B=1.0 ring(pt) L=2.0 R=2.0 T=2.0 B=2.0
+TOUR dark step 3 network: target=(8.0, 182.0, 304.0, 67.0) cutout=(5.0, 179.0, 310.0, 73.0) radius=11.0 geomInsets L=3.0 R=3.0 T=3.0 B=3.0 | pixel outer(pt) L=3.0 R=3.0 T=3.0 B=3.0 gap(pt) L=1.0 R=1.0 T=1.0 B=1.0 ring(pt) L=2.0 R=2.0 T=2.0 B=2.0
+TOUR dark step 4 battery: target=(8.0, 255.0, 304.0, 67.0) cutout=(5.0, 252.0, 310.0, 73.0) radius=11.0 geomInsets L=3.0 R=3.0 T=3.0 B=3.0 | pixel outer(pt) L=3.0 R=3.0 T=3.0 B=3.0 gap(pt) L=1.0 R=1.0 T=1.0 B=1.0 ring(pt) L=2.0 R=2.0 T=2.0 B=2.0
+TOUR dark step 5 footer: target=(234.0, 372.0, 78.0, 24.0) cutout=(231.0, 369.0, 84.0, 30.0) radius=11.0 geomInsets L=3.0 R=3.0 T=3.0 B=3.0 | pixel outer(pt) L=3.0 R=3.0 T=3.0 B=3.0 gap(pt) L=1.0 R=1.0 T=1.0 B=1.0 ring(pt) L=2.0 R=2.0 T=2.0 B=2.0
+EXPAND clicked app 58374 with 26 processes at y=130.0
+NO-BATTERY tour steps shown: 4

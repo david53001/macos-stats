@@ -1,0 +1,24 @@
+sample t=11 target=Code pid=58374 row_pct_mac=15.03 one_core_pct=120 header=22.5
+sample t=21 target=Code pid=58374 row_pct_mac=12.71 one_core_pct=102 header=25.5
+sample t=31 target=Code pid=58374 row_pct_mac=33.33 one_core_pct=267 header=42.1
+sample t=41 target=Code pid=58374 row_pct_mac=15.69 one_core_pct=126 header=22.7
+sample t=51 target=Code pid=58374 row_pct_mac=12.79 one_core_pct=102 header=20.1
+sample t=61 target=Code pid=58374 row_pct_mac=27.20 one_core_pct=218 header=35.1
+build=current
+run_seconds=70 counted_breakdown_seconds=46 cores=8
+breakdown_scan_interval_s=2.0 rate_window_s=2.0
+target_app=Code
+top8_order_changes=7.8
+slot_changes=19.6
+row_text_changes=60.0
+target_moves=0.0
+target_child_set_changes=14.3
+frozen_slot_changes=0   # total over the 20 s pointer-in-list window
+card_cpu_changes=55.7
+card_net_down_changes=14.6
+card_mem_changes=30.9
+scan_ms_mean=4.76 scan_ms_max=15.75 scans_per_s=0.51 scan_ms_per_s=2.45
+scan_parts_ms_mean apps_list=3.23 process_read=1.20 scanner=0.33 store_setBreakdown=0.29
+process_cpu_pct=0.23
+max_sum_gap_pp=1.60
+whole_mac_cpu_mean=23.3

@@ -1,0 +1,18 @@
+build=current
+run_seconds=60 counted_breakdown_seconds=36 cores=8
+breakdown_scan_interval_s=2.0 rate_window_s=2.0
+target_app=Code
+top8_order_changes=8.3
+slot_changes=23.3
+row_text_changes=73.3
+target_moves=0.0
+target_child_set_changes=3.3
+frozen_slot_changes=0   # total over the 20 s pointer-in-list window
+card_cpu_changes=37.0
+card_net_down_changes=15.0
+card_mem_changes=5.0
+scan_ms_mean=13.19 scan_ms_max=19.74 scans_per_s=0.52 scan_ms_per_s=6.82
+scan_parts_ms_mean apps_list=8.70 process_read=3.79 scanner=0.70 store_setBreakdown=0.44
+process_cpu_pct=0.64
+max_sum_gap_pp=0.80
+whole_mac_cpu_mean=9.6

@@ -1,0 +1,60 @@
+=== scan 0 at 20:42:15.572 procs=528 cost=6.16 ms measuring=false header=-
+rows sum cpu=0.00%  mem=10750 MB  rows=61
+  Other processes            2.6 GB   (0.0% core) n=330
+      - mediaanalysisd                 1154 99 MB
+      - TextThumbnailExtension         55465 62 MB
+      - WallpaperImageExtension        1328 56 MB
+      - photoanalysisd                 1153 39 MB
+      - corespotlightd                 1140 27 MB
+      - sharingd                       1011 26 MB
+      - sirittsd                       1055 26 MB
+      - fileproviderd                  1054 26 MB
+      - MTLCompilerService             1225 25 MB
+      - StocksWidget                   1300 24 MB
+      - siriactionsd                   1043 24 MB
+      - accountsd                      960 23 MB
+      - MTLCompilerService             1226 23 MB
+      - callservicesd                  989 21 MB
+      - assistantd                     1044 20 MB
+      - WeatherWidget                  80861 20 MB
+      - iconservicesagent              1215 19 MB
+      - spotlightknowledged.updater    1210 19 MB
+      - routined                       976 19 MB
+      - duetexpertd                    1217 18 MB
+      - contactsd                      1598 18 MB
+      - homed                          985 18 MB
+      - HomeEnergyWidgetsExtension     1443 18 MB
+      - identityservicesd              991 18 MB
+      - JournalWidgets                 1471 18 MB
+  Code                       2.1 GB   (0.0% core) n=59
+      - SourceKitService               26561 442 MB
+      - Code Helper (Plugin)           14126 359 MB
+      - claude                         14424 323 MB
+      - Code Helper (Renderer)         14112 217 MB
+      - Code Helper                    14109 107 MB
+      - sourcekit-lsp                  14330 93 MB
+      - Code                           14106 89 MB
+      - Code Helper                    14123 66 MB
+      - node                           14509 58 MB
+      - Code Helper                    14124 56 MB
+      - Code Helper                    14125 49 MB
+      - MTLCompilerService             14116 40 MB
+      - Code Helper                    14133 38 MB
+      - node                           14700 34 MB
+      - MTLCompilerService             14111 33 MB
+      - codex                          14480 24 MB
+      - sourcekit-lsp                  26538 22 MB
+      - Code Helper (Plugin)           14280 20 MB
+      - copilot-runtime                14278 11 MB
+      - Code Helper                    14110 9 MB
+      - chrome_crashpad_handler        14108 4 MB
+      - zsh                            14138 2 MB
+      - bash                           92157 2 MB
+      - h                              95690 2 MB
+      - bash                           94817 2 MB
+  Google Chrome              1.9 GB   (0.0% core) n=24
+      - Google Chrome                  52473 761 MB
+      - Google Chrome Helper           52479 256 MB
+      - Google Chrome Helper (Renderer 95357 245 MB
+      - Google Chrome Helper (Renderer 89775 115 MB
+      - Google Chrome Helper (Renderer 73859 103 MB

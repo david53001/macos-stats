@@ -1,0 +1,33 @@
+## r4 replay.swift compiled against the display code before round 5 (0e59183)
+[cpuB8] first shown t=2.0, 149 scans | first re-sort slots 2 | top-8 order chg/min 1.6, slot chg/min 3.2, flat(14) slot chg/min 33.0
+    inversion scans 2/149, missorted pairs 1 | top-8 text chg/min 21.7 (flip-backs 2.0), s between changes per row 22.1 | err steps p95 4.17 max 22.72
+    expanded app moves/min 0.6, child top-5 order chg/min 10.1, child text chg/min 52.9, collapses 0
+[cpuB8 still] first shown t=2.0, 149 scans | first re-sort slots 2 | top-8 order chg/min 1.6, slot chg/min 3.2, flat(14) slot chg/min 3.2
+    inversion scans 2/149, missorted pairs 1 | top-8 text chg/min 21.7 (flip-backs 2.0), s between changes per row 22.1 | err steps p95 4.17 max 22.72
+    top row changed at t = ["24.0"]
+[energyB16] first shown t=2.0, 149 scans | first re-sort slots 0 | top-8 order chg/min 0.0, slot chg/min 0.0, flat(14) slot chg/min 17.4
+    inversion scans 0/149, missorted pairs 0 | top-8 text chg/min 11.4 (flip-backs 0.8), s between changes per row 37.0 | err steps p95 1.01 max 23.35
+    expanded app moves/min 0.0, child top-5 order chg/min 7.5, child text chg/min 52.1, collapses 0
+[energyB16 still] first shown t=2.0, 149 scans | first re-sort slots 0 | top-8 order chg/min 0.0, slot chg/min 0.0, flat(14) slot chg/min 0.0
+    inversion scans 0/149, missorted pairs 0 | top-8 text chg/min 11.4 (flip-backs 0.8), s between changes per row 37.0 | err steps p95 1.01 max 23.35
+    top row changed at t = []
+[memB] first shown t=0.0, 150 scans | first re-sort slots 0 | top-8 order chg/min 0.0, slot chg/min 0.0, flat(14) slot chg/min 0.4
+    inversion scans 0/150, missorted pairs 0 | top-8 text chg/min 0.2 (flip-backs 0.0), s between changes per row 2086.0 | err steps p95 0.52 max 0.75
+    expanded app moves/min 0.0, child top-5 order chg/min 0.2, child text chg/min 0.6, collapses 0
+
+## the same, against round 5
+[cpuB8] first shown t=2.0, 149 scans | first re-sort slots 2 | top-8 order chg/min 1.6, slot chg/min 3.2, flat(14) slot chg/min 17.2
+    inversion scans 2/149, missorted pairs 1 | top-8 text chg/min 21.7 (flip-backs 2.0), s between changes per row 22.1 | err steps p95 4.17 max 22.72
+    expanded app moves/min 0.6, child top-5 order chg/min 5.1, child text chg/min 38.5, collapses 0
+[cpuB8 still] first shown t=2.0, 149 scans | first re-sort slots 2 | top-8 order chg/min 1.6, slot chg/min 3.2, flat(14) slot chg/min 3.2
+    inversion scans 2/149, missorted pairs 1 | top-8 text chg/min 21.7 (flip-backs 2.0), s between changes per row 22.1 | err steps p95 4.17 max 22.72
+    top row changed at t = ["24.0"]
+[energyB16] first shown t=2.0, 149 scans | first re-sort slots 0 | top-8 order chg/min 0.0, slot chg/min 0.0, flat(14) slot chg/min 8.5
+    inversion scans 0/149, missorted pairs 0 | top-8 text chg/min 11.4 (flip-backs 0.8), s between changes per row 37.0 | err steps p95 1.01 max 23.35
+    expanded app moves/min 0.0, child top-5 order chg/min 3.6, child text chg/min 38.7, collapses 0
+[energyB16 still] first shown t=2.0, 149 scans | first re-sort slots 0 | top-8 order chg/min 0.0, slot chg/min 0.0, flat(14) slot chg/min 0.0
+    inversion scans 0/149, missorted pairs 0 | top-8 text chg/min 11.4 (flip-backs 0.8), s between changes per row 37.0 | err steps p95 1.01 max 23.35
+    top row changed at t = []
+[memB] first shown t=0.0, 150 scans | first re-sort slots 0 | top-8 order chg/min 0.0, slot chg/min 0.0, flat(14) slot chg/min 0.4
+    inversion scans 0/150, missorted pairs 0 | top-8 text chg/min 0.2 (flip-backs 0.0), s between changes per row 2086.0 | err steps p95 0.52 max 0.75
+    expanded app moves/min 0.0, child top-5 order chg/min 0.2, child text chg/min 0.6, collapses 0

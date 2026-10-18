@@ -1,0 +1,5 @@
+cost no tour host: 12.02 % of a core
+cost tour host, tour off: 12.17 % of a core
+cost tour on (step 1): 12.39 % of a core
+scan(.cpu) ms p50 17.6 max 19.7 → 0.88 % of a core at one scan / 2 s
+done

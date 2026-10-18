@@ -1,0 +1,7 @@
+On-battery sessions in powerlog (Sep 28-Oct 5) dropping >=25 points: energy the battery delivered (sum dRaw mAh x V) vs drop in BatteryTelemetry.remainingWh
+85->48%  measured 20.02 Wh  model 20.54 Wh  model/measured 1.026
+85->21%  measured 31.97 Wh  model 32.45 Wh  model/measured 1.015
+95->67%  measured 14.46 Wh  model 15.00 Wh  model/measured 1.038
+85->42%  measured 23.23 Wh  model 23.61 Wh  model/measured 1.016
+85->38%  measured 24.64 Wh  model 25.24 Wh  model/measured 1.024
+85->53%  measured 17.61 Wh  model 18.10 Wh  model/measured 1.028

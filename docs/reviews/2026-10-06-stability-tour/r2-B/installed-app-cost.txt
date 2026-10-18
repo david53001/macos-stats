@@ -1,0 +1,8 @@
+# Installed ~/Applications/MacStats.app (binary mtime 2026-10-06 17:49 = before this branch's tour and window-observer commits), sampled passively with ps, panel window NOT on screen (CGWindowList: onscreen=false)
+# pcpu rss(KB) cputime   (process elapsed 03:05:27, cputime 49:35 at first sample = ~27% of one core averaged)
+ 20.6  82240  51:48.13
+ 25.8  82240  51:49.54
+ 24.7  82128  51:50.92
+ 26.6  82176  51:52.17
+ 28.9  82208  51:53.56
+ 28.0  82128  51:54.86

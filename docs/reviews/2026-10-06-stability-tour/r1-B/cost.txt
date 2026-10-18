@@ -1,0 +1,10 @@
+open overview (bare OverviewView), 20 s, live 0.5 s ticks, glass window at desktop+1:
+  current HEAD 9bd2cf2: 10.22 % of one core
+  baseline 1ed61cf:     11.20 % of one core
+RootView-like composition (OverviewView + tourHost + clipped + PanelBackdrop), current:
+  tour off: 9.42 %   tour on (step 1): 10.60 %
+hidden, no ticks: 0.10-0.12 % in every build
+Installed ~/Applications/MacStats.app (v1.1.0, binary built 17:49, older than 1ed61cf), pid 55352,
+  panel window 1992 (320x404) NOT on screen per CGWindowList at 19:25 and 19:52:
+  top: 25.4-34.2 % CPU, 38-39 MB; sample(1) 3 s: AppModel.tick / scheduleNextTick on the main thread,
+  SparklineShape.path + monotoneCubicSegments + CA transaction flushes (display cycle running).

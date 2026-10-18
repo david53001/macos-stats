@@ -8,37 +8,65 @@ struct OverviewView: View {
     var onSelect: (BreakdownMetric) -> Void
     var onEmptyTrash: () -> Void
     var onSettings: () -> Void
+    /// The existing-user "Take the Tour" chip (`TourController.offersTour`), passed in so this
+    /// view never observes the tour.
+    var offersTour = false
+    var onTour: () -> Void = {}
+    var onDismissOffer: () -> Void = {}
 
     var body: some View {
         VStack(spacing: Design.cardSpacing) {
             PanelHeader { Text("MacStats") }
+                // On the title's baseline, as an overlay so the title never moves.
+                .overlay(alignment: Alignment(horizontal: .trailing, vertical: .lastTextBaseline)) {
+                    if offersTour {
+                        TourOfferChip(onStart: onTour, onDismiss: onDismissOffer)
+                            .padding(.trailing, Design.cardPadding)
+                    }
+                }
 
-            StatCard(label: "CPU", value: "\(Int(store.cpuPercent.rounded()))%",
-                     number: store.cpuPercent.rounded(), meta: cpuMeta,
+            // The cards read the store's held values (`cardCPUPercent`…), which change only when
+            // a reading moves clearly; the graphs keep the exact history.
+            StatCard(label: "CPU", value: "\(Int(store.cardCPUPercent.rounded()))%",
+                     number: store.cardCPUPercent, meta: cpuMeta,
                      onTap: { onSelect(.cpu) }) {
                 Sparkline(points: store.cpuHistory, color: .green, maxValue: 100)
             }
+            .help("Click to see which apps use the CPU")
+            .tourAnchor("overview.cpu", radius: Design.cardCornerRadius)
             StatCard(label: "Memory", value: memoryValue,
-                     number: Double(store.memory?.usedBytes ?? 0), meta: memoryMeta,
+                     number: Double(store.cardMemory?.usedBytes ?? 0), meta: memoryMeta,
                      metaDot: pressureColor, onTap: { onSelect(.memory) }) {
                 Sparkline(points: store.memHistory, color: .blue, maxValue: 1.0)
             }
+            .help("Click to see which apps use memory \u{00B7} The dot turns yellow when your Mac runs low, "
+                  + "red when very low (macOS\u{2019}s memory pressure)")
+            .tourAnchor("overview.memory", radius: Design.cardCornerRadius)
             .loginPromptAnchor()   // the login question covers Memory + Network (LoginPrompt.swift)
             StatCard(label: "Network", value: networkValue,
-                     number: store.network?.downBytesPerSec ?? 0, meta: networkMeta) {
+                     number: store.cardNetwork?.downBytesPerSec ?? 0, meta: networkMeta) {
                 // Dynamic scale with a 10 KB/s floor, so an idle link draws flat.
                 Sparkline(points: store.netDownHistory, color: .purple, maxValue: 0,
                           dynamicMinimum: 10_000)
             }
+            .help("↓ download and ↑ upload speed, right now")
+            .tourAnchor("overview.network", radius: Design.cardCornerRadius)
             .loginPromptAnchor()
             StatCard(label: "Battery", value: batteryValue,
                      number: Double(store.battery?.percent ?? 0), meta: batteryMeta,
                      onTap: store.battery == nil ? nil : { onSelect(.energy) }) {
                 BatteryGauge(battery: store.battery)
             }
+            .tourAnchor("overview.battery", radius: Design.cardCornerRadius)
 
             trashCard
-            PanelFooter { SettingsButton(action: onSettings) }
+            PanelFooter {
+                HStack(spacing: Design.cardSpacing) {
+                    HelpButton(action: onTour)
+                    SettingsButton(action: onSettings)
+                }
+                .tourAnchor("overview.footer", radius: Design.cardCornerRadius)
+            }
         }
         .padding([.horizontal, .bottom], Design.panelInset)
         .frame(width: Design.panelWidth, height: Design.panelHeight, alignment: .top)
@@ -52,48 +80,55 @@ struct OverviewView: View {
             Spacer()
             Text(trashValue)
                 .font(.callout).foregroundStyle(.secondary).monospacedDigit()
-            Button("Empty") { onEmptyTrash() }
-                .buttonStyle(SubtleButtonStyle())
-                .disabled((store.trashBytes ?? 0) == 0)
+            if store.trashNeedsPermission {
+                // Finder access was refused: macOS won't ask again, so say where to allow it.
+                Button("Allow\u{2026}") { TrashActions.openAutomationSettings() }
+                    .buttonStyle(SubtleButtonStyle())
+                    .help("Opens System Settings → Privacy & Security → Automation")
+            } else {
+                Button("Empty") { onEmptyTrash() }
+                    .buttonStyle(SubtleButtonStyle())
+                    .disabled((store.trashBytes ?? 0) == 0)
+            }
         }
         .padding(.horizontal, Design.cardPadding)
         .padding(.vertical, 7)
         .background(CardBackground())
     }
 
-    private func gb(_ bytes: UInt64) -> String {
-        String(format: "%.1f", Double(bytes) / 1_073_741_824)
+    /// One decimal, or none from 100 GB of RAM up, so "103 / 128 GB" fits the card's value column.
+    private func gb(_ bytes: UInt64, of total: UInt64) -> String {
+        String(format: total >= 100 * 1_073_741_824 ? "%.0f" : "%.1f", Double(bytes) / 1_073_741_824)
     }
-    private func rate(_ bps: Double) -> String {
-        bps >= 1_048_576 ? String(format: "%.1f MB/s", bps / 1_048_576)
-                         : String(format: "%.0f KB/s", bps / 1024)
-    }
+    private func rate(_ bps: Double) -> String { formattedRate(bytesPerSecond: bps) }
 
     private var memoryValue: String {
-        guard let m = store.memory else { return "—" }
-        return "\(gb(m.usedBytes)) / \(gb(m.totalBytes)) GB"
+        guard let m = store.cardMemory else { return "—" }
+        return "\(gb(m.usedBytes, of: m.totalBytes)) / \(gb(m.totalBytes, of: m.totalBytes)) GB"
     }
     private var trashValue: String {
+        if store.trashNeedsPermission { return "Needs permission" }
         guard let bytes = store.trashBytes else { return "—" }   // still reading / unknown
-        guard bytes > 0 else { return "empty" }
+        guard bytes > 0 else { return "Nothing in it" }   // not "empty" beside the Empty button
         // Finder's own style (1000-based): 1.5 GB in Finder read "1.4 GB" when divided by 1024.
         return ByteCountFormatter.string(fromByteCount: Int64(clamping: bytes), countStyle: .file)
     }
     private var cpuMeta: String {
-        guard let t = store.cpuTempCelsius else { return "live" }
-        return "\(Int(t))°C"
+        guard let t = store.cpuTempCelsius else { return "" }   // no usable sensor on this chip
+        return "Chip \(Int(t)) °C"   // named, so the number isn't a riddle; the Battery screen's °C format
     }
+    /// macOS's memory pressure in plain words (the tooltip names the term).
     private var memoryMeta: String {
-        switch store.memory?.pressure {
-        case .normal: return "normal"
-        case .warning: return "warning"
-        case .critical: return "critical"
+        switch store.cardMemory?.pressure {
+        case .normal: return "OK"
+        case .warning: return "running low"
+        case .critical: return "very low"
         case nil: return ""
         }
     }
     /// Activity Monitor's memory-pressure colours.
     private var pressureColor: Color? {
-        switch store.memory?.pressure {
+        switch store.cardMemory?.pressure {
         case .normal: return .green
         case .warning: return .yellow
         case .critical: return .red
@@ -101,11 +136,11 @@ struct OverviewView: View {
         }
     }
     private var networkValue: String {
-        guard let n = store.network else { return "—" }
+        guard let n = store.cardNetwork else { return "—" }
         return "↓ \(rate(n.downBytesPerSec))"
     }
     private var networkMeta: String {
-        guard let n = store.network else { return "" }
+        guard let n = store.cardNetwork else { return "" }
         return "↑ \(rate(n.upBytesPerSec))"
     }
     private var batteryValue: String {
@@ -167,8 +202,8 @@ struct PanelFooter<Trailing: View>: View {
 
     var body: some View {
         HStack {
-            Button("Quit") { NSApplication.shared.terminate(nil) }
-                .buttonStyle(SubtleButtonStyle())
+            Button("Quit MacStats") { NSApplication.shared.terminate(nil) }
+                .buttonStyle(SubtleButtonStyle(cornerRadius: Design.cardCornerRadius))
             Spacer()
             trailing
         }

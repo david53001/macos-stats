@@ -1,0 +1,67 @@
+== stability metric=cpu seconds=70 counted_s=44 scans_counted=23 rows=50
+expanded_app=Code processes=34
+per_min: top8_order_changes=9.4 app_row_index_changes(top10)=37.8 expanded_app_index_changes=0 expanded_app_vanished=0
+per_min: expanded_children_reorders=0.0 expanded_children_set_changes=12.1 exited_row_toggles=4
+per_min: top8_row_text_changes=130.8 (flip-backs A>B>A total=3) header_text_changes=22.9 header_flipbacks=1
+shown_vs_exact top8: max=0.57 mean=0.042 (pp of Mac)
+pointer_window_20s: scans=9 row_under_pointer_changed(child_slot)=1 row_under_pointer_changed(row6)=1 any_flat_list_change=1
+cards per_min: cpu=60.9 (flipbacks 5) mem=18.9 (fb 1) down=33.4 (fb 2) up=47.1 (fb 2)
+card_cpu_vs_raw: max=0.75pp ticks_off_by>=2pp=0/140
+wrote breakdown-cpu-expanded-light
+wrote breakdown-cpu-expanded-dark
+== stability metric=memory seconds=60 counted_s=34 scans_counted=19 rows=49
+expanded_app=Code processes=31
+per_min: top8_order_changes=0.0 app_row_index_changes(top10)=0.0 expanded_app_index_changes=0 expanded_app_vanished=0
+per_min: expanded_children_reorders=0.0 expanded_children_set_changes=0.0 exited_row_toggles=0
+per_min: top8_row_text_changes=10.4 (flip-backs A>B>A total=0) header_text_changes=0.0 header_flipbacks=0
+shown_vs_exact top8: max=81.08 mean=8.559 (MiB)
+pointer_window_20s: scans=9 row_under_pointer_changed(child_slot)=0 row_under_pointer_changed(row6)=0 any_flat_list_change=0
+cards per_min: cpu=64.0 (flipbacks 1) mem=5.0 (fb 0) down=19.0 (fb 0) up=31.0 (fb 1)
+card_cpu_vs_raw: max=0.74pp ticks_off_by>=2pp=0/120
+wrote breakdown-memory-expanded-light
+wrote breakdown-memory-expanded-dark
+== stability metric=energy seconds=60 counted_s=34 scans_counted=19 rows=49
+expanded_app=Code processes=36
+per_min: top8_order_changes=5.2 app_row_index_changes(top10)=15.7 expanded_app_index_changes=0 expanded_app_vanished=0
+per_min: expanded_children_reorders=0.0 expanded_children_set_changes=26.1 exited_row_toggles=9
+per_min: top8_row_text_changes=113.0 (flip-backs A>B>A total=2) header_text_changes=0.0 header_flipbacks=0
+shown_vs_exact top8: max=0.93 mean=0.035 (W)
+pointer_window_20s: scans=9 row_under_pointer_changed(child_slot)=1 row_under_pointer_changed(row6)=1 any_flat_list_change=2
+cards per_min: cpu=60.0 (flipbacks 2) mem=17.0 (fb 0) down=20.0 (fb 2) up=30.0 (fb 0)
+card_cpu_vs_raw: max=0.74pp ticks_off_by>=2pp=0/120
+wrote breakdown-battery-light
+wrote breakdown-battery-dark
+scan_ms mean=12.98 max=18.40 n=107
+wrote overview-light
+wrote tour-step1-light
+wrote tour-step2-light
+wrote tour-step3-light
+wrote tour-step4-light
+wrote tour-step5-light
+tour light step=cpu target=(8.0,36.0 304.0x67.0) cutout=(5.0,33.0 310.0x73.0) r=11.0 geom insets L=3.0 R=3.0 T=3.0 B=3.0 | pixel insets(pt) L=3.0(ring 2.0, gap 1.0) R=3.0(ring 2.0, gap 1.0) T=3.0(ring 2.0, gap 1.0) B=3.0(ring 2.0, gap 1.0) corners(diag pt)=2.8,2.8,2.8,2.8
+tour light step=memory target=(8.0,109.0 304.0x67.0) cutout=(5.0,106.0 310.0x73.0) r=11.0 geom insets L=3.0 R=3.0 T=3.0 B=3.0 | pixel insets(pt) L=3.0(ring 2.0, gap 1.0) R=3.0(ring 2.0, gap 1.0) T=3.0(ring 2.0, gap 1.0) B=3.0(ring 2.0, gap 1.0) corners(diag pt)=2.8,2.8,2.8,2.8
+tour light step=network target=(8.0,182.0 304.0x67.0) cutout=(5.0,179.0 310.0x73.0) r=11.0 geom insets L=3.0 R=3.0 T=3.0 B=3.0 | pixel insets(pt) L=3.0(ring 2.0, gap 1.0) R=3.0(ring 2.0, gap 1.0) T=3.0(ring 2.0, gap 1.0) B=3.0(ring 2.0, gap 1.0) corners(diag pt)=2.8,2.8,2.8,2.8
+tour light step=battery target=(8.0,255.0 304.0x67.0) cutout=(5.0,252.0 310.0x73.0) r=11.0 geom insets L=3.0 R=3.0 T=3.0 B=3.0 | pixel insets(pt) L=3.0(ring 2.0, gap 1.0) R=3.0(ring 2.0, gap 1.0) T=3.0(ring 2.0, gap 1.0) B=3.0(ring 2.0, gap 1.0) corners(diag pt)=2.8,2.8,2.8,2.8
+tour light step=footer target=(234.0,372.0 78.0x24.0) cutout=(231.0,369.0 84.0x30.0) r=11.0 geom insets L=3.0 R=3.0 T=3.0 B=3.0 | pixel insets(pt) L=3.0(ring 2.0, gap 1.0) R=3.0(ring 2.0, gap 1.0) T=n/a B=n/a corners(diag pt)=2.8,2.8,2.8,2.8
+wrote welcome-light
+welcome light card margins(pt): top=0.0 bottom=0.0 left=8.0 right=8.0
+wrote chip-light
+wrote settings-light
+wrote overview-dark
+wrote tour-step1-dark
+wrote tour-step2-dark
+wrote tour-step3-dark
+wrote tour-step4-dark
+wrote tour-step5-dark
+tour dark step=cpu target=(8.0,36.0 304.0x67.0) cutout=(5.0,33.0 310.0x73.0) r=11.0 geom insets L=3.0 R=3.0 T=3.0 B=3.0 | pixel insets(pt) L=n/a R=n/a T=n/a B=n/a corners(diag pt)=n/a,n/a,n/a,n/a
+tour dark step=memory target=(8.0,109.0 304.0x67.0) cutout=(5.0,106.0 310.0x73.0) r=11.0 geom insets L=3.0 R=3.0 T=3.0 B=3.0 | pixel insets(pt) L=n/a R=n/a T=n/a B=n/a corners(diag pt)=n/a,n/a,n/a,n/a
+tour dark step=network target=(8.0,182.0 304.0x67.0) cutout=(5.0,179.0 310.0x73.0) r=11.0 geom insets L=3.0 R=3.0 T=3.0 B=3.0 | pixel insets(pt) L=n/a R=n/a T=n/a B=n/a corners(diag pt)=n/a,n/a,n/a,n/a
+tour dark step=battery target=(8.0,255.0 304.0x67.0) cutout=(5.0,252.0 310.0x73.0) r=11.0 geom insets L=3.0 R=3.0 T=3.0 B=3.0 | pixel insets(pt) L=n/a R=n/a T=n/a B=n/a corners(diag pt)=n/a,n/a,n/a,n/a
+tour dark step=footer target=(234.0,372.0 78.0x24.0) cutout=(231.0,369.0 84.0x30.0) r=11.0 geom insets L=3.0 R=3.0 T=3.0 B=3.0 | pixel insets(pt) L=n/a R=n/a T=n/a B=n/a corners(diag pt)=n/a,16.3,n/a,16.3
+wrote welcome-dark
+welcome dark card margins(pt): top=0.0 bottom=0.0 left=46.5 right=113.5
+wrote chip-dark
+wrote settings-dark
+cost overview-tour-off probe_process_cpu_pct=29.39
+cost overview-tour-on-step1 probe_process_cpu_pct=29.76
+done

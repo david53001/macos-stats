@@ -1,0 +1,102 @@
+[20:46:00.016] scan 0: measuring (519 procs, 6.0 ms)
+[20:46:00.530] scan 1: header 36.1% rows-sum 36.08 procs 519 scan 1.2 ms
+   Code                       24%      n=52
+       - bash                           98871 12% (96% core)
+       - bash                           98870 12% (96% core)
+       - dd                             99041 0.2% (1% core)
+       - h                              98922 0.1% (1% core)
+       - dd                             99042 0.1% (1% core)
+       - claude                         14424 0.0% (0% core)
+   System                     12%      n=0
+   Spotify                    0.0%     n=13
+   Other processes            0.0%     n=329
+   Claude                     0.0%     n=14
+   Google Chrome              0.0%     n=23
+   Control Centre             0.0%     n=3
+   chronod                    0.0%     n=3
+   Calendar                   0.0%     n=4
+   Dock Extra                 0.0%     n=3
+   Notification Centre        0.0%     n=3
+   Terminal                   0.0%     n=1
+[20:46:01.534] scan 2: header 33.3% rows-sum 33.33 procs 519 scan 1.3 ms
+   Code                       24%      n=52
+       - bash                           98871 12% (96% core)
+       - bash                           98870 12% (96% core)
+       - claude                         14424 0.1% (1% core)
+       - dd                             99342 0.0% (0% core)
+       - h                              98922 0.0% (0% core)
+       - dd                             99343 0.0% (0% core)
+   System                     8.9%     n=0
+   Other processes            0.1%     n=329
+   Claude                     0.0%     n=14
+   Google Chrome              0.0%     n=23
+   Spotify                    0.0%     n=13
+   Finder                     0.0%     n=6
+   Spotlight                  0.0%     n=4
+   familycircled              0.0%     n=1
+   BetterScreenshot           0.0%     n=3
+   JVoice                     0.0%     n=2
+   coreautha                  0.0%     n=3
+[20:46:02.544] scan 3: header 27.6% rows-sum 27.60 procs 519 scan 1.3 ms
+   Code                       25%      n=52
+       - bash                           98870 12% (97% core)
+       - bash                           98871 12% (97% core)
+       - Code Helper                    14133 0.4% (3% core)
+       - claude                         14424 0.1% (1% core)
+       - h                              98922 0.0% (0% core)
+       - Code                           14106 0.0% (0% core)
+   System                     2.7%     n=0
+   Other processes            0.1%     n=329
+   Claude                     0.0%     n=14
+   Spotify                    0.0%     n=13
+   Google Chrome              0.0%     n=23
+   MacStats                   0.0%     n=1
+   Finder                     0.0%     n=6
+   universalaccessd           0.0%     n=1
+   loginwindow                0.0%     n=1
+   Dock                       0.0%     n=3
+   ChatGPTHelper              0.0%     n=1
+[20:46:03.555] scan 4: header 30.7% rows-sum 30.68 procs 520 scan 1.3 ms
+   Code                       27%      n=52
+       - bash                           98871 12% (96% core)
+       - bash                           98870 12% (96% core)
+       - claude                         14424 1.4% (11% core)
+       - bash                           92157 1.0% (8% core)
+       - dd                             99854 0.0% (0% core)
+       - dd                             99853 0.0% (0% core)
+   System                     2.4%     n=0
+   Google Chrome              1.2%     n=24
+       - Google Chrome Helper (Renderer 99826 0.8% (7% core)
+       - Google Chrome                  52473 0.3% (3% core)
+       - Google Chrome Helper           52480 0.0% (0% core)
+       - Google Chrome Helper (Renderer 98830 0.0% (0% core)
+       - Google Chrome Helper           52479 0.0% (0% core)
+       - Google Chrome Helper           55045 0.0% (0% core)
+   Other processes            0.2%     n=329
+   BetterScreenshot           0.1%     n=3
+   Claude                     0.0%     n=14
+   Spotify                    0.0%     n=13
+   ChatGPTHelper              0.0%     n=1
+   Finder                     0.0%     n=6
+   Dock                       0.0%     n=3
+   Control Centre             0.0%     n=3
+   Dock Extra                 0.0%     n=3
+[20:46:04.563] scan 5: header 27.3% rows-sum 27.27 procs 520 scan 1.3 ms
+   Code                       25%      n=52
+       - bash                           98871 12% (97% core)
+       - bash                           98870 12% (97% core)
+       - claude                         14424 0.4% (3% core)
+       - h                              98922 0.0% (0% core)
+       - Code Helper                    14133 0.0% (0% core)
+       - Code Helper (Renderer)         14112 0.0% (0% core)
+   System                     2.1%     n=0
+   Google Chrome              0.4%     n=24
+   Claude                     0.0%     n=14
+   Spotify                    0.0%     n=13
+   Other processes            0.0%     n=329
+   Finder                     0.0%     n=6
+   Calendar                   0.0%     n=4
+   JVoice                     0.0%     n=2
+   coreautha                  0.0%     n=3
+   BetterScreenshot           0.0%     n=3
+   Spotlight                  0.0%     n=4

@@ -1,0 +1,222 @@
+Processes: 782 total, 2 running, 780 sleeping, 3642 threads 
+2026/10/05 20:39:39
+Load Avg: 2.01, 2.45, 2.36 
+CPU usage: 2.75% user, 12.20% sys, 85.3% idle 
+SharedLibs: 596M resident, 119M data, 96M linkedit.
+MemRegions: 468983 total, 4059M resident, 319M private, 2019M shared.
+PhysMem: 15G used (1712M wired, 3205M compressor), 785M unused.
+VM: 351T vsize, 6144M framework vsize, 3212(0) swapins, 12480(0) swapouts.
+Networks: packets: 7162935/7441M in, 2650157/1820M out.
+Disks: 4226365/123G read, 3260211/95G written.
+
+PID    COMMAND          %CPU PPID  UID
+99816  XProtectPluginSe 0.0  1     0  
+99084  contactsdonation 0.0  1     501
+98816  MTLCompilerServi 0.0  1     0  
+98815  MTLCompilerServi 0.0  1     0  
+98812  iconservicesagen 0.0  1     0  
+98770  dirhelper        0.0  1     0  
+98746  cfprefsd         0.0  1     296
+98744  distnoted        0.0  1     296
+98743  ANEStorageMainta 0.0  1     296
+93283  sleep            0.0  93282 501
+93282  zsh              0.0  93280 501
+93281  h                0.0  93280 501
+93280  zsh              0.0  93276 501
+93279  top              0.0  1     0  
+93276  zsh              0.0  14424 501
+93274  sleep            0.0  92088 501
+93173  sleep            0.0  92157 501
+93102  mdworker_shared  0.0  1     501
+92765  Google Chrome He 0.0  52473 501
+92550  mdworker_shared  0.0  1     501
+92549  mdworker_shared  0.0  1     501
+92548  mdworker_shared  0.0  1     501
+92540  caffeinate       0.0  14424 501
+92157  bash             0.0  92156 501
+92156  zsh              0.0  14424 501
+Processes: 782 total, 2 running, 780 sleeping, 3647 threads 
+2026/10/05 20:39:40
+Load Avg: 2.01, 2.45, 2.36 
+CPU usage: 3.20% user, 2.28% sys, 94.51% idle 
+SharedLibs: 596M resident, 119M data, 96M linkedit.
+MemRegions: 0 total, 0B resident, 319M private, 2019M shared.
+PhysMem: 15G used (1713M wired, 3205M compressor), 779M unused.
+VM: 351T vsize, 6144M framework vsize, 3212(0) swapins, 12480(0) swapouts.
+Networks: packets: 7162965/7441M in, 2650187/1820M out.
+Disks: 4226370/123G read, 3260212/95G written.
+
+PID    COMMAND          %CPU PPID  UID
+1499   XprotectService  10.2 1     0  
+93279  top              6.4  1     0  
+14424  2.1.289          3.8  14138 501
+0      kernel_task      2.2  0     0  
+607    trustd           2.1  1     282
+93281  h                1.6  93280 501
+664    syspolicyd       1.4  1     0  
+697    com.apple.Driver 1.1  1     270
+574    locationd        0.6  1     205
+540    powerd           0.5  1     0  
+628    airportd         0.4  1     0  
+52473  Google Chrome    0.4  1     501
+599    WindowServer     0.3  1     88 
+569    launchservicesd  0.3  1     0  
+69346  Spotify          0.3  1     501
+528    UserEventAgent   0.3  1     0  
+51042  PerfPowerService 0.3  1     0  
+592    notifyd          0.3  1     0  
+84068  Claude           0.2  1     501
+14133  Code Helper      0.2  14106 501
+526    logd             0.2  1     0  
+14112  Code Helper (Ren 0.2  14106 501
+594    corebrightnessd  0.1  1     0  
+14106  Code             0.1  1     501
+605    runningboardd    0.1  1     0  
+Processes: 782 total, 2 running, 780 sleeping, 3670 threads 
+2026/10/05 20:39:41
+Load Avg: 2.01, 2.45, 2.36 
+CPU usage: 0.93% user, 1.75% sys, 97.30% idle 
+SharedLibs: 596M resident, 119M data, 96M linkedit.
+MemRegions: 0 total, 0B resident, 319M private, 2019M shared.
+PhysMem: 15G used (1683M wired, 3205M compressor), 811M unused.
+VM: 351T vsize, 6144M framework vsize, 3212(0) swapins, 12480(0) swapouts.
+Networks: packets: 7162999/7441M in, 2650218/1820M out.
+Disks: 4226370/123G read, 3260212/95G written.
+
+PID    COMMAND          %CPU PPID  UID
+14424  2.1.289          6.2  14138 501
+93279  top              6.1  1     0  
+0      kernel_task      2.4  0     0  
+93281  h                1.1  93280 501
+697    com.apple.Driver 1.1  1     270
+569    launchservicesd  0.5  1     0  
+14133  Code Helper      0.4  14106 501
+599    WindowServer     0.3  1     88 
+836    mds_stores       0.2  1     308
+84068  Claude           0.2  1     501
+14112  Code Helper (Ren 0.2  14106 501
+565    contextstored    0.1  1     0  
+591    bluetoothd       0.1  1     0  
+52479  Google Chrome He 0.1  52473 501
+594    corebrightnessd  0.1  1     0  
+581    distnoted        0.1  1     241
+890    distnoted        0.1  1     501
+628    airportd         0.1  1     0  
+14126  Code Helper (Plu 0.1  14106 501
+14106  Code             0.1  1     501
+680    audioclocksyncd  0.0  1     0  
+635    symptomsd        0.0  1     24 
+1011   sharingd         0.0  1     501
+555    mds              0.0  1     0  
+69387  Spotify Helper ( 0.0  69346 501
+Processes: 782 total, 2 running, 780 sleeping, 3670 threads 
+2026/10/05 20:39:42
+Load Avg: 2.01, 2.45, 2.36 
+CPU usage: 1.41% user, 1.76% sys, 96.82% idle 
+SharedLibs: 596M resident, 119M data, 96M linkedit.
+MemRegions: 0 total, 0B resident, 319M private, 2019M shared.
+PhysMem: 15G used (1681M wired, 3205M compressor), 817M unused.
+VM: 351T vsize, 6144M framework vsize, 3212(0) swapins, 12480(0) swapouts.
+Networks: packets: 7163031/7441M in, 2650249/1820M out.
+Disks: 4226370/123G read, 3260214/95G written.
+
+PID    COMMAND          %CPU PPID  UID
+93279  top              5.3  1     0  
+14424  2.1.289          4.3  14138 501
+0      kernel_task      2.2  0     0  
+69387  Spotify Helper ( 1.4  69346 501
+93281  h                0.8  93280 501
+697    com.apple.Driver 0.7  1     270
+14133  Code Helper      0.6  14106 501
+14112  Code Helper (Ren 0.5  14106 501
+14126  Code Helper (Plu 0.4  14106 501
+599    WindowServer     0.3  1     88 
+569    launchservicesd  0.2  1     0  
+591    bluetoothd       0.2  1     0  
+84068  Claude           0.1  1     501
+52473  Google Chrome    0.1  1     501
+84088  Claude Helper (R 0.1  84068 501
+14106  Code             0.1  1     501
+594    corebrightnessd  0.1  1     0  
+635    symptomsd        0.1  1     24 
+567    opendirectoryd   0.1  1     0  
+1011   sharingd         0.0  1     501
+84075  Claude Helper    0.0  84068 501
+530    fseventsd        0.0  1     0  
+680    audioclocksyncd  0.0  1     0  
+1276   milod            0.0  1     501
+972    rapportd         0.0  1     501
+Processes: 782 total, 2 running, 780 sleeping, 3669 threads 
+2026/10/05 20:39:43
+Load Avg: 2.01, 2.45, 2.36 
+CPU usage: 1.3% user, 1.72% sys, 97.23% idle 
+SharedLibs: 596M resident, 119M data, 96M linkedit.
+MemRegions: 0 total, 0B resident, 319M private, 2019M shared.
+PhysMem: 15G used (1681M wired, 3205M compressor), 819M unused.
+VM: 351T vsize, 6144M framework vsize, 3212(0) swapins, 12480(0) swapouts.
+Networks: packets: 7163056/7441M in, 2650274/1820M out.
+Disks: 4226371/123G read, 3260214/95G written.
+
+PID    COMMAND          %CPU PPID  UID
+93279  top              7.7  1     0  
+14424  2.1.289          4.5  14138 501
+0      kernel_task      1.8  0     0  
+9268   BetterScreenshot 1.3  1     501
+93281  h                0.8  93280 501
+697    com.apple.Driver 0.6  1     270
+591    bluetoothd       0.5  1     0  
+599    WindowServer     0.4  1     88 
+14112  Code Helper (Ren 0.3  14106 501
+14133  Code Helper      0.3  14106 501
+569    launchservicesd  0.2  1     0  
+52473  Google Chrome    0.2  1     501
+14126  Code Helper (Plu 0.1  14106 501
+84068  Claude           0.1  1     501
+594    corebrightnessd  0.1  1     0  
+1011   sharingd         0.1  1     501
+69346  Spotify          0.1  1     501
+1276   milod            0.1  1     501
+1083   nearbyd          0.1  1     268
+89124  MacStats         0.1  1     501
+972    rapportd         0.1  1     501
+14106  Code             0.0  1     501
+680    audioclocksyncd  0.0  1     0  
+836    mds_stores       0.0  1     308
+14123  Code Helper      0.0  14106 501
+Processes: 781 total, 2 running, 779 sleeping, 3656 threads 
+2026/10/05 20:39:44
+Load Avg: 1.93, 2.42, 2.35 
+CPU usage: 1.39% user, 1.86% sys, 96.74% idle 
+SharedLibs: 596M resident, 119M data, 96M linkedit.
+MemRegions: 28 total, 368K resident, 319M private, 2019M shared.
+PhysMem: 15G used (1678M wired, 3205M compressor), 835M unused.
+VM: 350T vsize, 6144M framework vsize, 3212(0) swapins, 12480(0) swapouts.
+Networks: packets: 7163084/7441M in, 2650303/1820M out.
+Disks: 4226371/123G read, 3260231/95G written.
+
+PID    COMMAND          %CPU PPID  UID
+93279  top              6.3  1     0  
+14424  2.1.289          4.8  14138 501
+0      kernel_task      2.6  0     0  
+69387  Spotify Helper ( 1.2  69346 501
+697    com.apple.Driver 0.8  1     270
+52473  Google Chrome    0.8  1     501
+1082   ContinuityCaptur 0.6  1     501
+569    launchservicesd  0.4  1     0  
+599    WindowServer     0.3  1     88 
+591    bluetoothd       0.3  1     0  
+14133  Code Helper      0.3  14106 501
+972    rapportd         0.3  1     501
+84068  Claude           0.2  1     501
+14112  Code Helper (Ren 0.2  14106 501
+596    com.apple.cmio.r 0.2  1     0  
+1292   SidecarRelay     0.1  1     501
+594    corebrightnessd  0.1  1     0  
+1011   sharingd         0.1  1     501
+581    distnoted        0.1  1     241
+890    distnoted        0.1  1     501
+14126  Code Helper (Plu 0.1  14106 501
+628    airportd         0.1  1     0  
+1083   nearbyd          0.1  1     268
+14106  Code             0.1  1     501
+1276   milod            0.1  1     501

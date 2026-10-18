@@ -1,0 +1,30 @@
+light step 1 cpu: geometry: target (8.00,36.00 304.00x67.00) cutout (5.00,33.00 310.00x73.00) r=11  insets L3.00 R3.00 T3.00 B3.00
+   pixels (pt, target edge → cutout edge): mid-row L3.0 R3.0  q1-row L3.0 R3.0  q3-row L3.0 R3.0  mid-col T3.0 B3.0  q1-col T3.0 B3.0  q3-col T3.0 B3.0  ring 2.0pt
+   corner diagonal gap (pt; = edge gap when concentric): TL 2.8  TR 2.8  BL 2.8  BR 2.8
+light step 2 memory: geometry: target (8.00,109.00 304.00x67.00) cutout (5.00,106.00 310.00x73.00) r=11  insets L3.00 R3.00 T3.00 B3.00
+   pixels (pt, target edge → cutout edge): mid-row L3.0 R3.0  q1-row L3.0 R3.0  q3-row L3.0 R3.0  mid-col T3.0 B3.0  q1-col T3.0 B3.0  q3-col T3.0 B3.0  ring 2.0pt
+   corner diagonal gap (pt; = edge gap when concentric): TL 2.8  TR 2.8  BL 2.8  BR 2.8
+light step 3 network: geometry: target (8.00,182.00 304.00x67.00) cutout (5.00,179.00 310.00x73.00) r=11  insets L3.00 R3.00 T3.00 B3.00
+   pixels (pt, target edge → cutout edge): mid-row L3.0 R3.0  q1-row L3.0 R3.0  q3-row L3.0 R3.0  mid-col T3.0 B3.0  q1-col T3.0 B3.0  q3-col T3.0 B3.0  ring 2.0pt
+   corner diagonal gap (pt; = edge gap when concentric): TL 2.8  TR 2.8  BL 2.8  BR 2.8
+light step 4 battery: geometry: target (8.00,255.00 304.00x67.00) cutout (5.00,252.00 310.00x73.00) r=11  insets L3.00 R3.00 T3.00 B3.00
+   pixels (pt, target edge → cutout edge): mid-row L3.0 R3.0  q1-row L3.0 R3.0  q3-row L3.0 R3.0  mid-col T3.0 B3.0  q1-col T3.0 B3.0  q3-col T3.0 B3.0  ring 2.0pt
+   corner diagonal gap (pt; = edge gap when concentric): TL 2.8  TR 2.8  BL 2.8  BR 2.8
+light step 5 footer: geometry: target (234.00,372.00 78.00x24.00) cutout (231.00,369.00 84.00x30.00) r=11  insets L3.00 R3.00 T3.00 B3.00
+   pixels (pt, target edge → cutout edge): mid-row L3.0 R3.0  q1-row L3.0 R3.0  q3-row L3.0 R3.0  mid-col T35.0 B33.0  q1-col T3.0 B3.0  q3-col T3.0 B3.0  ring 2.0pt
+   corner diagonal gap (pt; = edge gap when concentric): TL 2.8  TR 2.8  BL 2.8  BR 2.8
+dark step 1 cpu: geometry: target (8.00,36.00 304.00x67.00) cutout (5.00,33.00 310.00x73.00) r=11  insets L3.00 R3.00 T3.00 B3.00
+   pixels (pt, target edge → cutout edge): mid-row L3.0 R3.0  q1-row L3.0 R3.0  q3-row L3.0 R3.0  mid-col T3.0 B3.0  q1-col T3.0 B3.0  q3-col T3.0 B3.0  ring 2.0pt
+   corner diagonal gap (pt; = edge gap when concentric): TL 2.8  TR 2.8  BL 2.8  BR 2.8
+dark step 2 memory: geometry: target (8.00,109.00 304.00x67.00) cutout (5.00,106.00 310.00x73.00) r=11  insets L3.00 R3.00 T3.00 B3.00
+   pixels (pt, target edge → cutout edge): mid-row L3.0 R3.0  q1-row L3.0 R3.0  q3-row L3.0 R3.0  mid-col T3.0 B3.0  q1-col T3.0 B3.0  q3-col T3.0 B3.0  ring 2.0pt
+   corner diagonal gap (pt; = edge gap when concentric): TL 2.8  TR 2.8  BL 2.8  BR 2.8
+dark step 3 network: geometry: target (8.00,182.00 304.00x67.00) cutout (5.00,179.00 310.00x73.00) r=11  insets L3.00 R3.00 T3.00 B3.00
+   pixels (pt, target edge → cutout edge): mid-row L3.0 R3.0  q1-row L3.0 R3.0  q3-row L3.0 R3.0  mid-col T3.0 B3.0  q1-col T3.0 B3.0  q3-col T3.0 B3.0  ring 2.0pt
+   corner diagonal gap (pt; = edge gap when concentric): TL 2.8  TR 2.8  BL 2.8  BR 2.8
+dark step 4 battery: geometry: target (8.00,255.00 304.00x67.00) cutout (5.00,252.00 310.00x73.00) r=11  insets L3.00 R3.00 T3.00 B3.00
+   pixels (pt, target edge → cutout edge): mid-row L3.0 R3.0  q1-row L3.0 R3.0  q3-row L3.0 R3.0  mid-col T3.0 B3.0  q1-col T3.0 B3.0  q3-col T3.0 B3.0  ring 2.0pt
+   corner diagonal gap (pt; = edge gap when concentric): TL 2.8  TR 2.8  BL 2.8  BR 2.8
+dark step 5 footer: geometry: target (234.00,372.00 78.00x24.00) cutout (231.00,369.00 84.00x30.00) r=11  insets L3.00 R3.00 T3.00 B3.00
+   pixels (pt, target edge → cutout edge): mid-row L3.0 R3.0  q1-row L3.0 R3.0  q3-row L3.5 R3.5  mid-col T35.0 B33.0  q1-col T3.0 B3.0  q3-col T3.0 B3.0  ring 2.0pt
+   corner diagonal gap (pt; = edge gap when concentric): TL 2.8  TR 2.8  BL 2.8  BR 2.8

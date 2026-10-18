@@ -1,0 +1,17 @@
+IOPS sample: BatterySample(percent: 80, state: h.BatteryState.notCharging, timeToEmptyMinutes: nil, timeToFullMinutes: nil, chargeLimitPercent: nil, chargeTargetAssumed: false)
+powerd policy: PowerdChargePolicy(limit: h.ChargeLimitHint.limit(85), hold: Optional(80))
+telemetry: Optional(h.BatteryTelemetry(updateTime: 1791230933, voltageMV: Optional(12473), amperageMA: Optional(0), currentMAh: Optional(3482), rawMaxMAh: Optional(4407), nominalMAh: Optional(4534), designMAh: Optional(4563), cycleCount: Optional(128), temperatureC: Optional(29.96), adapterWatts: Optional(30), systemLoadMW: Optional(2289), accumulatedSystemLoad: Optional(293597666), systemLoadCount: Optional(272673)))
+healthPercent: Optional(99) instantWatts: Optional(2.289) remainingWh: Optional(39.99599299999999)
+target (no memory, plugged 1h): limit(80)
+learned if came from charging: Optional(80)
+str: $null
+policy obj: ["reason": <CFKeyedArchiverUID 0x7e70036c0 [0x1f2695308]>{value = 3}, "noChargeToFull": 0, "drain": 1, "isEndOfCharge": 1, "token": <CFKeyedArchiverUID 0x7e7003700 [0x1f2695308]>{value = 4}, "owner": 615, "terminated": 0, "soclimit": 85]
+str: manualChargeLimit
+policy obj: ["terminated": 0, "isEndOfCharge": 0, "noChargeToFull": 0, "reason": <CFKeyedArchiverUID 0x7e7003740 [0x1f2695308]>{value = 8}, "drain": 1, "soclimit": 80, "owner": 615, "token": <CFKeyedArchiverUID 0x7e7003760 [0x1f2695308]>{value = 9}]
+str: optimizedBatteryCharging
+IOPS raw: ["Is Charged": 0, "Power Source State": AC Power, "Max Capacity": 100, "Current Capacity": 80, "Time to Empty": 0, "Time to Full Charge": 0, "Is Charging": 0]
+Now drawing from 'AC Power'
+ -InternalBattery-0 (id=35389539)	80%; AC attached; not charging present: true
+          State of Charge (%): 80
+          Cycle Count: 128
+          Maximum Capacity: 99%

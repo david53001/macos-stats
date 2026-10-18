@@ -1,0 +1,62 @@
+[22:56:05.350] scan 0 6.1 ms procs 435 rows-sum 6.13 GiB
+   Code                          1986 MiB  n=40
+        Code Helper (Plugin)  14126    0.0% (   0% 1-core)     352 MiB
+        claude  14424    0.0% (   0% 1-core)     339 MiB
+        Code Helper  14109    0.0% (   0% 1-core)     225 MiB
+        Code Helper (Renderer)  14112    0.0% (   0% 1-core)     224 MiB
+        sourcekit-lsp  14330    0.0% (   0% 1-core)     180 MiB
+        Code  14106    0.0% (   0% 1-core)      92 MiB
+   Dock                           262 MiB  n=3
+        DockHelper   2465    0.0% (   0% 1-core)     213 MiB
+        Dock   1309    0.0% (   0% 1-core)      47 MiB
+        PlugInLibraryService  53494    0.0% (   0% 1-core)       2 MiB
+   Spotlight                      234 MiB  n=4
+        Spotlight   1393    0.0% (   0% 1-core)     194 MiB
+        MTLCompilerService   1401    0.0% (   0% 1-core)      18 MiB
+        MTLCompilerService   1400    0.0% (   0% 1-core)      16 MiB
+        StocksKitService   1482    0.0% (   0% 1-core)       6 MiB
+   BetterScreenshot               186 MiB  n=3
+        BetterScreenshot   9268    0.0% (   0% 1-core)     156 MiB
+        MTLCompilerService  41505    0.0% (   0% 1-core)      17 MiB
+        MTLCompilerService  41506    0.0% (   0% 1-core)      13 MiB
+   JVoice                         143 MiB  n=2
+        JVoice  12175    0.0% (   0% 1-core)     132 MiB
+        com.apple.SafariPlatformSupport  12261    0.0% (   0% 1-core)      12 MiB
+   Finder                         134 MiB  n=6
+        Finder   1311    0.0% (   0% 1-core)      85 MiB
+        MTLCompilerService   8838    0.0% (   0% 1-core)      18 MiB
+        MTLCompilerService   8839    0.0% (   0% 1-core)      17 MiB
+        QuickLookUIService   1316    0.0% (   0% 1-core)       8 MiB
+        CSExattrCryptoService  55464    0.0% (   0% 1-core)       3 MiB
+        PlugInLibraryService  53495    0.0% (   0% 1-core)       2 MiB
+   Notification Centre             94 MiB  n=3
+        NotificationCenter   1202    0.0% (   0% 1-core)      57 MiB
+        MTLCompilerService   1283    0.0% (   0% 1-core)      19 MiB
+        MTLCompilerService   1284    0.0% (   0% 1-core)      18 MiB
+   Control Centre                  92 MiB  n=3
+        ControlCenter   1168    0.0% (   0% 1-core)      62 MiB
+        MTLCompilerService   1366    0.0% (   0% 1-core)      15 MiB
+        MTLCompilerService   1365    0.0% (   0% 1-core)      14 MiB
+   Dock Extra                      53 MiB  n=3
+        MTLCompilerService   1346    0.0% (   0% 1-core)      19 MiB
+        com.apple.dock.extra   1342    0.0% (   0% 1-core)      18 MiB
+        MTLCompilerService   1345    0.0% (   0% 1-core)      16 MiB
+   loginwindow                     45 MiB  n=1
+        loginwindow    602    0.0% (   0% 1-core)      45 MiB
+   coreautha                       44 MiB  n=3
+        coreautha  29110    0.0% (   0% 1-core)      20 MiB
+        MTLCompilerService  31644    0.0% (   0% 1-core)      13 MiB
+        MTLCompilerService  31645    0.0% (   0% 1-core)      12 MiB
+   chronod                         43 MiB  n=3
+        chronod   1203    0.0% (   0% 1-core)      37 MiB
+        extensionkitservice   1264    0.0% (   0% 1-core)       4 MiB
+        intents_helper   1361    0.0% (   0% 1-core)       3 MiB
+   photolibraryd                   37 MiB  n=5
+        photolibraryd    995    0.0% (   0% 1-core)      26 MiB
+        com.apple.photos.ImageConversio  70830    0.0% (   0% 1-core)       4 MiB
+        SetStoreUpdateService  63683    0.0% (   0% 1-core)       3 MiB
+        com.apple.audio.SandboxHelper  47861    0.0% (   0% 1-core)       3 MiB
+        PlugInLibraryService  70829    0.0% (   0% 1-core)       2 MiB
+   WebThumbnailExtension Grap      23 MiB  n=1
+        com.apple.WebKit.GPU  55467    0.0% (   0% 1-core)      23 MiB
+scan cost ms: mean 0.00 max 0.00

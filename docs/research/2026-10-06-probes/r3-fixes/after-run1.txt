@@ -1,0 +1,53 @@
+Building for production...
+Build complete! (9,60 secs)
+probe pid 91714 is under: Code (26 processes)
+t=25.0 spawned 2× sleep 9
+t=45.0 started yes (card shows 5%)
+t=51.5 killed yes
+overview: CPU card changes/min 16.2 (flip-backs 1.2); memory 0.0 (0.0); ↓ 4.8 (0.6); ↑ 5.4 (2.4)
+overview: CPU card vs exact pp p50 0.49 p95 2.08 max 2.99
+overview: one busy core started t=45.0 → card +6pp at 46.5 (1.5 s); stopped t=51.5 → card back at 53.5 (2.0 s)
+[cpu-away] counted 95 s unfrozen, 49 scans
+  top-3 order changes/min = 1.9; scans with a visible inversion in top 8 (printed lower above printed higher) = 1/49
+  top-8 order changes/min = 2.5; top-8 row-text changes/min = 25.6 (flip-backs 1.3/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.22 p95 1.73 max 20.73
+   order t=46.0 System 3.5% | Code 2.9% | MacStats 1.8% | BetterScreenshot 0.1% | Other processes 0.1% | loginwindow 0.0% | WindowManager 0.0% | CoreServicesUIAgent 0.0%
+   order t=48.0 Code 5.5% | System 3.5% | MacStats 1.8% | BetterScreenshot 0.1% | Other processes 0.1% | loginwindow 0.0% | WindowManager 0.0% | CoreServicesUIAgent 0.0%
+   order t=60.0 System 2.7% | MacStats 1.8% | Code 1.1% | BetterScreenshot 0.1% | Other processes 0.1% | loginwindow 0.0% | WindowManager 0.0% | CoreServicesUIAgent 0.0%
+   order t=78.0 System 2.6% | MacStats 1.8% | Code 1.5% | Other processes 0.2% | BetterScreenshot 0.1% | loginwindow 0.0% | WindowManager 0.0% | CoreServicesUIAgent 0.0%
+  final top 6: System 2.2% · MacStats 1.8% · Code 1.3% · Other processes 0.2% · BetterScreenshot 0.1% · loginwindow 0.0%
+[cpu-hover] counted 33 s unfrozen, 18 scans
+  top-3 order changes/min = 0.0; scans with a visible inversion in top 8 (printed lower above printed higher) = 1/18
+  top-8 order changes/min = 1.8; top-8 row-text changes/min = 30.0 (flip-backs 3.5/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.30 p95 2.31 max 4.72
+  expanded app: Code; child top-5 order changes (unfrozen) = 5; child text changes 12 (flip-backs 5)
+  frozen scans=30 shifted-rows=0 inserted-mid-list=0 removed=0 collapses=0 vanished=0
+  final top 6: System 2.2% · MacStats 1.8% · Code 1.3% · Other processes 0.2% · BetterScreenshot 0.1% · loginwindow 0.0%
+[mem-hover] counted 36 s unfrozen, 19 scans
+  top-3 order changes/min = 0.0; scans with a visible inversion in top 8 (printed lower above printed higher) = 0/19
+  top-8 order changes/min = 0.0; top-8 row-text changes/min = 0.0 (flip-backs 0.0/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.34 p95 0.42 max 0.42
+  expanded app: Code; child top-5 order changes (unfrozen) = 0; child text changes 2 (flip-backs 0)
+  frozen scans=30 shifted-rows=0 inserted-mid-list=0 removed=0 collapses=0 vanished=0
+  final top 6: Code 1.7 GB · Spotlight 151 MB · JVoice 141 MB · Dock 137 MB · Finder 109 MB · Control Centre 93 MB
+[energy-away] counted 95 s unfrozen, 49 scans
+  top-3 order changes/min = 5.6; scans with a visible inversion in top 8 (printed lower above printed higher) = 10/49
+  top-8 order changes/min = 5.6; top-8 row-text changes/min = 13.8 (flip-backs 5.6/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.00 p95 0.22 max 1.37
+   order t=4.0 Code 0.05 W | MacStats 0.02 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+   order t=14.0 MacStats 0.02 W | Code 0.01 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+   order t=18.0 Code 0.03 W | MacStats 0.02 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+   order t=26.0 MacStats 0.02 W | Code 0.01 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+   order t=30.0 Code 0.03 W | MacStats 0.02 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+   order t=38.0 MacStats 0.02 W | Code 0.01 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+   order t=42.0 Code 0.03 W | MacStats 0.02 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+   order t=72.0 MacStats 0.02 W | Code 0.01 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+   order t=76.0 Code 0.03 W | MacStats 0.02 W | loginwindow <0.01 W | WindowManager <0.01 W | CoreServicesUIAgent <0.01 W | universalaccessd <0.01 W | AccessibilityVisualsAgent <0.01 W | talagentd <0.01 W
+  final top 6: Code 0.03 W · MacStats 0.02 W · loginwindow <0.01 W · WindowManager <0.01 W · CoreServicesUIAgent <0.01 W · universalaccessd <0.01 W
+[cpu-still] counted 95 s unfrozen, 49 scans
+  top-3 order changes/min = 1.9; scans with a visible inversion in top 8 (printed lower above printed higher) = 1/49
+  top-8 order changes/min = 2.5; top-8 row-text changes/min = 23.8 (flip-backs 3.1/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.26 p95 1.95 max 5.70
+  top row changed at t = ["48.0", "60.0"]
+  final top 6: System 2.1% · MacStats 1.8% · Code 1.3% · Other processes 0.2% · BetterScreenshot 0.1% · loginwindow 0.0%
+done

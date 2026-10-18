@@ -1,0 +1,50 @@
+run_s=150 phases: outside [0,67) inside [67,87) outside after
+card.cpu changes/min=31.6 flipbacks/min=3.2
+card.cpu held-vs-exact pp p50=0.42 p95=1.58 max=1.97
+card.mem changes/min=10.8 flipbacks/min=1.6
+card.down changes/min=16.0 flipbacks/min=1.6
+card.up changes/min=15.6 flipbacks/min=3.2
+machine_cpu_mean_last_minute=27.9
+cpu.top8_order_changes_per_min=9.2
+cpu.top8_slot_changes_per_min=25.6
+cpu.row_text_changes_per_min_top8=52.7
+cpu.row_text_flipbacks_per_min_top8=11.6
+cpu.missorted_scans=0/65 pairs=0 next_to_expanded=0
+cpu.hold_err_steps_p50_p95_max=0.42/3.00/14.57
+cpu.hold_err_rel_p95_max=0.844/1.000
+cpu.expanded_app=Code
+cpu.expanded_auto_collapses=0
+cpu.freeze_scans=10
+cpu.freeze_row_moves=0
+cpu.max_sum_vs_header_gap_pp=3.90
+memory.top8_order_changes_per_min=0.5
+memory.top8_slot_changes_per_min=1.0
+memory.row_text_changes_per_min_top8=4.8
+memory.row_text_flipbacks_per_min_top8=1.4
+memory.missorted_scans=0/66 pairs=0 next_to_expanded=0
+memory.hold_err_steps_p50_p95_max=0.34/1.54/16.27
+memory.hold_err_rel_p95_max=0.027/0.054
+memory.expanded_app=Code
+memory.expanded_auto_collapses=0
+memory.freeze_scans=10
+memory.freeze_row_moves=0
+energy.top8_order_changes_per_min=9.2
+energy.top8_slot_changes_per_min=31.5
+energy.row_text_changes_per_min_top8=36.3
+energy.row_text_flipbacks_per_min_top8=11.6
+energy.missorted_scans=0/65 pairs=0 next_to_expanded=0
+energy.hold_err_steps_p50_p95_max=0.10/0.95/3.74
+energy.hold_err_rel_p95_max=0.469/1.000
+energy.expanded_app=Code
+energy.expanded_auto_collapses=0
+energy.freeze_scans=10
+energy.freeze_row_moves=0
+still.top8_order_changes_per_min=8.1
+still.top8_slot_changes_per_min=22.3
+still.row_text_changes_per_min_top8=55.1
+still.row_text_flipbacks_per_min_top8=10.9
+still.missorted_scans=0/75 pairs=0 next_to_expanded=0
+still.hold_err_steps_p50_p95_max=0.42/2.95/13.55
+still.hold_err_rel_p95_max=0.812/2.065
+still.max_sum_vs_header_gap_pp=3.90
+probe_process_cpu_pct=1.00 (4 breakdown scans + overview)

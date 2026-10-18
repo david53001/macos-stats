@@ -1,0 +1,8 @@
+readCPUTicks 9.9 µs
+readNetCounters 7.5 µs
+readVMRaw+pressure 4.2 µs
+readBattery (IOPS) 92.0 µs
+SmartBatteryReader.read 132.4 µs
+readPowerdChargePolicy 68.1 µs
+readRawProcesses 486.3 µs
+readAllParentPIDs 117.5 µs

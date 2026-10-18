@@ -1,0 +1,4 @@
+✔ Test cpuTimeIsInNanoseconds() passed after 0.205 seconds.
+✔ Test childCPUTimeIsInNanoseconds() passed after 0.282 seconds.
+✔ Suite ProcessReaderSmokeTests passed after 0.282 seconds.
+✔ Test run with 184 tests in 28 suites passed after 0.282 seconds.

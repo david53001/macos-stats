@@ -1,0 +1,10 @@
+Now drawing from 'Battery Power'
+ -InternalBattery-0 (id=35389539)	55%; discharging; 10:09 remaining present: true
+      Health Information:
+          Cycle Count: 128
+          Condition: Normal
+          Maximum Capacity: 99%
+      "NominalChargeCapacity" = 4557
+      "Temperature" = 2996
+      "DesignCapacity" = 4563
+      "CycleCount" = 128

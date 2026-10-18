@@ -1,0 +1,33 @@
+probe pid 69947 is under: Code (28 processes)
+t=25.0 spawned 2× sleep 9
+t=45.0 started yes (card shows 12%)
+t=51.5 killed yes
+overview: CPU card changes/min 45.0 (flip-backs 6.0); memory 11.5 (0.5); ↓ 11.0 (0.5); ↑ 14.5 (2.5)
+overview: CPU card vs exact pp p50 0.38 p95 1.78 max 2.00
+overview: one busy core started t=45.0 → card +6pp at 45.5 (0.5 s); stopped t=51.5 → card back at 53.5 (2.0 s)
+[cpu-away] counted 118 s unfrozen, 60 scans
+  top-8 order changes/min = 14.7; top-8 row-text changes/min = 71.7 (flip-backs 4.1/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.40 p95 3.99 max 13.66
+  final top 6: System 21% · Other processes 5.5% · MacStats 3.5% · Code 2.8% · Dock 0.9% · Claude 0.6%
+[cpu-hover] counted 36 s unfrozen, 19 scans
+  top-8 order changes/min = 10.0; top-8 row-text changes/min = 86.7 (flip-backs 3.3/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.38 p95 3.39 max 13.36
+  expanded app: Code; child top-5 order changes (unfrozen) = 12; child text changes 28 (flip-backs 9)
+  frozen scans=40 shifted-rows=0 inserted-mid-list=0 removed=0 collapses=0 vanished=0
+  final top 6: System 21% · Other processes 5.6% · MacStats 3.5% · Code 2.8% · Dock 0.9% · Claude 0.6%
+[mem-hover] counted 36 s unfrozen, 20 scans
+  top-8 order changes/min = 1.6; top-8 row-text changes/min = 6.6 (flip-backs 0.0/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.34 p95 0.59 max 5.47
+  expanded app: Code; child top-5 order changes (unfrozen) = 0; child text changes 1 (flip-backs 0)
+  frozen scans=40 shifted-rows=0 inserted-mid-list=0 removed=0 collapses=0 vanished=0
+  final top 6: Code 1.8 GB · Claude 1.1 GB · Spotify 933 MB · Dock 179 MB · Spotlight 151 MB · JVoice 141 MB
+[energy-away] counted 118 s unfrozen, 60 scans
+  top-8 order changes/min = 9.7; top-8 row-text changes/min = 49.8 (flip-backs 6.6/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.05 p95 0.98 max 5.47
+  final top 6: Code 0.19 W · Other processes 0.15 W · MacStats 0.06 W · WindowManager 0.03 W · Dock 0.04 W · loginwindow <0.01 W
+[cpu-still] counted 118 s unfrozen, 60 scans
+  top-8 order changes/min = 14.7; top-8 row-text changes/min = 72.7 (flip-backs 4.6/min); missorted pairs = 0
+  held-vs-exact, printed steps: p50 0.39 p95 4.23 max 13.46
+  top row changed at t = ["2.5", "26.5", "30.5", "40.5", "46.5", "54.5", "86.5", "88.5"]
+  final top 6: System 21% · Other processes 5.7% · MacStats 3.5% · Code 3.1% · Dock 0.9% · Claude 0.6%
+done

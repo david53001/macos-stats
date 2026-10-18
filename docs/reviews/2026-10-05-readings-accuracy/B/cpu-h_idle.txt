@@ -1,0 +1,94 @@
+=== scan 0 at 20:39:39.193 procs=498 cost=8.02 ms measuring=true header=-
+=== scan 1 at 20:39:39.713 procs=498 cost=10.70 ms measuring=false header=2.9%
+rows sum cpu=2.87%  mem=10491 MB  rows=62
+  System                     1.6%     (12.8% core) n=0
+  Code                       1.2%     (9.2% core) n=34
+      - claude                         14424 0.8%
+      - h                              93281 0.2%
+      - Code Helper (Renderer)         14112 0.0%
+      - Code Helper                    14133 0.0%
+      - Code Helper (Plugin)           14126 0.0%
+      - Code                           14106 0.0%
+  Other processes            0.0%     (0.3% core) n=325
+  Claude                     0.0%     (0.3% core) n=14
+  Google Chrome              0.0%     (0.2% core) n=24
+  Spotify                    0.0%     (0.1% core) n=13
+  Calendar                   0.0%     (0.0% core) n=4
+  Notification Centre        0.0%     (0.0% core) n=3
+  Dock Extra                 0.0%     (0.0% core) n=3
+  ChatGPTHelper              0.0%     (0.0% core) n=1
+  loginwindow                0.0%     (0.0% core) n=1
+  WindowManager              0.0%     (0.0% core) n=1
+  CoreServicesUIAgent        0.0%     (0.0% core) n=3
+  universalaccessd           0.0%     (0.0% core) n=1
+=== scan 2 at 20:39:40.732 procs=498 cost=14.92 ms measuring=false header=3.2%
+rows sum cpu=3.21%  mem=10490 MB  rows=62
+  System                     1.9%     (15.6% core) n=0
+  Code                       0.9%     (7.6% core) n=34
+  Other processes            0.1%     (0.7% core) n=325
+  Claude                     0.1%     (0.6% core) n=14
+  Spotify                    0.1%     (0.5% core) n=13
+  Google Chrome              0.1%     (0.5% core) n=24
+  MacStats                   0.0%     (0.1% core) n=1
+  Control Centre             0.0%     (0.1% core) n=3
+  Wi-Fi                      0.0%     (0.0% core) n=1
+  coreautha                  0.0%     (0.0% core) n=3
+  JVoice                     0.0%     (0.0% core) n=2
+  BetterScreenshot           0.0%     (0.0% core) n=3
+  Spotlight                  0.0%     (0.0% core) n=4
+  ChatGPTHelper              0.0%     (0.0% core) n=1
+=== scan 3 at 20:39:41.750 procs=498 cost=10.68 ms measuring=false header=2.9%
+rows sum cpu=2.94%  mem=10491 MB  rows=62
+  System                     1.6%     (13.0% core) n=0
+  Code                       1.0%     (7.6% core) n=34
+  Spotify                    0.2%     (1.6% core) n=13
+  Other processes            0.1%     (0.5% core) n=325
+  Claude                     0.1%     (0.4% core) n=14
+  Google Chrome              0.0%     (0.3% core) n=24
+  Finder                     0.0%     (0.0% core) n=6
+  Dock                       0.0%     (0.0% core) n=3
+  loginwindow                0.0%     (0.0% core) n=1
+  ChatGPTHelper              0.0%     (0.0% core) n=1
+  WindowManager              0.0%     (0.0% core) n=1
+  CoreServicesUIAgent        0.0%     (0.0% core) n=3
+  universalaccessd           0.0%     (0.0% core) n=1
+  AccessibilityVisualsAgent  0.0%     (0.0% core) n=1
+=== scan 4 at 20:39:42.767 procs=498 cost=10.53 ms measuring=false header=3.0%
+rows sum cpu=2.96%  mem=10492 MB  rows=62
+  Code                       1.5%     (12.3% core) n=34
+      - Code Helper                    14133 0.7%
+      - claude                         14424 0.6%
+      - h                              93281 0.1%
+      - Code Helper (Renderer)         14112 0.1%
+      - Code Helper (Plugin)           14126 0.1%
+      - Code                           14106 0.0%
+  System                     1.2%     (9.8% core) n=0
+  Google Chrome              0.1%     (0.4% core) n=24
+  Other processes            0.0%     (0.4% core) n=325
+  Claude                     0.0%     (0.3% core) n=14
+  Spotify                    0.0%     (0.2% core) n=13
+  MacStats                   0.0%     (0.1% core) n=1
+  universalaccessd           0.0%     (0.0% core) n=1
+  Dock Extra                 0.0%     (0.0% core) n=3
+  Notification Centre        0.0%     (0.0% core) n=3
+  Terminal                   0.0%     (0.0% core) n=1
+  Calendar                   0.0%     (0.0% core) n=4
+  Control Centre             0.0%     (0.0% core) n=3
+  ChatGPTHelper              0.0%     (0.0% core) n=1
+=== scan 5 at 20:39:43.786 procs=498 cost=12.56 ms measuring=false header=2.6%
+rows sum cpu=2.58%  mem=10494 MB  rows=62
+  System                     1.5%     (12.0% core) n=0
+  Code                       0.7%     (5.8% core) n=34
+  BetterScreenshot           0.2%     (1.5% core) n=3
+  Claude                     0.1%     (0.4% core) n=14
+  Google Chrome              0.1%     (0.4% core) n=24
+  Other processes            0.0%     (0.3% core) n=325
+  Spotify                    0.0%     (0.1% core) n=13
+  Spotlight                  0.0%     (0.0% core) n=4
+  coreautha                  0.0%     (0.0% core) n=3
+  JVoice                     0.0%     (0.0% core) n=2
+  ChatGPTHelper              0.0%     (0.0% core) n=1
+  loginwindow                0.0%     (0.0% core) n=1
+  WindowManager              0.0%     (0.0% core) n=1
+  CoreServicesUIAgent        0.0%     (0.0% core) n=3
+scan cost ms: 8.02 10.70 14.92 10.68 10.53 12.56

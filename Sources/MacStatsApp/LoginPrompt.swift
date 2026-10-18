@@ -10,8 +10,10 @@ import MacStatsCore
 /// inside a panel the user just opened, so it can't take focus from what they were typing, and
 /// it is drawn inside the panel's fixed 320 × 404 pt frame, so the window never changes size.
 /// Whether it shows is decided while the panel is closed (at launch and at each close), so it is
-/// there from the open's first frame. It shows only over the overview (`LoginCardGate`, tested);
-/// every close returns the panel there (`AppModel.panelVisibilityChanged`).
+/// there from the open's first frame. It shows only over the overview, never in an open the guided
+/// tour, its welcome card or its "Take the Tour" chip has, and an open the tour took part in isn't a
+/// use (`LoginCardGate`, MacStatsCore, tested; fed by `AppModel.updateVisibility`, which also returns
+/// the panel to the overview at every close).
 @MainActor
 final class LoginPrompt: ObservableObject {
     enum Answer { case none, accepted }
@@ -32,13 +34,18 @@ final class LoginPrompt: ObservableObject {
         isShowing = session.isShowing
     }
 
-    /// The panel window came on screen (`AppModel`), showing `screen`.
-    func panelOpened(screen: PanelScreen) {
+    /// The panel opened (`AppModel`, which follows the window), showing `screen`, after the tour
+    /// decided: `tourActive` = the tour or its welcome card is up, `offersTour` = the header shows
+    /// the "Take the Tour" chip. Off the overview or with either, the card waits for a later open.
+    func panelOpened(screen: PanelScreen, tourActive: Bool, offersTour: Bool) {
         guard !session.isPanelOnScreen else { return }
         generation += 1
-        session.panelShown(at: Date(), blocked: gate.opened(on: screen))
+        session.panelShown(at: Date(), blocked: gate.opened(on: screen, tourActive: tourActive, offersTour: offersTour))
         isShowing = session.isShowing
     }
+
+    /// The tour started during this open (chip, `?`, Settings → General → Take the Tour).
+    func tourShown() { gate.tourStarted() }
 
     func panelClosed() {
         guard session.isPanelOnScreen else { return }
@@ -84,8 +91,9 @@ final class LoginPrompt: ObservableObject {
 /// Network cards edge to edge (their bounds come from `.loginPromptAnchor()` in the overview), so
 /// its edges line up with the cards' and no value is cut in half (centred if they ever aren't on
 /// screen; `LoginCardGate` keeps the card to the overview). The dim takes clicks and hovers, so
-/// nothing under it opens by accident; a click on it just puts the card away. Same dim strength as
-/// the guided tour on `feat/stability-tour`.
+/// nothing under it opens by accident; a click on it just puts the card away. The dim is the
+/// tour's: same strength, and the panel's own squircle (`Design.panelCornerRadius`, continuous;
+/// the window itself is rounded by `PanelShape`).
 ///
 /// Launch at login turned on elsewhere (System Settings) while the card is up isn't watched: the
 /// status is re-read whenever the panel closes (opening System Settings closes it), and the card
@@ -99,10 +107,11 @@ struct LoginPromptOverlay: View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 if prompt.isShowing {
-                    Rectangle()
+                    let panel = RoundedRectangle(cornerRadius: Design.panelCornerRadius, style: .continuous)
+                    panel
                         .fill(Color.black.opacity(colorScheme == .dark ? 0.40 : 0.30))
                         .onHover { _ in }
-                        .contentShape(Rectangle())
+                        .contentShape(panel)
                         .onTapGesture { prompt.dismiss() }
                         .accessibilityHidden(true)
                         .transition(.opacity)
@@ -237,7 +246,7 @@ struct LoginPromptCard: View {
 }
 
 /// The card's surface, the same as the guided tour's callouts and welcome card (`TourSurface`
-/// on `feat/stability-tour`, values copied exactly): a system material (it floats over the
+/// in `TourOverlay.swift`, values copied exactly): a system material (it floats over the
 /// dimmed cards, so a plain tint would let their text show through), a near-solid window
 /// colour with Reduce Transparency, the cards' hairline and the tour's one soft shadow
 /// (`.black` 0.18, radius 12, y 4), so the two floating surfaces in the panel look alike.
@@ -255,43 +264,5 @@ private struct PromptSurface: View {
         }
         .overlay(shape.strokeBorder(Color.primary.opacity(Design.cardHairline), lineWidth: 0.5))
         .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
-    }
-}
-
-/// Reports when the panel window goes on or off screen. `onAppear` / `onDisappear` don't track
-/// a `MenuBarExtra` window being ordered in and out reliably, while the window's occlusion
-/// notification fires on every show and hide; `isVisible` tells which it was.
-struct PanelVisibilityObserver: NSViewRepresentable {
-    let onChange: (Bool) -> Void
-
-    func makeNSView(context: Context) -> ObserverView { ObserverView() }
-
-    func updateNSView(_ view: ObserverView, context: Context) {
-        view.onChange = onChange
-    }
-
-    final class ObserverView: NSView {
-        var onChange: ((Bool) -> Void)?
-        private var observer: NSObjectProtocol?
-
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            if let observer { NotificationCenter.default.removeObserver(observer) }
-            observer = nil
-            guard let window else { return }
-            observer = NotificationCenter.default.addObserver(
-                forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main
-            ) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    guard let self, let window = self.window else { return }
-                    self.onChange?(window.isVisible)
-                }
-            }
-            if window.isVisible { onChange?(true) }
-        }
-
-        deinit {
-            if let observer { NotificationCenter.default.removeObserver(observer) }
-        }
     }
 }

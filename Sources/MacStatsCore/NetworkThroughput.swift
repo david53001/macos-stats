@@ -15,6 +15,13 @@ public struct NetworkSample: Equatable {
     }
 }
 
+/// A transfer rate the way macOS writes one: 1000-based units (Activity Monitor's network
+/// columns and Finder use KB = 1000 bytes), "KB/s" below 1 MB/s, one decimal above.
+public func formattedRate(bytesPerSecond bps: Double) -> String {
+    bps >= 999_500 ? String(format: "%.1f MB/s", bps / 1_000_000)
+                   : String(format: "%.0f KB/s", bps / 1_000)
+}
+
 /// Throughput between two cumulative counter samples. Clamps to 0 if a counter
 /// went backwards (interface reset) or no time elapsed.
 public func networkThroughput(previous: NetCounters, current: NetCounters, secondsElapsed: Double) -> NetworkSample {
