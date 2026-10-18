@@ -76,8 +76,8 @@ struct OverviewView: View {
     private var trashValue: String {
         guard let bytes = store.trashBytes else { return "—" }   // still reading / unknown
         guard bytes > 0 else { return "empty" }
-        let mb = Double(bytes) / 1_048_576
-        return mb >= 1024 ? String(format: "%.1f GB", mb / 1024) : String(format: "%.0f MB", mb)
+        // Finder's own style (1000-based): 1.5 GB in Finder read "1.4 GB" when divided by 1024.
+        return ByteCountFormatter.string(fromByteCount: Int64(clamping: bytes), countStyle: .file)
     }
     private var cpuMeta: String {
         guard let t = store.cpuTempCelsius else { return "live" }
