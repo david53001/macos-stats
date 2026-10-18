@@ -18,7 +18,10 @@ live sparkline; click a card → per-app breakdown with quick actions (Quit / Fo
 - ✅ **Battery status + estimate + drill-in (2026-09-30, branch `feat/battery-status`)** — charging / fully charged / not charging states, time to full, and a **smoothed time-left** that replaces macOS's jumpy one-minute figure: whole-Mac power from the `AppleSmartBattery` gauge telemetry, blended from this session's 10-min average and a persisted 3-h "typical use" average (`BatteryEstimator`). Battery card now drills into a Battery screen: details (status, time, power now/avg, adapter, health, cycles, temperature) + apps ranked by CPU power (`ri_energy_nj`). Plug/unplug is picked up instantly (IOPS notification). Notes: `docs/superpowers/plans/2026-09-30-battery-progress.md`.
 - ✅ **Public release (2026-09-30)** — repo `david53001/macos-stats` made **public**, license **PolyForm Strict 1.0.0** (`LICENSE`: view and use only; no redistribution, changes or selling — same license now used by JVoice and BetterScreenshot). README rewritten short and emoji-free with install/update at the top. **Install/update one-liner** (root `install.sh`): `curl -fsSL https://raw.githubusercontent.com/david53001/macos-stats/main/install.sh | bash` downloads `MacStats.app.zip` from the latest GitHub release into `~/Applications`, clears quarantine and launches. Releases are built with `./Scripts/package-release.sh` (→ `dist/MacStats.app.zip`, ad-hoc signed, arm64) and published with `gh release create`. First release: **v1.0.0**. Ad-hoc signing means macOS may re-ask for Finder (Automation) permission after an update.
 - ✅ **Per-app CPU % / Memory accuracy fix (2026-10-01, v1.0.1)** — Memory breakdown now uses **physical footprint** (Activity Monitor's number) instead of RSS; per-app CPU % was ~41.7× too low on Apple Silicon because `pti_total_*` is in Mach ticks, not ns (now converted); new processes no longer read 0 % for their first scan. Verified against `footprint`/`top`/`ps`. Notes + known leftovers (battery-watts baseline): `docs/superpowers/plans/2026-10-01-process-accuracy.md`.
-- ✅ **117 tests pass** via `./Scripts/test.sh`.
+- ✅ **Launch-at-login switch (2026-10-01, branch `feat/launch-at-login`)** — Settings → **GENERAL** card (above Appearance) → **Launch at login** switch, backed directly by `SMAppService.mainApp.status` (no mirrored flag; re-read each time Settings opens; a failed register/unregister reverts to the real status). First-launch auto-enable via `didRegisterLoginItem` is unchanged; any toggle also sets that flag so the auto-enable never overrides the user. Only when the status is `.requiresApproval` does the card show a one-line hint + **Open** button (`SMAppService.openSystemSettingsLoginItems()`). Replaces the earlier "No Settings UI by design". Notes: `docs/superpowers/plans/2026-10-01-launch-at-login-progress.md`.
+- ✅ **Sparkle auto-updates + one-time "open at login?" prompt (2026-10-18, v1.2.0 build 4, merged to `main` and released as v1.2.0 the same day)** — **everything (release steps, keys, `--latest` rule, prompt rules + UserDefaults keys, end-to-end test, status): `docs/sparkle-updates/README.md`.** Sparkle 2.10.0 via SwiftPM, embedded + signed inside-out by `Scripts/bundle.sh` / `Scripts/sign-app.sh`; releases are now signed with the stable self-signed identity **"MacStats Code Signing"** (`Scripts/setup-signing.sh`), no longer ad-hoc. Settings gets an UPDATES card (Check automatically + Check for Updates…). The silent first-launch login-item enable is **gone** (supersedes the "Launch at login BUILT" item above): after 5 panel opens of ≥ 1 s, the next open shows a card asking once (`LaunchAtLoginPrompt`, `LoginPrompt.swift`); 1.0.x users (`didRegisterLoginItem`) are never asked. `Scripts/sparkle-e2e-test.sh` proves a real signed update installs and a bad signature is refused.
+- ✅ **Battery health = macOS's "Maximum Capacity" + Trash in Finder's units (2026-10-18, in v1.2.0)** — cherry-picked from `fix/battery-health` (`986064e`, `ee64f39`; "Route A"): health reads `system_profiler SPPowerDataType -json` off the main thread at launch and hourly (`readMaximumCapacityPercent`, `AppModel.readMacOSHealthIfDue`), Trash uses `ByteCountFormatter .file` and retries Finder's `missing value`. Not brought over (they need `feat/stability-tour` / `fix/readings-accuracy` code): `cd3d417` ("Charged to 85% limit", macOS times in tooltips) and `220fb79` (coalition counters); they ship with stability-tour later.
+- ✅ **144 tests pass** via `./Scripts/test.sh` (400 on the integration branch `integrate/stability-tour-sparkle`).
 - ⬜ **Milestone 4** remainder (Settings UI, customizable menu-bar display, adjustable alert thresholds) not started. Per-app **Network** breakdown remains deferred (no clean per-app network API).
 
 ## Start here
@@ -67,13 +70,17 @@ swift build          # compile
 ./Scripts/test.sh    # run the unit + smoke tests (Swift Testing; see note)
 ./Scripts/bundle.sh  # build + install ~/Applications/MacStats.app, then: open ~/Applications/MacStats.app
 ./Scripts/install.sh # same, but release build + Launch Services/Spotlight registration
-./Scripts/package-release.sh  # release build → dist/MacStats.app.zip (the GitHub release asset)
+./Scripts/package-release.sh [notes.md]  # release: signed app, zip, EdDSA signature, appcast, prints the gh command
+./Scripts/sparkle-e2e-test.sh  # end-to-end Sparkle update test on a throwaway copy (~1 min)
 ```
 
-**Publishing an update:** bump `CFBundleShortVersionString` in `Resources/Info.plist`, run
-`./Scripts/package-release.sh`, push to `main`, then
-`gh release create vX.Y.Z dist/MacStats.app.zip --title "MacStats X.Y.Z" --notes "..."`.
-Users update by re-running the curl one-liner (it always fetches `releases/latest`).
+**Publishing an update** (on `main`, in this order; `package-release.sh` refuses a dirty tree or
+`HEAD` ≠ `origin/main`): bump **both** `CFBundleShortVersionString` and `CFBundleVersion` (+1) in
+`Resources/Info.plist` → `./Scripts/test.sh` → commit → `git push origin main` →
+`./Scripts/package-release.sh notes.md` (notes outside the repo) → run the
+`gh release create … --target <sha> --latest` command it prints (attaches `MacStats.app.zip` **and**
+`appcast.xml`). Installed copies (1.2.0+) find it through Sparkle; the curl one-liner still works.
+Any non-Mac release must use `--latest=false`. Full steps: `docs/sparkle-updates/README.md`.
 
 > **Tests use Swift Testing, not XCTest.** This machine has Command Line Tools only
 > (no full Xcode), so XCTest is unavailable. Tests use `import Testing` / `@Test` /

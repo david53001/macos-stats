@@ -23,12 +23,14 @@ struct OverviewView: View {
                      metaDot: pressureColor, onTap: { onSelect(.memory) }) {
                 Sparkline(points: store.memHistory, color: .blue, maxValue: 1.0)
             }
+            .loginPromptAnchor()   // the login question covers Memory + Network (LoginPrompt.swift)
             StatCard(label: "Network", value: networkValue,
                      number: store.network?.downBytesPerSec ?? 0, meta: networkMeta) {
                 // Dynamic scale with a 10 KB/s floor, so an idle link draws flat.
                 Sparkline(points: store.netDownHistory, color: .purple, maxValue: 0,
                           dynamicMinimum: 10_000)
             }
+            .loginPromptAnchor()
             StatCard(label: "Battery", value: batteryValue,
                      number: Double(store.battery?.percent ?? 0), meta: batteryMeta,
                      onTap: store.battery == nil ? nil : { onSelect(.energy) }) {
@@ -74,8 +76,8 @@ struct OverviewView: View {
     private var trashValue: String {
         guard let bytes = store.trashBytes else { return "—" }   // still reading / unknown
         guard bytes > 0 else { return "empty" }
-        let mb = Double(bytes) / 1_048_576
-        return mb >= 1024 ? String(format: "%.1f GB", mb / 1024) : String(format: "%.0f MB", mb)
+        // Finder's own style (1000-based): 1.5 GB in Finder read "1.4 GB" when divided by 1024.
+        return ByteCountFormatter.string(fromByteCount: Int64(clamping: bytes), countStyle: .file)
     }
     private var cpuMeta: String {
         guard let t = store.cpuTempCelsius else { return "live" }

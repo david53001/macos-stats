@@ -11,7 +11,9 @@ Paste this into Terminal:
 curl -fsSL https://raw.githubusercontent.com/david53001/macos-stats/main/install.sh | bash
 ```
 
-It installs MacStats to `~/Applications` and opens it. Run the same command again to update;
+It installs MacStats to `~/Applications` and opens it. From version 1.2.0 on, MacStats keeps
+itself up to date: it checks once a day and offers each new version (Settings > Updates has
+**Check for Updates…** and an on/off switch). Running the same command again also updates;
 your settings are kept.
 
 Requires macOS 14 or newer on an Apple Silicon Mac. You can also download
@@ -43,7 +45,8 @@ Click the graph icon in the menu bar to open the panel.
 Click CPU, Memory or Battery to see which apps use the most. Right-click an app to quit it.
 The Battery screen also shows power draw, battery health, cycle count and temperature.
 
-MacStats starts at login (turn it off in System Settings > General > Login Items). It sends
+After you've used it a few times, MacStats asks once whether to open at login; you can change
+that any time in Settings > Launch at login. It sends
 a notification when the CPU stays very busy or memory runs low. It does almost no work
 while the panel is closed.
 
@@ -56,6 +59,7 @@ Needs Xcode Command Line Tools (`xcode-select --install`).
 
 ```sh
 git clone https://github.com/david53001/macos-stats && cd macos-stats
+./Scripts/setup-signing.sh   # optional, once: a stable local signing identity
 ./Scripts/bundle.sh release && open ~/Applications/MacStats.app
 ./Scripts/test.sh    # tests
 ```

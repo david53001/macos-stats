@@ -9,16 +9,30 @@ struct RootView: View {
     /// and SwiftUI does NOT observe a nested ObservableObject reached through `model.store` —
     /// without this, entering/leaving a breakdown wouldn't re-render the view.
     @ObservedObject var store: MetricsStore
-    /// The in-popover Settings screen (pushed from the overview footer); reset on close.
-    @State private var showingSettings = false
+    /// The one-time "Open MacStats at login?" card over the screens (`LoginPrompt.swift`).
+    @ObservedObject var loginPrompt: LoginPrompt
 
     var body: some View {
         // Both screens have the same fixed size, so the window never resizes; switching
         // between them is an Apple-style push (breakdown slides in from the trailing edge,
-        // the overview drifts back a little and fades), clipped to the panel.
+        // the overview drifts back a little and fades), clipped to the panel. The login card,
+        // when due, floats over them inside that same frame: it never changes the window's size.
+        screens
+            .environment(\.loginPromptActive, loginPrompt.isShowing)
+            .overlayPreferenceValue(LoginPromptAnchorKey.self) { LoginPromptOverlay(prompt: loginPrompt, anchors: $0) }
+            .background(PanelBackdrop())   // the Opacity setting (Appearance.swift)
+            // A close also resets the screen (Settings, a breakdown) to the overview: `AppModel`.
+            .background(PanelVisibilityObserver { model.panelVisibilityChanged(onScreen: $0) })
+            .animation(.snappy(duration: 0.3), value: store.activeBreakdownMetric)
+            .animation(.snappy(duration: 0.3), value: model.showingSettings)
+            .onAppear { model.setVisibility(.popoverOpen) }
+            .onDisappear { model.setVisibility(.idle) }
+    }
+
+    private var screens: some View {
         ZStack {
-            if showingSettings {
-                SettingsView(onBack: { showingSettings = false })
+            if model.showingSettings {
+                SettingsView(onBack: { model.showingSettings = false })
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             } else if let metric = store.activeBreakdownMetric {
                 BreakdownView(store: store, metric: metric,
@@ -28,19 +42,11 @@ struct RootView: View {
                 OverviewView(store: store,
                              onSelect: { model.enterBreakdown($0) },
                              onEmptyTrash: { model.confirmAndEmptyTrash() },
-                             onSettings: { showingSettings = true })
+                             onSettings: { model.showingSettings = true })
                     .transition(.offset(x: -Design.panelWidth * 0.3).combined(with: .opacity))
             }
         }
         .frame(width: Design.panelWidth, height: Design.panelHeight)
         .clipped()
-        .background(PanelBackdrop())   // the Opacity setting (Appearance.swift)
-        .animation(.snappy(duration: 0.3), value: store.activeBreakdownMetric)
-        .animation(.snappy(duration: 0.3), value: showingSettings)
-        .onAppear { model.setVisibility(.popoverOpen) }
-        .onDisappear {
-            model.setVisibility(.idle)
-            showingSettings = false
-        }
     }
 }

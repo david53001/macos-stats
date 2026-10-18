@@ -21,14 +21,23 @@ enum TrashActions {
     /// filesystem scan of `~/.Trash` fails ("Operation not permitted") without Full Disk
     /// Access — it's a TCC-protected location — so we ask Finder, which is exempt (same as
     /// `emptyTrash`). Returns nil when Finder can't be reached or permission is refused, i.e.
-    /// the size is genuinely unknown (distinct from an empty Trash, which returns 0).
+    /// the size is genuinely unknown (distinct from an empty Trash, which returns 0). Finder
+    /// answers `missing value` for a folder whose size it hasn't worked out yet; that used to
+    /// count as 0 (silently low), so it is retried for up to ~2 s and is nil if still unknown.
     static func trashSize() -> UInt64? {
         let script = NSAppleScript(source: """
             tell application "Finder"
                 set total to 0
                 repeat with anItem in (get items of trash)
                     try
-                        set total to total + (size of anItem)
+                        set itemSize to size of anItem
+                        repeat 20 times
+                            if itemSize is not missing value then exit repeat
+                            delay 0.1
+                            set itemSize to size of anItem
+                        end repeat
+                        if itemSize is missing value then return -1
+                        set total to total + itemSize
                     end try
                 end repeat
                 return total

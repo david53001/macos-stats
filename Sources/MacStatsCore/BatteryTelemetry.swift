@@ -20,6 +20,8 @@ public struct BatteryTelemetry: Equatable {
     public var systemLoadMW: Int?
     public var accumulatedSystemLoad: UInt64?
     public var systemLoadCount: UInt64?
+    /// macOS's own "Maximum Capacity" (see `readMaximumCapacityPercent`); when set, it is the health.
+    public var reportedHealthPercent: Int?
 
     public init(updateTime: Int, voltageMV: Int? = nil, amperageMA: Int? = nil, currentMAh: Int? = nil,
                 nominalMAh: Int? = nil, designMAh: Int? = nil, cycleCount: Int? = nil,
@@ -38,8 +40,10 @@ public struct BatteryTelemetry: Equatable {
         return Double(mAh) * Double(mV) / 1_000_000
     }
 
-    /// Full-charge capacity vs. new, the "Maximum Capacity" figure in System Settings.
+    /// Full-charge capacity vs. new, the "Maximum Capacity" figure in System Settings: macOS's
+    /// own figure when read, else the gauge's.
     public var healthPercent: Int? {
+        if let reported = reportedHealthPercent { return reported }
         guard let nominal = nominalMAh, let design = designMAh, design > 0, nominal > 0 else { return nil }
         return min(100, Int((Double(nominal) / Double(design) * 100).rounded()))
     }
@@ -93,6 +97,39 @@ public func averageWatts(from previous: BatteryTelemetry?, to current: BatteryTe
         if watts > 0, watts < 500 { return watts }
     }
     return current.instantWatts
+}
+
+/// The battery's "Maximum Capacity" percent from `system_profiler SPPowerDataType -json`
+/// ("99%"), nil if missing. powerd keeps this figure itself (persisted, updated slowly) and
+/// only hands it to entitled callers, so System Settings and `system_profiler` are where it
+/// shows. The gauge's `NominalChargeCapacity / DesignCapacity` swings with the charge: 4429 /
+/// 4563 = 97 % at 77 % charging while System Settings said 99 %.
+public func parseMaximumCapacityPercent(systemProfilerJSON data: Data) -> Int? {
+    guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let items = root["SPPowerDataType"] as? [[String: Any]] else { return nil }
+    for item in items {
+        guard let health = item["sppower_battery_health_info"] as? [String: Any],
+              let text = health["sppower_battery_health_maximum_capacity"] as? String,
+              let percent = Int(text.filter(\.isNumber)), (1...100).contains(percent) else { continue }
+        return percent
+    }
+    return nil
+}
+
+/// Runs `system_profiler SPPowerDataType -json` (~60 ms, blocking) and parses its "Maximum
+/// Capacity". Call off the main thread.
+public func readMaximumCapacityPercent() -> Int? {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+    process.arguments = ["SPPowerDataType", "-json"]
+    let pipe = Pipe()
+    process.standardOutput = pipe
+    process.standardError = FileHandle.nullDevice
+    guard (try? process.run()) != nil else { return nil }
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    process.waitUntilExit()
+    guard process.terminationStatus == 0 else { return nil }
+    return parseMaximumCapacityPercent(systemProfilerJSON: data)
 }
 
 /// Reads `AppleSmartBattery`, caching the registry entry between reads (~20 µs a read).

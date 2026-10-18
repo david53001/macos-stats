@@ -12,6 +12,30 @@ import MacStatsCore
 @MainActor
 final class AppModel: ObservableObject {
     let store = MetricsStore(historyWindow: 60)
+    let loginPrompt = LoginPrompt()
+    /// The in-popover Settings screen (pushed from the overview footer). Here, not in `RootView`,
+    /// so a real close can reset it (`panelVisibilityChanged`): SwiftUI's `onDisappear` doesn't
+    /// fire when the `MenuBarExtra` window is ordered out.
+    @Published var showingSettings = false
+
+    /// The screen the panel shows right now.
+    var panelScreen: PanelScreen {
+        if showingSettings { return .settings }
+        return store.activeBreakdownMetric == nil ? .overview : .breakdown
+    }
+
+    /// The panel window went on or off screen (`PanelVisibilityObserver`, which follows the window,
+    /// unlike `onAppear` / `onDisappear`). Every close goes back to the overview, so the next open
+    /// starts there, and the login card (shown only over the overview) is never over Settings.
+    func panelVisibilityChanged(onScreen: Bool) {
+        if onScreen {
+            loginPrompt.panelOpened(screen: panelScreen)
+        } else {
+            loginPrompt.panelClosed()
+            showingSettings = false
+            exitBreakdown()
+        }
+    }
 
     private var timer: Timer?                    // open-popover tick (one-shot, rescheduled)
     private var idleTimer: Timer?                // closed-popover sampler (repeating)
@@ -47,6 +71,11 @@ final class AppModel: ObservableObject {
         typicalWatts: UserDefaults.standard.object(forKey: Keys.typicalWatts) as? Double,
         typicalSeconds: UserDefaults.standard.double(forKey: Keys.typicalSeconds))
     private var lastTelemetry: BatteryTelemetry?
+    /// macOS's own "Maximum Capacity" (System Settings' health figure), read off the main
+    /// thread at launch and then hourly; health falls back to the gauge figure until it's known.
+    private var macOSHealthPercent: Int?
+    private var lastHealthRead: Date?
+    private let healthReadInterval: TimeInterval = 60 * 60
     private var lastBatteryState: BatteryState?
     private var powerSourceObserver: CFRunLoopSource?
     private enum Keys {
@@ -61,8 +90,10 @@ final class AppModel: ObservableObject {
     private let alertsEnabled = true            // no Settings UI yet; default on
 
     init() {
-        LoginItem.registerOnce()
+        // Launch at login is no longer turned on silently at first launch: `loginPrompt` asks once.
+        #if !SPARKLE_E2E_TEST   // the update test build (docs/sparkle-updates) must not leave a prompt behind
         notifier.requestAuthorization()
+        #endif
         sample(at: Date())   // just stores the first baseline; history starts at the next sample
         readSlowSensors()    // so even the first open has battery + temperature on frame one
         observePowerSource()
@@ -171,7 +202,7 @@ final class AppModel: ObservableObject {
             lastBatteryState = sample.state
             if !discharging { estimator.ingest(watts: 0, at: 0, discharging: false) }
         }
-        let telemetry = smartBattery.read()
+        var telemetry = smartBattery.read()
         if let telemetry, telemetry.updateTime != lastTelemetry?.updateTime {
             if let watts = averageWatts(from: lastTelemetry, to: telemetry) {
                 estimator.ingest(watts: watts, at: TimeInterval(telemetry.updateTime), discharging: discharging)
@@ -183,8 +214,24 @@ final class AppModel: ObservableObject {
         if discharging, let wh = telemetry?.remainingWh, let minutes = estimator.minutesLeft(remainingWh: wh) {
             sample.timeToEmptyMinutes = minutes
         }
+        if telemetry != nil { readMacOSHealthIfDue() }
+        telemetry?.reportedHealthPercent = macOSHealthPercent
         store.setBattery(sample)
         store.setBatteryTelemetry(telemetry, expectedWatts: discharging ? estimator.expectedWatts : nil)
+    }
+
+    /// Starts a background read of macOS's "Maximum Capacity" when the last one is an hour old;
+    /// the next battery refresh shows it.
+    private func readMacOSHealthIfDue() {
+        let now = Date()
+        if let last = lastHealthRead, now.timeIntervalSince(last) < healthReadInterval { return }
+        lastHealthRead = now
+        DispatchQueue.global(qos: .utility).async {
+            let percent = readMaximumCapacityPercent()
+            DispatchQueue.main.async { [weak self] in
+                if let percent { self?.macOSHealthPercent = percent }
+            }
+        }
     }
 
     /// Re-reads the battery the moment macOS reports a power-source change (plug/unplug,

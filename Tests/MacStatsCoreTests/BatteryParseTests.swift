@@ -103,6 +103,26 @@ import IOKit.ps
         #expect(t.instantWatts == 6.0)
     }
 
+    @Test func reportedHealthWinsOverTheGauge() {
+        // 4429 / 4563 = 97 % from the gauge while System Settings said 99 %.
+        var t = BatteryTelemetry(updateTime: 1, nominalMAh: 4429, designMAh: 4563)
+        #expect(t.healthPercent == 97)
+        t.reportedHealthPercent = 99
+        #expect(t.healthPercent == 99)
+    }
+
+    @Test func parsesSystemProfilerMaximumCapacity() {
+        let json = Data("""
+        {"SPPowerDataType":[{"_name":"spbattery_information","sppower_battery_health_info":
+        {"sppower_battery_cycle_count":135,"sppower_battery_health":"Good",
+        "sppower_battery_health_maximum_capacity":"99%"}},{"_name":"sppower_information"}]}
+        """.utf8)
+        #expect(parseMaximumCapacityPercent(systemProfilerJSON: json) == 99)
+        // No battery (desktop Mac) or no such field (older macOS): nil, the gauge figure stays.
+        #expect(parseMaximumCapacityPercent(systemProfilerJSON: Data(#"{"SPPowerDataType":[{"_name":"sppower_information"}]}"#.utf8)) == nil)
+        #expect(parseMaximumCapacityPercent(systemProfilerJSON: Data("not json".utf8)) == nil)
+    }
+
     @Test func averageWattsUsesRunningSums() {
         let a = BatteryTelemetry(updateTime: 1, systemLoadMW: 9000, accumulatedSystemLoad: 1_000_000, systemLoadCount: 100)
         let b = BatteryTelemetry(updateTime: 2, systemLoadMW: 9000, accumulatedSystemLoad: 1_500_000, systemLoadCount: 200)
