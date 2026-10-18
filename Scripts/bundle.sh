@@ -2,6 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG="${1:-debug}"
+source "$ROOT/Scripts/sdk-env.sh"
 
 swift build -c "$CONFIG"
 
