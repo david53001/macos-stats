@@ -14,6 +14,10 @@ APP="$1"
 
 IDENTITY="MacStats Code Signing"
 KEYCHAIN="$HOME/Library/Keychains/macstats-signing.keychain-db"
+# Public on purpose (also in setup-signing.sh): this keychain holds only the local self-signed
+# signing certificate, which nobody trusts; it just keeps the signature stable so macOS keeps
+# the Finder permission across updates. Update trust rests on Sparkle's EdDSA key (login
+# Keychain), not on this. Knowing it gives nothing beyond what local access already gives.
 KEYCHAIN_PW="macstats-local"
 
 if security find-identity -p codesigning "$KEYCHAIN" 2>/dev/null | grep -q "$IDENTITY"; then

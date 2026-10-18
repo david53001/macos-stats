@@ -25,12 +25,23 @@ struct MacStatsApp: App {
     }
 
     var body: some Scene {
+        #if SPARKLE_E2E_TEST
+        // The update test's throwaway copy puts no second icon in the menu bar, except in the
+        // UI mode (E2E_UI=1), which keeps the panel's normal setup.
+        MenuBarExtra(isInserted: .constant(SparkleE2EUI.isOn)) {
+            RootView(model: model, store: model.store, tour: model.tour, loginPrompt: model.loginPrompt)
+        } label: {
+            MenuBarLabel()
+        }
+        .menuBarExtraStyle(.window)
+        #else
         MenuBarExtra {
             RootView(model: model, store: model.store, tour: model.tour, loginPrompt: model.loginPrompt)
         } label: {
             MenuBarLabel()
         }
         .menuBarExtraStyle(.window)
+        #endif
     }
 }
 

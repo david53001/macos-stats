@@ -41,7 +41,7 @@ BetterScreenshot) to get this; the same approach is meant to be copied to the ot
 | Piece | Where |
 |---|---|
 | Dependency `.package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.0")`, linked into `MacStatsApp` with rpath `@executable_path/../Frameworks` | `Package.swift`, `Package.resolved` |
-| `SUFeedURL` = `https://github.com/david53001/macos-stats/releases/latest/download/appcast.xml`, `SUPublicEDKey` = `JrE6EncJErY++AZZXYrrwcNmcVzY/M2wgDWcCkaBf6U=`, `SUEnableAutomaticChecks` = YES (daily check, no "may we check?" dialog). Version **1.2.0**, build **4** | `Resources/Info.plist` |
+| `SUFeedURL` = `https://github.com/david53001/macos-stats/releases/latest/download/appcast.xml`, `SUPublicEDKey` = `JrE6EncJErY++AZZXYrrwcNmcVzY/M2wgDWcCkaBf6U=`, `SUEnableAutomaticChecks` = YES (daily check, no "may we check?" dialog). Version **1.2.0**, build **4** at the time (1.3.0 / build 5 on `release/1.3.0`) | `Resources/Info.plist` |
 | Updater: `SPUStandardUpdaterController`, started at launch; "gentle reminders" for a menu-bar app (a scheduled find opens Sparkle's window *behind* the user's windows, never stealing focus). So it isn't missed: one notification ("MacStats X is available", click → Sparkle's window comes forward), an accent **dot on the footer gear** and "Version X is available." + **Show Update…** in Settings, until the user looks at Sparkle's window | `Sources/MacStatsApp/Updates.swift` (started in `MacStatsMain.swift`), gear dot in `SettingsView.swift` (`SettingsButton`) |
 | Settings → **UPDATES** card: "Check automatically" switch + **Check for Updates…** button (**Show Update…** while one waits) + current version (MacStats has no menu of its own, so this is where the menu item lives) | `Sources/MacStatsApp/SettingsView.swift` (`UpdatesCard`) |
 | Bundle: copies `Sparkle.framework` into `Contents/Frameworks` (ditto, keeps symlinks) and removes its `XPCServices` (only sandboxed apps use them) and its `Headers`, `PrivateHeaders`, `Modules` (only for compiling against it). Deletes every absolute rpath except `/usr/lib/swift` (SwiftPM's build folder `…/PackageFrameworks` and the Command Line Tools' Swift folders), so only the embedded Sparkle can load and no path from the build Mac is left; fails if a new `@rpath` library other than Sparkle ever appears | `Scripts/bundle.sh` |
@@ -197,13 +197,19 @@ any change to the card or the open/close wiring): `docs/research/2026-10-18-prob
 
 ## How to cut a release (step by step)
 
-All from the repo root on `main`. Every branch the owner runs must be merged first, or a release
+All from the checkout that has `main`. On this Mac that is the worktree
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/sparkle-updates` (`git worktree list` shows it as `[main]`); the primary checkout
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats` is on `feat/stability-tour`, and
+`git switch main` anywhere else stops with "fatal: 'main' is already used by worktree …". (The
+other way: `git worktree remove /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/sparkle-updates` first, which only works while it's clean,
+then `git switch main` in the primary checkout.) Every branch the owner runs must be merged first, or a release
 would take features away from the copy the owner runs (the script's `MUST_CONTAIN` list; empty
 since 1.3.0, which merges `feat/stability-tour` and `fix/battery-health`):
 
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
-git switch main && git pull --ff-only origin main
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/sparkle-updates   # the worktree that has main
+git status --short && git branch --show-current   # must print nothing, then "main"
+git pull --ff-only origin main
 # 1. Bump the version in Resources/Info.plist:
 #    CFBundleShortVersionString (e.g. 1.2.0 -> 1.3.0) AND CFBundleVersion (+1, e.g. 4 -> 5).
 # 2. Tests:
@@ -252,7 +258,7 @@ Every installed copy reads `releases/latest/download/appcast.xml`: GitHub serves
 - Any release that is *not* a Mac app release (e.g. a future Windows port, a beta, a source-only
   tag) **must** be created with `--latest=false`, or it becomes "Latest", the feed URL 404s and
   every Mac copy stops seeing updates (the curl installer would break too).
-- Checked 2026-10-18: this repo has only Mac releases (v1.0.0, v1.0.1) and no
+- Checked 2026-10-18: this repo has only Mac releases (v1.0.0, v1.0.1, and v1.2.0 published the same day) and no
   `.github/workflows`, so nothing needed fixing here. JVoice / BetterScreenshot do have Windows
   builds: apply this rule there.
 
@@ -266,8 +272,9 @@ E2E_UI=1 ./Scripts/sparkle-e2e-test.sh     # the path real users take, through S
 ```
 
 It needs the "MacStats Code Signing" identity and the Sparkle key in the Keychain, takes about a
-minute (one release build into its own scratch build folder) and briefly shows a second MacStats
-icon in the menu bar. What it does: builds MacStats with `-DSPARKLE_E2E_TEST` (Sparkle steps
+minute (one release build into its own scratch build folder). The test copy puts no icon in the
+menu bar (`MenuBarExtra(isInserted: .constant(SparkleE2EUI.isOn))` in `MacStatsMain.swift`, only in
+the `-DSPARKLE_E2E_TEST` build), except in the UI mode below. What it does: builds MacStats with `-DSPARKLE_E2E_TEST` (Sparkle steps
 logged to stderr; a downloaded update installs immediately via Sparkle's
 `immediateInstallationBlock` instead of on quit; no notification-permission request), makes an
 OLD copy (build 100, "90.0") and a NEW copy (build 101, "90.1") with bundle id
@@ -392,14 +399,67 @@ scripts):
 - Not done here (owner): a live look at the merged app (tour + card + Settings on real glass),
   the manual Sparkle checklist above with the real 1.2.0 → 1.3.0 update.
 
+**Review round 1 of 1.3.0 (2026-10-18): 7.5 / 10, all findings fixed in the commit after `55aa4d3`.**
+Report: `docs/release-1.3.0/REVIEW-round1.md` + `docs/release-1.3.0/REVIEW-round1/` (renders and
+the off-screen harness `run.sh` / `ReviewRender.swift`), left untracked as the reviewer left them.
+Fixes:
+
+- **M1** Settings clipped Quit MacStats when launch at login needs approval: the hint row is now
+  caption height, "Needs your approval." + an accent **Open Login Items** link (`.buttonStyle(.link)`)
+  instead of a `SubtleButtonStyle` **Open** button (`SettingsView.swift`, `GeneralCard`). Re-rendered
+  with the reviewer's harness (`SCENARIOS=card bash docs/release-1.3.0/REVIEW-round1/run.sh <worktree> <scratch-dir>`):
+  default, needs approval, needs approval + update pending ("Version 1.10.12 is available.") and
+  enabled, dark and light: the panel is 320 × 404 on every line of the log and Quit sits at the
+  normal 8 pt bottom inset in every state. Renders + log: `docs/release-1.3.0/fix-round1/`.
+- **M2** Release steps ran `git switch main`, which fails on this Mac (`main` is checked out in
+  the `sparkle-updates` worktree): "How to cut a release", NEXT STEPS 2-3 below and `CLAUDE.md`'s
+  "Publishing an update" now say to run them in that worktree, with the exact `cd`.
+- **L1** "Charged to N% limit" now needs the percent within one of the limit either way
+  (`abs(percent - limit) <= 1`, `BatteryParse.swift`); 95 % with an 85 % limit reads "Plugged in,
+  not charging". Tests for 86 % (counts) and 95 % (doesn't) added to
+  `heldAtTheUserLimitIsRecognised`. What macOS itself says above the limit is still unchecked
+  (owner check: plug in above a newly set limit).
+- **L2** `[weak self]` on the outer health-read closure (`MacStatsApp.swift`): the
+  `ImplicitStrongCapture` warning is gone from the build.
+- **L3** The non-UI E2E test's copy has no menu-bar icon:
+  `MenuBarExtra(isInserted: .constant(SparkleE2EUI.isOn))` under `#if SPARKLE_E2E_TEST`
+  (`MacStatsMain.swift`); the shipping build keeps the plain `MenuBarExtra`.
+- **L4** Stale `CLAUDE.md` lines marked "(superseded …)" (registerOnce / no Settings UI, ad-hoc
+  signing, first-launch auto-enable); the installed-copy line corrected (1.1.0 / build 3 from
+  `fix/battery-health`, no Sparkle); v1.2.0 added to the releases check under the `--latest` rule;
+  "build 4 at the time" in the table above; the branch history removed from `SettingsView`'s comment.
+- **L5** CHANGELOG: finished processes "counted from macOS's own per-app counters" (not "exactly":
+  the coalition guard can fall back to estimates); "Settings → General → Guided tour" with arrows
+  like the 1.2.0 entry. Copy the 1.3.0 notes from the updated file.
+- **L6** (pre-existing) Trash **Empty** is now disabled only for a known-empty Trash
+  (`store.trashBytes == 0`), so an unknown size ("—") can still be emptied (the confirm alert
+  still asks first). `Scripts/sign-app.sh` explains why the keychain password is public.
+
+Verified after the fixes (2026-10-18, this Mac, SDK MacOSX26.5 via the scripts): `./Scripts/test.sh`
+**415 tests in 51 suites pass** (two new assertions inside an existing test), no
+`ImplicitStrongCapture` warning; `./Scripts/sparkle-e2e-test.sh` (non-UI): GOOD PASS, BAD PASS
+(Code 4005), installed copy `codesign --verify --deep --strict` OK, Authority "MacStats Code
+Signing", relaunched, exit 0; afterwards no test process, no `com.macstats.MacStats.sparkletest`
+defaults, port 8765 free. Not checked by eye: that the E2E copy really shows no icon (same change
+the reviewer verified in a scratch copy; window metadata can't see menu-bar items on macOS 26).
+`package-release.sh` was not re-run: no script, plist or packaging change since the dry run
+above except the comment in `sign-app.sh`.
+
 **NEXT STEPS for 1.3.0 (owner's session, in this order):**
 
 1. Review: `git log --first-parent main..release/1.3.0`, `git diff main release/1.3.0 -- Sources`.
-2. `git switch main && git merge --ff-only release/1.3.0` (main hasn't moved; otherwise
-   `git merge --no-ff release/1.3.0`), `./Scripts/test.sh`, `git push origin main`.
-3. Copy the 1.3.0 section of `CHANGELOG.md` into a notes file outside the repo, then
-   `./Scripts/package-release.sh /tmp/macstats-1.3.0-notes.md` (no `ALLOW_*`), and run the
-   `gh release create v1.3.0 … --target <sha> --latest` command it prints.
+2. **In the worktree that has `main`** (`git switch main` fails everywhere else on this Mac, see
+   "How to cut a release"):
+   ```bash
+   cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/sparkle-updates
+   git status --short && git branch --show-current   # nothing, then "main"
+   git merge --ff-only release/1.3.0 && ./Scripts/test.sh && git push origin main
+   ```
+   (`main` hasn't moved since `68a5d15`; if it has, `git merge --no-ff release/1.3.0` instead.)
+3. Still in that worktree: copy the 1.3.0 section of `CHANGELOG.md` (from `## MacStats 1.3.0` up
+   to the next `## `) into `/tmp/macstats-1.3.0-notes.md` (outside the repo, so the tree stays
+   clean), then `./Scripts/package-release.sh /tmp/macstats-1.3.0-notes.md` (no `ALLOW_*`), and
+   run the `gh release create v1.3.0 … --target <sha> --latest` command it prints.
 4. On a Mac running 1.2.0, run the manual checklist above (1.2.0 → 1.3.0). Note: the copy in
    `~/Applications` on this Mac is a 1.1.0 / build 3 dev build from `fix/battery-health`, which
    has **no Sparkle** (that branch predates it), so it will never update itself. To run the

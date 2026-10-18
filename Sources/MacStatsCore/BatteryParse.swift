@@ -42,10 +42,12 @@ public struct BatterySample: Equatable {
 
     /// The user's charge limit when charging has stopped at it ("Charged to 85% Limit" in the
     /// macOS battery menu). macOS only reports "not charging"; the shown percent can sit one
-    /// below the limit (raw 84.0 % shows as 84 or 85), so within one counts.
+    /// off the limit (raw 84.0 % shows as 84 or 85), so within one counts. Further above it (a
+    /// limit set while the battery was fuller) stays plain "not charging": "Charged to 85%
+    /// limit" at 95 % would be wrong.
     public var heldAtLimitPercent: Int? {
         guard state == .notCharging, chargeHoldPercent == nil, let limit = chargeLimitPercent,
-              percent >= limit - 1 else { return nil }
+              abs(percent - limit) <= 1 else { return nil }
         return limit
     }
 

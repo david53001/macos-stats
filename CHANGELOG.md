@@ -14,12 +14,12 @@ seconds, and so does one that stops.
 **See an app's processes.** Click an app in a list to see its processes, each with its own
 numbers. Right-click an app or a process to quit it. Work that belongs to no app is listed as
 **System** and **Other processes**, so the rows add up to the total at the top, and the work of
-processes that already finished is counted exactly. Commands you run in Terminal or VS Code now
-count toward that app.
+processes that already finished is counted from macOS's own per-app counters. Commands you run
+in Terminal or VS Code now count toward that app.
 
 **A short guided tour.** New users get a welcome card and a five-step tour of the panel. If you
 already use MacStats, a "Take the Tour" button shows in the panel for a few opens. Replay it any
-time with **?** in the panel's footer or Settings > General > Guided tour.
+time with **?** in the panel's footer or Settings → General → Guided tour.
 
 **Battery.**
 - With a charge limit on, the time while charging counts to your limit ("Time to 85%"), and at

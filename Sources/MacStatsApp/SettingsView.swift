@@ -25,8 +25,8 @@ struct SettingsView: View {
                 Spacer()
             }
 
-            // Four cards and the footer fill the fixed 404 pt exactly, so Take the Tour (the
-            // stability-tour branch's own HELP card) is a row of GENERAL here.
+            // Three cards and the footer fill the fixed 404 pt, so Take the Tour is a row of
+            // GENERAL rather than a card of its own.
             GeneralCard(onTour: onTour)
             UpdatesCard()
             AppearanceCard()
@@ -68,11 +68,14 @@ private struct GeneralCard: View {
             }
 
             if status == .requiresApproval {
+                // A caption-height link, not a SubtleButtonStyle button: a taller row would push
+                // the footer (Quit MacStats) out of the fixed 404 pt panel.
                 HStack {
-                    Text("Needs your approval in Login Items.")
+                    Text("Needs your approval.")
                     Spacer()
-                    Button("Open") { login.openLoginItems() }
-                        .buttonStyle(SubtleButtonStyle())
+                    Button("Open Login Items") { login.openLoginItems() }
+                        .buttonStyle(.link)
+                        .foregroundStyle(Color.accentColor)   // not the row's grey: it's a link
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)

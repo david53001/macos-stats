@@ -143,6 +143,10 @@ import IOKit.ps
         #expect(b.heldAtLimitPercent == 85)
         b.percent = 60                       // held well below it: a weak adapter, not the limit
         #expect(b.heldAtLimitPercent == nil)
+        b.percent = 86                       // raw 85.5 % can show as 86
+        #expect(b.heldAtLimitPercent == 85)
+        b.percent = 95                       // limit set while fuller: above it, not at it
+        #expect(b.heldAtLimitPercent == nil)
         b.percent = 85
         b.chargeHoldPercent = 80             // Optimized Charging's pause is shown on its own
         #expect(b.heldAtLimitPercent == nil)

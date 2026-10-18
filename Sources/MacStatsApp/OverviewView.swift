@@ -88,7 +88,9 @@ struct OverviewView: View {
             } else {
                 Button("Empty") { onEmptyTrash() }
                     .buttonStyle(SubtleButtonStyle())
-                    .disabled((store.trashBytes ?? 0) == 0)
+                    // Only a known-empty Trash disables it: an unknown size ("—", e.g. Finder
+                    // couldn't size a folder in time) may still be a full Trash.
+                    .disabled(store.trashBytes == 0)
             }
         }
         .padding(.horizontal, Design.cardPadding)

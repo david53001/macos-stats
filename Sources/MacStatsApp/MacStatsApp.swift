@@ -383,7 +383,7 @@ final class AppModel: ObservableObject {
         let now = Date()
         if let last = lastHealthRead, now.timeIntervalSince(last) < healthReadInterval { return }
         lastHealthRead = now
-        DispatchQueue.global(qos: .utility).async {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
             let percent = readMaximumCapacityPercent()
             DispatchQueue.main.async { [weak self] in
                 if let percent { self?.macOSHealthPercent = percent }
