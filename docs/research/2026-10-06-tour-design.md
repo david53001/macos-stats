@@ -2,7 +2,7 @@
 
 **Status:** research and design only. No source code has been changed for this yet.
 **Branch:** `feat/stability-tour` (baseline commit `1ed61cf`).
-**Repo:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats`. Build, test and SDK notes are in its `CLAUDE.md`.
+**Repo:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats`. Build, test and SDK notes are in its `CLAUDE.md`.
 
 This document stands on its own. Part A explains how the owner's other two apps, **BetterScreenshot** and **JVoice**, build their
 intro and tour. Part B is the design for MacStats: what to build, the exact copy, the geometry, the persistence keys and the tests.
@@ -30,7 +30,7 @@ Part C lists the pitfalls specific to `MenuBarExtra`.
 ## Part A — How BetterScreenshot and JVoice do it
 
 Sources read:
-- BetterScreenshot: `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/BetterScreenshot/`
+- BetterScreenshot: `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/BetterScreenshot/`
   - `Packages/TourKit/CLAUDE.md` and `Sources/TourKit/*`: `TourModel`, `TourEngine`, `TourRules`, `TourAudience`, `TourAnchor`,
     `TourEvents`, `Overlay/TagStyle`, `TagLayout`, `TagViews`, `TagKeys`, `TagOverlayController`, `Help/InfoButton`
   - `App/Tours/CLAUDE.md`, `App/Tours/TourCoordinator.swift`
@@ -38,7 +38,7 @@ Sources read:
   - `App/Settings/SettingsView.swift` ("Tours & tips")
   - Spec `docs/superpowers/specs/2026-09-24-betterscreenshot-editor-recording-v3-design.md` §14 and §14.9
   - Review `docs/reviews/2026-09-26-tours-review.md`, which scored the tours 6/10 and is the main source of lessons
-- JVoice: `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/JVoice/`
+- JVoice: `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/JVoice/`
   - `Sources/JVoice/Tours/CLAUDE.md`, `Tours/TourCatalog.swift`, `Tours/Kit/*` (a port of TourKit)
   - `Sources/JVoice/UI/WelcomeWindow.swift`
 

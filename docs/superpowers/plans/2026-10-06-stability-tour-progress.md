@@ -1,6 +1,6 @@
 # Stability + guided tour: progress (2026-10-06, branch `feat/stability-tour`)
 
-**Repo:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats` (native Swift macOS menu-bar system
+**Repo:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats` (native Swift macOS menu-bar system
 monitor; build/test/SDK notes in `CLAUDE.md`). **Baseline commit before this work:** `1ed61cf`.
 **The plan to follow:** `docs/superpowers/plans/2026-10-06-stability-tour-plan.md`. It defines the terms
 (breakdown, scan, hold, freeze, pin, cutout, ring…), the decisions D1–D10 and the exact tasks. Read it first.
@@ -61,7 +61,7 @@ monitor; build/test/SDK notes in `CLAUDE.md`). **Baseline commit before this wor
 
 ## Commands
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats
 ./Scripts/test.sh                                   # all tests (255 at 1ed61cf)
 ./Scripts/test.sh --filter StableRankingTests       # one suite
 export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk; swift build

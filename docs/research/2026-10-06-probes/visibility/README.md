@@ -8,7 +8,7 @@ Open/closed was decided only by SwiftUI `onAppear` / `onDisappear` on the `MenuB
 **Run** (off-screen: a borderless window at desktop level + 1, ordered back, never activated):
 
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats
 export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
 swiftc -O docs/research/2026-10-06-probes/visibility/main.swift -o "$TMPDIR/visprobe"
 ("$TMPDIR/visprobe" & PID=$!; (sleep 30; kill $PID) & wait $PID)

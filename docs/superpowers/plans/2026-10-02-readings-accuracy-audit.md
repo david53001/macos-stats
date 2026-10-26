@@ -268,7 +268,7 @@ All measurements compiled MacStats' own `Sources/MacStatsCore` files into a thro
 `-sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk`.
 
 ```bash
-cd ~/Desktop/Home/Projects/Code/MacStats
+cd ~/Desktop/Home/Projects/Code/Mac Apps/MacStats
 mkdir -p /tmp/ms-harness && cat > /tmp/ms-harness/main.swift <<'EOF'
 import AppKit
 // Replicates AppModel.procScanTick (1 s scans) and prints what the CPU breakdown would show.

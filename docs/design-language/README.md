@@ -3,11 +3,11 @@
 **Status:** reference spec, 2026-09-29. Written so a fresh Claude session with no context can apply this look
 to another macOS app. Companion documents that apply it to specific apps:
 
-- JVoice → `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/design-language/jvoice-native-redesign.md`
-- BetterScreenshot → `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/design-language/betterscreenshot-native-redesign.md`
+- JVoice → `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/docs/design-language/jvoice-native-redesign.md`
+- BetterScreenshot → `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/docs/design-language/betterscreenshot-native-redesign.md`
 
 **Source of truth (working code):** MacStats, a macOS menu-bar system monitor at
-`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats` (branch `feat/polish-perf`). The files that
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats` (branch `feat/polish-perf`). The files that
 define the look are all in `Sources/MacStatsApp/`: `Design.swift` (tokens), `StatCard.swift` (card, card-button
 and small-button styles), `OverviewView.swift` (header, footer, gauge), `BreakdownView.swift` (list rows, icons),
 `Sparkline.swift` (graphs), `RootView.swift` (screen transition). Screenshots:

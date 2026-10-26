@@ -1,6 +1,6 @@
 # Stability + intuitiveness + guided tour: implementation plan (2026-10-06)
 
-**Repo:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats` (native Swift macOS menu-bar system
+**Repo:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats` (native Swift macOS menu-bar system
 monitor; build/test/SDK notes in its `CLAUDE.md`). **Branch:** `feat/stability-tour`. **Baseline (before this
 work):** `1ed61cf`. **Progress note (keep it updated):** `docs/superpowers/plans/2026-10-06-stability-tour-progress.md`.
 

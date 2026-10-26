@@ -202,4 +202,4 @@ Weighting: Battery, CPU and Memory dominate; Network is minor. The battery High 
   - VPN double counting;
   - a full discharge, so "time left" is checked against a forecast from the measured average drain, not against an actual shutdown time.
 - **Not reviewed:** CPU temperature (out of the listed scope).
-- **Files cited:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/reviews/2026-10-05-readings-accuracy/B/` (about 120 KB of text logs and the two harness sources).
+- **Files cited:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/docs/reviews/2026-10-05-readings-accuracy/B/` (about 120 KB of text logs and the two harness sources).

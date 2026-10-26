@@ -178,7 +178,7 @@ Attribution sample (`attribution-sample.tsv`): Claude Code CLI, its node childre
 (Then B5, C3, B4, B7, N2.)
 
 ## Method & limits
-- **Repo:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats`, branch `fix/readings-accuracy` (commit `c4d208d`, v1.1.0); `file:line` references are relative to it. The installed app was `~/Applications/MacStats.app` 1.1.0.
+- **Repo:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats`, branch `fix/readings-accuracy` (commit `c4d208d`, v1.1.0); `file:line` references are relative to it. The installed app was `~/Applications/MacStats.app` 1.1.0.
 - **Harness:** `main.swift` (copied here) compiled together with every `Sources/MacStatsCore/*.swift` file except `AppleSensorReader.swift` (C shim; not in scope) using `swiftc -sdk …/MacOSX26.5.sdk -O`. It replicates the app glue: `procScanTick` order (clocks, then processes), `NSWorkspace.runningApplications` anchors, row naming, value formatting, scan cadence (0.5 s then 1 s), and the battery estimator feed (only on-battery gauge intervals that pass `gaugeInterval`).
 - **Ground truth:** `top -l N -s 1` (same seconds as harness scans), `footprint -p`, `vm_stat`, `memory_pressure`, `pmset -g batt`, `system_profiler SPPowerDataType`, `ioreg -rn AppleSmartBattery` (sampled every 15–20 s for ~25 min, including the independent `PackCurrentAccumulator`), `netstat -ib`.
 - **Load:** at most 4 × `yes` for 9 s, and two short-lived-`dd` loops for 8 s, all from my shell, all ended (verified with `pgrep`). Another reviewer and their compiles were active at the same time, so the machine was never fully quiet; comparisons were made over the same seconds.

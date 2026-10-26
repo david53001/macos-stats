@@ -1,7 +1,7 @@
 # MacStats polish + performance — progress note (2026-09-29)
 
 Branch: `feat/polish-perf` (off `feat/temp-alerts-trash`). Approved by the user in chat (no separate spec).
-Repo: `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats`. Build: `swift build`; tests: `./Scripts/test.sh`;
+Repo: `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats`. Build: `swift build`; tests: `./Scripts/test.sh`;
 install + run: `./Scripts/bundle.sh && open ~/Applications/MacStats.app`.
 
 ## Goal

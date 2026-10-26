@@ -39,7 +39,7 @@ All rules, constants and tests: `docs/design/breakdown-stability.md`.
 ## Run
 
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats
 P=docs/research/2026-10-06-probes/r5-fixes
 SDK=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
 mkdir -p "$TMPDIR/r5/rec" "$TMPDIR/r5/rep"

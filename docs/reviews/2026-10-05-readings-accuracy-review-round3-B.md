@@ -3,7 +3,7 @@
 
 **Standard:** Activity Monitor / System Settings / battery gauge parity · **Method:** code analysis + live measurement · **Reviewer:** independent subagent (round 3, reviewer B)
 
-Evidence files cited as `round3-B/…` are in `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/reviews/2026-10-05-readings-accuracy/round3-B/`. Source paths are relative to the repo root `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats` (branch `fix/readings-accuracy`, commit `0afd11c`, v1.1.0).
+Evidence files cited as `round3-B/…` are in `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/docs/reviews/2026-10-05-readings-accuracy/round3-B/`. Source paths are relative to the repo root `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats` (branch `fix/readings-accuracy`, commit `0afd11c`, v1.1.0).
 
 ## Calibration
 - **Target:** native macOS 14+ menu-bar monitor on Apple Silicon first (tested on an M3 with 8 cores = 4 performance + 4 efficiency, 16 GB RAM, 16 KiB pages, macOS 26). It should degrade cleanly on Intel Macs and Macs without a battery. Users compare its numbers with Activity Monitor and System Settings, and use it to find what is eating CPU, RAM and battery.

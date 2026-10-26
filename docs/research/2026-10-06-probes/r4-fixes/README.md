@@ -39,7 +39,7 @@ MacStats is a native Swift macOS menu-bar system monitor (this repo). Terms:
 ## Run
 
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats
 P=docs/research/2026-10-06-probes/r4-fixes
 SDK=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
 CORE=$(ls Sources/MacStatsCore/*.swift | grep -v AppleSensorReader)

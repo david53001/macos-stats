@@ -1,11 +1,11 @@
 # JVoice → native macOS look (MacStats design language) — redesign spec
 
 **Status:** spec only, not started (written 2026-09-29). Nothing in the JVoice repo has been changed.
-**App:** JVoice, a macOS menu-bar voice-dictation app, repo `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/JVoice`
+**App:** JVoice, a macOS menu-bar voice-dictation app, repo `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/JVoice`
 (SwiftPM, Command Line Tools only, deployment target macOS 14, `LSUIElement` menu-bar app).
-**Design language to apply:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/design-language/README.md`
+**Design language to apply:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/docs/design-language/README.md`
 — read it first (tokens, components, motion, materials, toolchain rules). Reference screenshots:
-`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/design-language/assets/macstats-overview.png`.
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/docs/design-language/assets/macstats-overview.png`.
 
 ## 0. Why, and what this supersedes
 
@@ -217,7 +217,7 @@ gradient in a hue plus a white J; only if the user asks.
 
 ## 7. How to verify (JVoice rules)
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/JVoice
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/JVoice
 swift build                       # must pass
 ./scripts/run-logic-tests.sh      # pure logic (never `swift test` on this Mac)
 # Settings smoke test in a real bundle (catches AppKit/SwiftUI crashes swift build can't):

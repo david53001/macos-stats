@@ -1,7 +1,7 @@
 # Opacity setting — progress (2026-09-30)
 
 Branch `feat/opacity-setting`, git worktree
-`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/opacity`
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/.claude/worktrees/opacity`
 (based on `feat/polish-perf`). Spec: `docs/design-language/opacity-setting.md` §2 (same setting in
 MacStats, JVoice and BetterScreenshot).
 

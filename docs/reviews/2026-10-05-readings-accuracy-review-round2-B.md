@@ -10,7 +10,7 @@ No High issue was found.
 
 **Standard:** parity with Activity Monitor, System Settings and the battery gauge · **Method:** code analysis + live measurement · **Reviewer:** independent subagent (round 2, B)
 
-Scope: branch `fix/readings-accuracy` (v1.1.0, head `164ce01`) of `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats`, measured on an M3 (8 cores, 16 GB, macOS 26.7.1) on battery. `round2-B/…` below means `docs/reviews/2026-10-05-readings-accuracy/round2-B/` in the repo, where the measurement logs and harness sources live. Code references are `file:line` under `Sources/`.
+Scope: branch `fix/readings-accuracy` (v1.1.0, head `164ce01`) of `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats`, measured on an M3 (8 cores, 16 GB, macOS 26.7.1) on battery. `round2-B/…` below means `docs/reviews/2026-10-05-readings-accuracy/round2-B/` in the repo, where the measurement logs and harness sources live. Code references are `file:line` under `Sources/`.
 
 ## Calibration
 - **What it is:** a native macOS 14+ menu-bar monitor for Apple Silicon first. The owner uses it daily and the public installs it from GitHub. They compare it with Activity Monitor and System Settings, and use it to find what is using CPU, RAM and battery.

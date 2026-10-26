@@ -4,7 +4,7 @@ do **not** fix anything — review only.
 
 ## What you're reviewing
 - Project: **MacStats**, a native Swift macOS menu-bar system monitor (CPU, memory, network, battery cards;
-  click a card for a per-app breakdown). Repo: `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats`,
+  click a card for a per-app breakdown). Repo: `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats`,
   branch `fix/readings-accuracy` (v1.1.0, installed and running at `~/Applications/MacStats.app`).
   Read `CLAUDE.md` / `README.md` for orientation only — do not trust their claims about accuracy.
 - Scope: **accuracy of the readings** the user sees. Areas:

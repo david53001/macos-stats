@@ -1,7 +1,7 @@
 # Stability + tour: continuation plan (consolidation, then the review loop)
 
 **Written:** 2026-10-07. **For:** a fresh Claude session with zero context. **Repo:**
-`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats` (MacStats, a native Swift macOS menu-bar system
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats` (MacStats, a native Swift macOS menu-bar system
 monitor; read its `CLAUDE.md` first for the build/test/SDK notes). **Branch:** `feat/stability-tour` (pushed to
 GitHub as a branch; not merged, not released). **Baseline** (the commit before this work): `1ed61cf`.
 
@@ -346,7 +346,7 @@ Record before (HEAD `ac7ea54`) and after, side by side, in the new probe README.
 
 ### Standard verification
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats
 export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk; swift build
 ./Scripts/test.sh                                   # all (373 at ac7ea54)
 ./Scripts/test.sh --filter StableRankingTests       # one suite
@@ -476,7 +476,7 @@ Copied from `macstats-stability-tour-wf_1e020f34-4b6.js` lines 15 to the end, un
 variables.
 
 ```js
-const REPO = '/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats'
+const REPO = '/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats'
 const BASE = args.baseCommit
 const PROGRESS = 'docs/superpowers/plans/' + D + '-stability-tour-progress.md'
 const PLAN = 'docs/superpowers/plans/' + D + '-stability-tour-plan.md'
@@ -495,7 +495,7 @@ HARD RULES (the owner is working at this Mac right now):
 const USER_ASK = `The owner's request (dictated, paraphrased faithfully):
 1) Things jump around. Example: in the CPU breakdown VS Code shows 2%, then drops, then 2% again, constantly. When they try to open (expand) VS Code to see its processes, the row jumps/re-sorts and the expansion goes away, so it's very hard to open and close things. The same jumpiness applies to basically every part of MacStats (cards, rows, numbers).
 2) How intuitive is the app? How easy is it for people to find things, how clear is the text, how clean and how centered is the layout? When someone opens it for the first time, how do they know where things are?
-3) Adopt the guided tour / introduction from their other apps BetterScreenshot (/Users/davidghermansteinberg/Desktop/Home/Projects/Code/BetterScreenshot, App/Tours + Packages/TourKit + App/MenuBar/OnboardingController.swift) and JVoice (/Users/davidghermansteinberg/Desktop/Home/Projects/Code/JVoice, Sources/JVoice/UI/WelcomeWindow.swift etc.): a skippable tour that shows the different things, whose highlight sits PERFECTLY around the squircle cards — perfectly centered — plus an introduction.
+3) Adopt the guided tour / introduction from their other apps BetterScreenshot (/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/BetterScreenshot, App/Tours + Packages/TourKit + App/MenuBar/OnboardingController.swift) and JVoice (/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/JVoice, Sources/JVoice/UI/WelcomeWindow.swift etc.): a skippable tour that shows the different things, whose highlight sits PERFECTLY around the squircle cards — perfectly centered — plus an introduction.
 4) Research the psychology of how people use apps and how complicated an app feels, then implement the findings.
 5) Review with the /reviewer skill, rate 1-10, keep improving until above 9. Then verify bugs, make sure MacStats's own RAM and CPU use do not spike (they don't want it to cost the user's computer much), document everything, verify it all works — all in the background.`
 

@@ -5,9 +5,9 @@
 read that first; this file only adds transparency rules and the setting.
 
 Repos:
-- MacStats — `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats` (reference look)
-- JVoice — `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/JVoice`
-- BetterScreenshot — `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/BetterScreenshot`
+- MacStats — `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats` (reference look)
+- JVoice — `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/JVoice`
+- BetterScreenshot — `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/BetterScreenshot`
 
 ## The owner's request (2026-09-30, paraphrased)
 

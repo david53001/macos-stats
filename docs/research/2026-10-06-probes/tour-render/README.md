@@ -10,7 +10,7 @@ deleted at the end; the real `com.macstats.MacStats` defaults are never read or 
 ## Run
 
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats
 docs/research/2026-10-06-probes/tour-render/run.sh            # captures + out/insets.txt (~60 s)
 docs/research/2026-10-06-probes/tour-render/run.sh --cost     # CPU: 20 s tour off, then 20 s on step 1
 docs/research/2026-10-06-probes/tour-render/run.sh --no-tour  # CPU: 20 s with .tourHost left out

@@ -28,7 +28,7 @@ MacStats is a native Swift macOS menu-bar system monitor (this repo). Terms:
 ## Run
 
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats
 P=docs/research/2026-10-06-probes/r3-fixes
 $P/run.sh synthetic
 $P/run.sh stability 100 > /tmp/r3.txt        # ~35 s build + 100 s

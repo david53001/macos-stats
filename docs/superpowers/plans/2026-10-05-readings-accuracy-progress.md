@@ -395,7 +395,7 @@ value saved, then exit 0. No new timers.
 **Context.** Two independent reviewers scored v1.1.0's readings (reports
 `docs/reviews/2026-10-05-readings-accuracy-review-A.md` and `-B.md`; at the time of writing they
 were uncommitted files in the main checkout at
-`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/reviews/`). The target is
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/docs/reviews/`). The target is
 ≥ 9/10 on CPU, memory, overhead and network. This round fixed the process/CPU/memory/network/
 overhead findings on branch **`review-fix/process`** (from `fix/readings-accuracy` at `04650c7`).
 Battery findings were handled separately, on another branch. **Tests:** `./Scripts/test.sh` →
@@ -518,7 +518,7 @@ real app.
 `164ce01` (reports `docs/reviews/2026-10-05-readings-accuracy-review-round2-A.md` and `-B.md`,
 evidence in `docs/reviews/2026-10-05-readings-accuracy/round2-A/` and `round2-B/`; at the time of
 writing these were uncommitted files in the main checkout at
-`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/`). CPU scored 8/10 from both,
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/`). CPU scored 8/10 from both,
 Memory 8 (A) and 7 (B). The goal of this round: CPU and Memory ≥ 9/10 with no overhead
 regression. Branch **`review3/process`** (from `fix/readings-accuracy` at `164ce01`); battery
 findings were fixed in parallel on another branch and are not covered here.
@@ -662,7 +662,7 @@ found: other users' and root processes' footprints can't be read without root.
 **Context.** Two independent round-2 reviews of branch `fix/readings-accuracy` at `164ce01`
 (`docs/reviews/2026-10-05-readings-accuracy-review-round2-A.md` and `-B.md`; at the time of
 writing uncommitted files in the main checkout at
-`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/reviews/`, evidence in
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/docs/reviews/`, evidence in
 `docs/reviews/2026-10-05-readings-accuracy/round2-A|round2-B/`) both scored Battery 7/10. Goal:
 ≥ 9/10. This round touched only battery code (`Sources/MacStatsCore/Battery*.swift`, the battery
 parts of `Sources/MacStatsApp/MacStatsApp.swift`, `Sources/MacStatsApp/BatteryDetailsCard.swift`)

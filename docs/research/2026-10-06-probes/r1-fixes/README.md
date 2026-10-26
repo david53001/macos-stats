@@ -6,7 +6,7 @@ never activated, closed right after. Clicks are synthetic mouse-down/up events d
 real pointer is moved). Tour state uses a throwaway `UserDefaults` suite, deleted at the end.
 
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats
 docs/research/2026-10-06-probes/r1-fixes/run.sh     # ~40 s build + ~10 s run; writes out/report.txt + PNGs
 pgrep -fl Probe                                      # should print nothing afterwards
 ```
@@ -27,7 +27,7 @@ Headless: records one live CPU series (0.5 s ticks, the app's 2 s trailing windo
 `heldValue` with several bands, so every option sees the same data.
 
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats
 swiftc -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -O -o "$TMPDIR/card-band" \
   $(ls Sources/MacStatsCore/*.swift | grep -v AppleSensorReader) docs/research/2026-10-06-probes/r1-fixes/card-band.swift
 ("$TMPDIR/card-band" 90 & PID=$!; (sleep 130; kill $PID) & wait $PID)

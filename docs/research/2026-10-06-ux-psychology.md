@@ -514,4 +514,4 @@ Liquid Glass popover; the expanded-row render had duplicate fake pids and is not
 - Apple HIG — The menu bar (Menu bar extras): https://developer.apple.com/design/human-interface-guidelines/the-menu-bar (mirror: `human-interface-guidelines/components/the-menu-bar.md` in the same repo)
 - Apple Support — Change how often information is updated in Activity Monitor: https://support.apple.com/guide/activity-monitor/change-how-often-information-is-updated-actmntr2224/mac
 - Permission priming (grant-rate figures, Appcues/Adjust cited): https://www.pushengage.com/ios-push-notification-permission/
-- Internal: BetterScreenshot TourKit (`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/BetterScreenshot/Packages/TourKit`, `App/Tours/CLAUDE.md`), JVoice welcome (`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/JVoice/Sources/JVoice/UI/WelcomeWindow.swift`).
+- Internal: BetterScreenshot TourKit (`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/BetterScreenshot/Packages/TourKit`, `App/Tours/CLAUDE.md`), JVoice welcome (`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/JVoice/Sources/JVoice/UI/WelcomeWindow.swift`).

@@ -26,7 +26,7 @@
 
 
 **Where:** branch `feat/battery-status`, git worktree
-`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/.claude/worktrees/battery`
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/.claude/worktrees/battery`
 (branched from `feat/polish-perf` at `85d66d6`). A parallel session built the opacity setting on
 `feat/opacity-setting`. **First step when resuming:** rebase/merge the latest `feat/polish-perf` (or
 wherever the opacity work landed) into this branch. That work adds `SettingsView`, a footer gear and

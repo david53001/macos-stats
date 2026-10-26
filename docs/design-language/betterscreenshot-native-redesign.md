@@ -2,12 +2,12 @@
 
 **Status:** spec only, not started (written 2026-09-29). Nothing in the BetterScreenshot repo has been changed.
 **App:** BetterScreenshot, a CleanShot-X-style macOS screenshot/recording app, repo
-`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/BetterScreenshot` (SwiftPM + Command Line Tools only,
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/BetterScreenshot` (SwiftPM + Command Line Tools only,
 deployment target macOS 14; app code in `App/`, local packages in `Packages/` — CaptureKit, OverlayKit, EditorKit,
 RecordingKit, HistoryKit, TourKit, TestKit).
-**Design language to apply:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/design-language/README.md`
+**Design language to apply:** `/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/docs/design-language/README.md`
 — read it first (tokens, components, motion, materials, toolchain rules). Reference screenshot:
-`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/docs/design-language/assets/macstats-overview.png`.
+`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/docs/design-language/assets/macstats-overview.png`.
 
 ## 0. Why, and what this changes
 
@@ -104,7 +104,7 @@ RecordingKit, EditorKit, TourKit and the App target. Contents:
   ```
   (SwiftUI `Path.cgPath` works on macOS 14; wrap with `NSBezierPath(cgPath:)` where an `NSBezierPath` is needed.)
 - SwiftUI `CardBackground`, `CardButtonStyle`, `SubtleButtonStyle` copied from MacStats
-  (`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/MacStats/Sources/MacStatsApp/StatCard.swift`).
+  (`/Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/MacStats/Sources/MacStatsApp/StatCard.swift`).
 - `WindowMaterial` — `NSViewRepresentable`/`NSView` for a behind-window `NSVisualEffectView` backdrop.
 
 ### Phase 2 — Settings (biggest win; `App/Settings/`)
@@ -195,7 +195,7 @@ buttons only if the contrast argument is redone and still holds.
 
 ## 6. How to verify
 ```bash
-cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/BetterScreenshot
+cd /Users/davidghermansteinberg/Desktop/Home/Projects/Code/Mac Apps/BetterScreenshot
 swift build                 # must pass
 scripts/test.sh             # TestKit suites (pure logic)
 scripts/build-app.sh        # assembles dist/BetterScreenshot.app for a by-eye check
