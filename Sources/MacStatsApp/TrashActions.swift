@@ -28,24 +28,57 @@ enum TrashActions {
     /// Total logical size (bytes) of everything in the Trash, read via Finder. A direct
     /// filesystem scan of `~/.Trash` fails ("Operation not permitted") without Full Disk
     /// Access — it's a TCC-protected location — so we ask Finder, which is exempt (same as
-    /// `emptyTrash`). An empty Trash reads `.bytes(0)`. Finder answers `missing value` for a
-    /// folder whose size it hasn't worked out yet; that used to count as 0 (silently low), so it
-    /// is retried for up to ~2 s and the read is `.unavailable` if it still isn't known.
+    /// `emptyTrash`). An empty Trash reads `.bytes(0)`.
+    ///
+    /// All sizes come in one Apple Event (one per item used to cost ~1 ms each). Finder answers
+    /// `missing value` for a folder whose size it hasn't worked out, and may never do so for one in
+    /// the Trash (seen live: every read came back unknown after 2 s of polling). Such an item is
+    /// summed from its files instead (up to 5 s), else polled for up to ~2 s; if it still isn't
+    /// known the read is `.unavailable`, never silently low.
     static func trashSize() -> TrashReading {
         let script = NSAppleScript(source: """
             tell application "Finder"
+                if (count of items of trash) is 0 then return 0
+                try
+                    set sizes to size of every item of trash
+                on error
+                    set sizes to {}
+                    repeat with anItem in (get items of trash)
+                        try
+                            set end of sizes to (size of anItem)
+                        on error
+                            set end of sizes to 0
+                        end try
+                    end repeat
+                end try
+                if class of sizes is not list then set sizes to {sizes}
                 set total to 0
-                repeat with anItem in (get items of trash)
-                    try
-                        set itemSize to size of anItem
-                        repeat 20 times
-                            if itemSize is not missing value then exit repeat
-                            delay 0.1
-                            set itemSize to size of anItem
-                        end repeat
+                repeat with i from 1 to count of sizes
+                    set itemSize to item i of sizes
+                    if itemSize is missing value then
+                        try
+                            with timeout of 5 seconds
+                                set fileSizes to size of every file of entire contents of item i of trash
+                            end timeout
+                            if class of fileSizes is not list then set fileSizes to {fileSizes}
+                            set itemSize to 0
+                            repeat with fileSize in fileSizes
+                                if contents of fileSize is missing value then error "unsized"
+                                set itemSize to itemSize + fileSize
+                            end repeat
+                        on error
+                            set itemSize to missing value
+                            try
+                                repeat 20 times
+                                    delay 0.1
+                                    set itemSize to size of item i of trash
+                                    if itemSize is not missing value then exit repeat
+                                end repeat
+                            end try
+                        end try
                         if itemSize is missing value then return -1
-                        set total to total + itemSize
-                    end try
+                    end if
+                    set total to total + itemSize
                 end repeat
                 return total
             end tell
@@ -64,5 +97,12 @@ enum TrashActions {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
         else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    /// When the home Trash folder last changed (an item added, removed or put back), or nil if it
+    /// can't be read. Only the folder's own date, not its (TCC-protected) contents.
+    static func homeTrashStamp() -> Date? {
+        let path = (NSHomeDirectory() as NSString).appendingPathComponent(".Trash")
+        return (try? FileManager.default.attributesOfItem(atPath: path))?[.modificationDate] as? Date
     }
 }

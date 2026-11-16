@@ -7,13 +7,14 @@ public enum Visibility: Equatable {
 }
 
 /// The adaptive refresh interval (seconds) for a given visibility.
-/// Idle is slow & cheap (alerts + a coarse history); open is 0.5s so numbers feel live.
-/// Rates stay a 2s average regardless (see `rateWindowSeconds`), so the faster cadence
-/// doesn't make values flicker. The per-app drill-in runs its own scan timer in AppModel.
+/// Idle is slow & cheap (alerts + a coarse history); open is 1 s on the overview: rates are a
+/// 2 s average anyway (`rateWindowSeconds`) and the card text dwells 2 s (`cardDwellSeconds`), so
+/// 0.5 s only doubled the redraws. A breakdown or Settings ticks at `breakdownScanInterval`
+/// (`AppModel.scheduleNextTick`); the per-app drill-in runs its own scan timer in AppModel.
 public func refreshInterval(for visibility: Visibility) -> TimeInterval {
     switch visibility {
     case .idle: return 10.0
-    case .popoverOpen: return 0.5
+    case .popoverOpen: return 1.0
     }
 }
 
@@ -23,7 +24,7 @@ public func refreshInterval(for visibility: Visibility) -> TimeInterval {
 public func refreshTolerance(for visibility: Visibility) -> TimeInterval {
     switch visibility {
     case .idle: return 2.0
-    case .popoverOpen: return 0.05
+    case .popoverOpen: return 0.1
     }
 }
 
@@ -31,6 +32,19 @@ public func refreshTolerance(for visibility: Visibility) -> TimeInterval {
 /// in between; both are also read once as the popover opens.
 public let temperatureInterval: TimeInterval = 2.0   // IOHID thermal event copies
 public let batteryInterval: TimeInterval = 10.0      // IOPowerSources dictionary parse; changes slowly
+
+/// An open re-reads the Trash size (Finder Apple Events) unless the last read is this recent and
+/// the home Trash folder hasn't changed since (`trashReadDue`); other volumes' Trash folders show
+/// up at the next read after this long.
+public let trashRecheckSeconds: TimeInterval = 60
+
+/// Whether opening the panel should re-read the Trash: never read, or the home Trash's change
+/// date (`stamp`) is unknown or differs from the one taken at the last read, or that read is
+/// `trashRecheckSeconds` old.
+public func trashReadDue(lastRead: Date?, lastStamp: Date?, now: Date, stamp: Date?) -> Bool {
+    guard let lastRead, let stamp, stamp == lastStamp else { return true }
+    return now.timeIntervalSince(lastRead) >= trashRecheckSeconds
+}
 
 /// Hovering the menu-bar icon takes an extra idle sample; skip it if one was taken this recently.
 public let prewarmMinInterval: TimeInterval = 1.0

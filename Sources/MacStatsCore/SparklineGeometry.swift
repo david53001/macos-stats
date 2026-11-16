@@ -116,3 +116,11 @@ public func stickyUpperBound(previous: Double?, peak: Double, shrinkBelow: Doubl
     guard let previous, previous >= minimum, peak.isFinite else { return nice }
     return peak > previous || peak < shrinkBelow * previous ? nice : previous
 }
+
+/// How far (seconds) the sparkline is shown behind its newest sample at `now`: one sample
+/// `interval` as the sample arrives, falling linearly to 0 by the next one, so the newest point
+/// slides in from the right edge and the graph moves continuously across samples. A late sample
+/// holds the graph at 0 until it arrives; a clock skew never pushes it further than two intervals.
+public func sparklineSlideLag(end: TimeInterval, now: TimeInterval, interval: TimeInterval) -> TimeInterval {
+    min(max(end + interval - now, 0), 2 * interval)
+}

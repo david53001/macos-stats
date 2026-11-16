@@ -30,14 +30,14 @@ struct OverviewView: View {
             StatCard(label: "CPU", value: "\(Int(store.cardCPUPercent.rounded()))%",
                      number: store.cardCPUPercent, meta: cpuMeta,
                      onTap: { onSelect(.cpu) }) {
-                Sparkline(points: store.cpuHistory, color: .green, maxValue: 100)
+                Sparkline(points: store.cpuHistory, color: .green, maxValue: 100, live: store.isPublishing)
             }
             .help("Click to see which apps use the CPU")
             .tourAnchor("overview.cpu", radius: Design.cardCornerRadius)
             StatCard(label: "Memory", value: memoryValue,
                      number: Double(store.cardMemory?.usedBytes ?? 0), meta: memoryMeta,
                      metaDot: pressureColor, onTap: { onSelect(.memory) }) {
-                Sparkline(points: store.memHistory, color: .blue, maxValue: 1.0)
+                Sparkline(points: store.memHistory, color: .blue, maxValue: 1.0, live: store.isPublishing)
             }
             .help("Click to see which apps use memory \u{00B7} The dot turns yellow when your Mac runs low, "
                   + "red when very low (macOS\u{2019}s memory pressure)")
@@ -47,7 +47,7 @@ struct OverviewView: View {
                      number: store.cardNetwork?.downBytesPerSec ?? 0, meta: networkMeta) {
                 // Dynamic scale with a 10 KB/s floor, so an idle link draws flat.
                 Sparkline(points: store.netDownHistory, color: .purple, maxValue: 0,
-                          dynamicMinimum: 10_000)
+                          dynamicMinimum: 10_000, live: store.isPublishing)
             }
             .help("↓ download and ↑ upload speed, right now")
             .tourAnchor("overview.network", radius: Design.cardCornerRadius)

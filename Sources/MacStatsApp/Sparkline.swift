@@ -6,10 +6,12 @@ import MacStatsCore
 /// sample sits at the right edge and `window` seconds span the width, so nothing stretches
 /// as points arrive. The curve is monotone (no overshoot above the peak or below zero).
 ///
-/// Motion: when a sample arrives the curve is redrawn once at its new position, then shown
-/// offset right by the time that just elapsed and slid back to zero — linearly, over one
-/// open-popover sample interval, so the graph drifts left slowly and steadily rather than
-/// hopping. Only an `offset` is animated, so no path is rebuilt per frame.
+/// Motion: when a sample arrives the curve is redrawn once at its new position, shown offset
+/// right by one open-panel sample interval and slid back to zero by the clock until the next
+/// sample, so the graph drifts left slowly and steadily rather than hopping. The slide is a
+/// `TimelineView` at `frameInterval` (~0.4 pt a frame at ~4.5 pt/s), not a display-rate animation
+/// restarted every sample: that kept SwiftUI drawing every frame the whole time the overview was
+/// open (~12 % of a core). Only the `offset` changes per frame; the paths are built once a sample.
 struct Sparkline: View {
     let points: [SamplePoint]
     let color: Color
@@ -18,25 +20,24 @@ struct Sparkline: View {
     /// Floor for the dynamic bound, so idle noise draws as a flat line instead of a full-height one.
     var dynamicMinimum: Double = 1
     var window: TimeInterval = 60
+    /// False while the panel is closed or covered (`MetricsStore.isPublishing`): the slide stops.
+    var live = true
 
-    /// The newest-sample time the chart is currently shown at. It trails `points.last` for
-    /// the length of a slide; `nil` until the first sample change (shown in place).
-    @State private var shownEnd: TimeInterval?
-
-    /// Longer gaps (e.g. the first sample after reopening) jump instead of sliding.
-    private static let slideLimit: TimeInterval = 2
+    /// How often the slide moves the graph.
+    private static let frameInterval: TimeInterval = 1.0 / 12
 
     var body: some View {
         let end = points.last?.time ?? 0
-        let visible = Array(visibleSamples(points, end: end, window: window + Self.slideLimit))
+        // The slide shows up to two sample intervals more on the left (`sparklineSlideLag`).
+        let visible = Array(visibleSamples(points, end: end, window: window + 2 * refreshInterval(for: .popoverOpen)))
         let upper = maxValue > 0
             ? maxValue
             : niceUpperBound(peak: visible.map(\.value).max() ?? 0, minimum: dynamicMinimum)
-        let lag = min(max(end - (shownEnd ?? end), 0), Self.slideLimit)
 
         GeometryReader { geo in
-            let slide = CGFloat(lag / window) * SparklineShape.plotWidth(geo.size.width)
-            ZStack {
+            let plotWidth = SparklineShape.plotWidth(geo.size.width)
+            // Built here, outside the timeline, so a frame only moves it.
+            let graph = ZStack {
                 shape(.area, visible, end, upper)
                     .fill(LinearGradient(colors: [color.opacity(0.45), color.opacity(0)],
                                          startPoint: .top, endPoint: .bottom))
@@ -44,20 +45,17 @@ struct Sparkline: View {
                     .stroke(color, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
             }
             .animation(.smooth(duration: 0.4), value: upper)   // rescale eases, rarely happens
-            .offset(x: slide)
+            TimelineView(.animation(minimumInterval: Self.frameInterval, paused: !live)) { context in
+                let lag = sparklineSlideLag(end: end, now: context.date.timeIntervalSinceReferenceDate,
+                                            interval: refreshInterval(for: .popoverOpen))
+                graph.offset(x: CGFloat(lag / window) * plotWidth)
+            }
         }
         .background(alignment: .bottom) {
             Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 0.5)   // baseline hairline
         }
         .clipped()
         .frame(height: 38)
-        .onChange(of: end) { old, new in
-            if new > old, new - old <= Self.slideLimit {
-                withAnimation(.linear(duration: refreshInterval(for: .popoverOpen))) { shownEnd = new }
-            } else {
-                shownEnd = new
-            }
-        }
     }
 
     private func shape(_ part: SparklineShape.Part, _ samples: [SamplePoint],

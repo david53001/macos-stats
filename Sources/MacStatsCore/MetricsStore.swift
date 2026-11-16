@@ -75,6 +75,8 @@ public final class MetricsStore: ObservableObject {
 
     /// While paused (popover closed), samples are kept here instead of being published.
     private var paused = false
+    /// False while paused: the overview's graphs stop their slide (`Sparkline.live`).
+    @Published public private(set) var isPublishing = true
     private var pending = Pending()
     /// Values recorded while paused. An outer nil = "not set since the pause"; for battery,
     /// telemetry, average watts and temperature an inner nil is a real value ("none").
@@ -105,6 +107,7 @@ public final class MetricsStore: ObservableObject {
     /// SwiftUI re-render the hidden popover: ~0.7–1.3 % of a core for good after one open.
     public func pausePublishing() {
         paused = true
+        if isPublishing { isPublishing = false }
     }
 
     /// Publishes everything recorded while paused at once (call before the popover's first
@@ -112,6 +115,7 @@ public final class MetricsStore: ObservableObject {
     public func resumePublishing() {
         guard paused else { return }
         paused = false
+        isPublishing = true
         let p = pending
         pending = Pending()
         if let v = p.cpuPercent { cpuPercent = v }
@@ -243,7 +247,7 @@ public final class MetricsStore: ObservableObject {
     /// kept distinct from `0` ("empty"). Set off the main tick because the Trash is read via
     /// Finder (`~/.Trash` is TCC-protected), not on the per-second collection path.
     public func setTrashBytes(_ bytes: UInt64?) {
-        trashBytes = bytes
+        if bytes != trashBytes { trashBytes = bytes }
     }
 
     public func setTrashNeedsPermission(_ needed: Bool) {

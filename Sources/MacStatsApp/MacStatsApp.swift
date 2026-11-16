@@ -11,7 +11,9 @@ import MacStatsCore
 /// timer runs it plus the slower sensor tiers (temperature ~2s, battery ~10s).
 @MainActor
 final class AppModel: ObservableObject {
-    let store = MetricsStore(historyWindow: 60)
+    /// The graphs span 60 s and slide up to two open ticks behind the newest sample
+    /// (`sparklineSlideLag`), so the history keeps that much more: the left edge never shows a gap.
+    let store = MetricsStore(historyWindow: 60 + 2 * refreshInterval(for: .popoverOpen))
     /// The welcome card, guided tour and their persistence (`TourController`).
     private(set) lazy var tour = TourController(hasBattery: { [store] in store.battery != nil })
     /// The one-time "Open MacStats at login?" card (`LoginPrompt.swift`); kept off while the tour
@@ -20,7 +22,9 @@ final class AppModel: ObservableObject {
     /// The in-popover Settings screen (pushed from the overview footer). Here, not in `RootView`,
     /// so a real close can reset it (`updateVisibility`): SwiftUI's `onDisappear` doesn't fire when
     /// the `MenuBarExtra` window is ordered out.
-    @Published var showingSettings = false
+    @Published var showingSettings = false {
+        didSet { if oldValue && !showingSettings { overviewShown() } }
+    }
 
     /// The screen the panel shows right now.
     var panelScreen: PanelScreen {
@@ -31,6 +35,11 @@ final class AppModel: ObservableObject {
     private var timer: Timer?                    // open-popover tick (one-shot, rescheduled)
     private var idleTimer: Timer?                // closed-popover sampler (repeating)
     private var reliefTimer: Timer?              // returns freed memory to the OS after close
+    /// The last successful Trash read (and the home Trash's change date then), so an open
+    /// re-reads only when it may have changed (`trashReadDue`); one read at a time.
+    private var lastTrashRead: Date?
+    private var lastTrashStamp: Date?
+    private var trashReadInFlight = false
     private var visibility: MacStatsCore.Visibility = .idle
     /// Open = SwiftUI showed the panel's content (`onAppear`, not yet `onDisappear`) AND its
     /// window is on screen. `MenuBarExtra` can take the window off screen without `onDisappear`
@@ -143,7 +152,7 @@ final class AppModel: ObservableObject {
                 #if !SPARKLE_E2E_TEST   // the update test build (docs/sparkle-updates) must not leave a prompt behind
                 self?.notifier.requestAuthorization()
                 #endif
-                self?.refreshTrashSize()
+                self?.refreshTrashSizeIfDue()
             }
         } else {
             #if !SPARKLE_E2E_TEST
@@ -188,13 +197,20 @@ final class AppModel: ObservableObject {
                 // After the tour has decided: its welcome, a resumed step or its chip keep the
                 // login card for a later open, and so would any screen but the overview.
                 loginPrompt.panelOpened(screen: panelScreen, tourActive: tour.isActive, offersTour: tour.offersTour)
+                // A real open, not an uncover (unlock, display wake): Finder asks on the first read.
+                if !tour.defersPermissionPrompts { refreshTrashSizeIfDue() }
             } else {
                 loginPrompt.panelClosed()
                 tour.panelClosed()
                 // Every close goes back to the overview, so the next open starts there (and the
-                // login card, shown only over the overview, is never over Settings).
-                showingSettings = false
-                exitBreakdown()   // stop per-process scanning + clear nav state
+                // login card, shown only over the overview, is never over Settings). Without the
+                // push animation: nobody sees it, and it would only render in the hidden window.
+                var reset = Transaction()
+                reset.disablesAnimations = true
+                withTransaction(reset) {
+                    showingSettings = false
+                    exitBreakdown()   // stop per-process scanning + clear nav state
+                }
             }
         }
         setVisibility(shown && panelWindowVisible ? .popoverOpen : .idle)
@@ -215,7 +231,6 @@ final class AppModel: ObservableObject {
             lastTempRead = nil
             lastBatteryRead = nil
             tick()
-            if !tour.defersPermissionPrompts { refreshTrashSize() }   // Finder asks on the first read
             // Uncovered again with a breakdown still open: scan afresh (the old window spans the gap).
             if procTimer == nil, let metric = store.activeBreakdownMetric { enterBreakdown(metric) }
         case .idle:
@@ -233,7 +248,11 @@ final class AppModel: ObservableObject {
 
     private func scheduleNextTick() {
         timer?.invalidate()
-        timer = makeTimer(after: refreshInterval(for: .popoverOpen),
+        // Only the overview's graphs need the fast cadence. A breakdown or Settings shows a few held
+        // values (and the breakdown its own 2 s scans), so it samples with the scans: the histories
+        // and alerts keep going, the screen re-renders 4× less.
+        let interval = panelScreen == .overview ? refreshInterval(for: .popoverOpen) : breakdownScanInterval
+        timer = makeTimer(after: interval,
                           tolerance: refreshTolerance(for: .popoverOpen)) { model in
             // Belt and braces for a hide no notification reported: never tick an unseen panel.
             if let window = model.panelWindow, !Self.isOnScreen(window) {
@@ -485,6 +504,15 @@ final class AppModel: ObservableObject {
         scanSession = nil
         scanGeneration &+= 1
         store.clearBreakdown()
+        overviewShown()
+    }
+
+    /// Back on the overview from a breakdown or Settings: sample now rather than at the slower
+    /// tick, so the graphs and cards are current as it slides in.
+    private func overviewShown() {
+        guard panelShown, visibility == .popoverOpen, panelScreen == .overview,
+              let timer, timer.fireDate.timeIntervalSinceNow > refreshInterval(for: .popoverOpen) else { return }
+        tick()
     }
 
     /// Confirms, then empties the Trash. The confirmation and any error are shown with
@@ -506,6 +534,7 @@ final class AppModel: ObservableObject {
             let message = TrashActions.emptyTrash()
             let reading = TrashActions.trashSize()   // reflect the new (usually empty) Trash
             Task { @MainActor in
+                self.lastTrashRead = nil   // read again on the next open
                 self.publishTrash(reading)
                 if let message { self.presentTrashError(message) }
             }
@@ -522,13 +551,27 @@ final class AppModel: ObservableObject {
         alert.runModal()
     }
 
-    /// Reads the Trash size via Finder off the main thread and publishes it. Run on popover
-    /// open and after an Empty — not on the 1s tick, since Finder Apple Events are too heavy
-    /// to issue every second.
-    private func refreshTrashSize() {
+    /// Reads the Trash size via Finder off the main thread and publishes it, on a real open when
+    /// it may have changed (`trashReadDue`) and after an Empty: not on the tick or an uncover,
+    /// since Finder Apple Events are too heavy to repeat. A refused read isn't remembered, so the
+    /// next open after the user allows Finder access reads again.
+    private func refreshTrashSizeIfDue() {
+        let stamp = TrashActions.homeTrashStamp()
+        guard !trashReadInFlight,
+              trashReadDue(lastRead: lastTrashRead, lastStamp: lastTrashStamp, now: Date(), stamp: stamp) else { return }
+        trashReadInFlight = true
         DispatchQueue.global(qos: .utility).async {
             let reading = TrashActions.trashSize()
-            Task { @MainActor in self.publishTrash(reading) }
+            Task { @MainActor in
+                self.trashReadInFlight = false
+                if reading == .notPermitted {
+                    self.lastTrashRead = nil
+                } else {
+                    self.lastTrashRead = Date()
+                    self.lastTrashStamp = stamp
+                }
+                self.publishTrash(reading)
+            }
         }
     }
 
@@ -555,13 +598,17 @@ final class AppModel: ObservableObject {
     }
 
     /// After the popover closes SwiftUI frees the view's memory, but malloc keeps those pages
-    /// for reuse (measured: ~24MB held that way). Once teardown has settled, hand them back.
-    private func scheduleMemoryRelief() {
+    /// for reuse (measured: ~24MB held that way). Once teardown has settled, hand them back, and
+    /// again later for what the last scan, icon and animation work freed after that.
+    private func scheduleMemoryRelief(after delays: [TimeInterval] = [1.5, 20]) {
         reliefTimer?.invalidate()
-        reliefTimer = makeTimer(after: 1.5, tolerance: 0.5) { model in
+        reliefTimer = nil
+        guard let delay = delays.first else { return }
+        reliefTimer = makeTimer(after: delay, tolerance: 0.5) { model in
             model.reliefTimer = nil
             guard model.visibility == .idle else { return }
             malloc_zone_pressure_relief(nil, 0)
+            model.scheduleMemoryRelief(after: Array(delays.dropFirst()))
         }
     }
 

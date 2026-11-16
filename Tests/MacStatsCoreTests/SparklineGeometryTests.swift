@@ -121,4 +121,28 @@ import CoreGraphics
         #expect(stickyUpperBound(previous: 0.2, peak: 0.01) == 0.5)
         #expect(stickyUpperBound(previous: 5, peak: 0, minimum: 1) == 1)
     }
+
+    // MARK: Slide
+
+    @Test func slideStartsOneIntervalBehindAndReachesZero() {
+        #expect(sparklineSlideLag(end: 100, now: 100, interval: 1) == 1)
+        #expect(abs(sparklineSlideLag(end: 100, now: 100.25, interval: 1) - 0.75) < 1e-9)
+        #expect(sparklineSlideLag(end: 100, now: 101, interval: 1) == 0)
+        #expect(sparklineSlideLag(end: 100, now: 105, interval: 1) == 0)   // a late sample: held, not reversed
+    }
+
+    @Test func slideIsContinuousAcrossSamples() {
+        // The time shown at the right edge (end - lag) is the same just before and as the next sample arrives.
+        let before = 100 - sparklineSlideLag(end: 100, now: 101, interval: 1)
+        let after = 101 - sparklineSlideLag(end: 101, now: 101, interval: 1)
+        #expect(abs(before - after) < 1e-9)
+        // Within one interval the shown time moves at the clock's pace.
+        let a = 100 - sparklineSlideLag(end: 100, now: 100.2, interval: 1)
+        let b = 100 - sparklineSlideLag(end: 100, now: 100.7, interval: 1)
+        #expect(abs((b - a) - 0.5) < 1e-9)
+    }
+
+    @Test func slideNeverExceedsTwoIntervals() {
+        #expect(sparklineSlideLag(end: 100, now: 90, interval: 1) == 2)   // clock skew
+    }
 }
