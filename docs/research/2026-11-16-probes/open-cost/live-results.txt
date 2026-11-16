@@ -1,0 +1,21 @@
+Live open-panel cost, 2026-11-16 (live.py; owner opened the panel on the overview; % of one core)
+
+== v1.3.0 (released build, copy of ~/Applications/MacStats.app)
+MacStats pid 92343; waiting for 15 s with the panel open
+opened (open so far 0 s)
+closed (open so far 27 s)
+panel open     26.8 s: MacStats 12.53 %  WindowServer 40.81 %
+panel closed   76.1 s: MacStats  0.05 %  WindowServer  7.40 %
+(% of one core; ps time has 0.01 s steps)
+
+== perf/open-panel-cost at d9f492e (release build via ./Scripts/install.sh)
+MacStats pid 85474; waiting for 15 s with the panel open
+opened (open so far 0 s)
+closed (open so far 2 s)
+panel open      2.1 s: MacStats  7.25 %  WindowServer 36.73 %
+panel closed   66.7 s: MacStats  0.01 %  WindowServer 28.29 %
+opened (open so far 2 s)
+closed (open so far 26 s)
+panel open     26.3 s: MacStats  7.98 %  WindowServer 35.09 %
+panel closed  263.6 s: MacStats  0.02 %  WindowServer 30.83 %
+(% of one core; ps time has 0.01 s steps)

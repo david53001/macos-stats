@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Live open-panel cost of the running MacStats (README.md). Passive: polls every 0.5 s whether
 MacStats' panel window is on screen (CGWindowList) and adds up MacStats' and WindowServer's CPU
-time only while it is. Usage: live.py [open-seconds-wanted=30] [timeout-seconds=900]. Ends once
+time only while it is. Prints the totals after every close. Usage: live.py [open-seconds-wanted=30] [timeout-seconds=900]. Ends once
 the panel has been open that long and is closed again (or at the timeout)."""
 import subprocess, sys, time
 import Quartz
@@ -26,6 +26,11 @@ def panel_open():
             return True
     return False
 
+def report():
+    pct = lambda c, t: 100 * c / t if t else float("nan")
+    print(f"panel open   {open_t:6.1f} s: MacStats {pct(open_ms, open_t):5.2f} %  WindowServer {pct(open_ws, open_t):5.2f} %")
+    print(f"panel closed {closed_t:6.1f} s: MacStats {pct(closed_ms, closed_t):5.2f} %  WindowServer {pct(closed_ws, closed_t):5.2f} %", flush=True)
+
 ms, ws = pid("MacStats"), pid("WindowServer")
 print(f"MacStats pid {ms}; waiting for {want:.0f} s with the panel open", flush=True)
 open_t = closed_t = 0.0
@@ -42,10 +47,9 @@ while time.time() - start < timeout:
         closed_t += dt; closed_ms += dms; closed_ws += dws
     if now[3] != prev[3]:
         print(("opened" if now[3] else "closed") + f" (open so far {open_t:.0f} s)", flush=True)
+        if not now[3]: report()
     prev = now
     if open_t >= want and not now[3]:
         break
-pct = lambda c, t: 100 * c / t if t else float("nan")
-print(f"panel open   {open_t:6.1f} s: MacStats {pct(open_ms, open_t):5.2f} %  WindowServer {pct(open_ws, open_t):5.2f} %")
-print(f"panel closed {closed_t:6.1f} s: MacStats {pct(closed_ms, closed_t):5.2f} %  WindowServer {pct(closed_ws, closed_t):5.2f} %")
+if open_t < want: report()
 print("(% of one core; ps time has 0.01 s steps)")

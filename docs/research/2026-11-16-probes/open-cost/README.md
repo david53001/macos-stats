@@ -6,11 +6,10 @@ Measures how much CPU MacStats uses while its panel is open, before and after th
 - The graph slide is a 12 fps clock-driven `TimelineView`, paused while the panel is closed.
   Before, it was a display-rate animation restarted every tick.
 - The open tick goes from 0.5 s to 1 s on the overview, and to 2 s on a breakdown or Settings.
-- The Trash is read with one Apple Event, only on a real open when it may have changed.
+- The Trash is no longer read at all: the card has only an Empty button (the owner's choice).
 - The screen resets on close without animation.
 
-Background for these changes: the usage audit summarised in `CLAUDE.md` (Status, "Open-panel cost
-pass").
+Background, results and next step: `docs/superpowers/plans/2026-11-16-open-panel-cost-progress.md`.
 
 ## 1. Off-screen probe (`run.sh`, `main.swift`, `Package.swift`)
 
@@ -62,4 +61,13 @@ python3 docs/research/2026-11-16-probes/open-cost/live.py 40 1800   # wait for 4
 WindowServer's number also includes everything else on screen (videos, other apps), so treat it as
 rough.
 
-Results: see `live-results.txt` (written after the owner's before/after check).
+Results, 2026-11-16 (raw output: `live-results.txt`; % of one core):
+
+| | v1.3.0 | branch at `d9f492e` |
+|---|---|---|
+| Panel open on the overview (~26 s) | 12.53 | 7.98 |
+| Panel closed | 0.05 | 0.02 |
+
+To see where the open-panel CPU goes, `sample-when-open.py <out.txt>` waits for the panel and then runs
+`sample` for 12 s. The branch profile, and the next fix it led to (graphs as Core Animation layers), are in
+`docs/superpowers/plans/2026-11-16-open-panel-cost-progress.md`.
