@@ -190,7 +190,7 @@ public enum TourRules {
         audience == .existing && (seenVersion ?? 0) < version && offerShows < offerLimit && !dismissed
     }
 
-    /// New users get the notification and Finder prompts only after the welcome explains them.
+    /// New users get the notification prompt only after the welcome explains it.
     public static func deferPermissionPrompts(audience: TourAudience, seenVersion: Int?,
                                               answered: Bool = false) -> Bool {
         audience == .new && seenVersion == nil && !answered
