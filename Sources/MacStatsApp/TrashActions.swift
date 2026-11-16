@@ -31,10 +31,11 @@ enum TrashActions {
     /// `emptyTrash`). An empty Trash reads `.bytes(0)`.
     ///
     /// All sizes come in one Apple Event (one per item used to cost ~1 ms each). Finder answers
-    /// `missing value` for a folder whose size it hasn't worked out, and may never do so for one in
-    /// the Trash (seen live: every read came back unknown after 2 s of polling). Such an item is
-    /// summed from its files instead (up to 5 s), else polled for up to ~2 s; if it still isn't
-    /// known the read is `.unavailable`, never silently low.
+    /// `missing value` for a folder whose size it hasn't worked out yet; that item is polled for up
+    /// to ~2 s, and if it still isn't known (or an item can't be read) the read is `.unavailable`,
+    /// never silently low. Summing such a folder's files instead was tried and dropped: Finder
+    /// skips hidden files (a trashed folder with a `.git` reads far too low) and walks a big folder
+    /// for minutes, answering nothing else meanwhile. Run on `AppModel`'s Finder queue only.
     static func trashSize() -> TrashReading {
         let script = NSAppleScript(source: """
             tell application "Finder"
@@ -47,7 +48,7 @@ enum TrashActions {
                         try
                             set end of sizes to (size of anItem)
                         on error
-                            set end of sizes to 0
+                            set end of sizes to missing value
                         end try
                     end repeat
                 end try
@@ -57,24 +58,11 @@ enum TrashActions {
                     set itemSize to item i of sizes
                     if itemSize is missing value then
                         try
-                            with timeout of 5 seconds
-                                set fileSizes to size of every file of entire contents of item i of trash
-                            end timeout
-                            if class of fileSizes is not list then set fileSizes to {fileSizes}
-                            set itemSize to 0
-                            repeat with fileSize in fileSizes
-                                if contents of fileSize is missing value then error "unsized"
-                                set itemSize to itemSize + fileSize
+                            repeat 20 times
+                                delay 0.1
+                                set itemSize to size of item i of trash
+                                if itemSize is not missing value then exit repeat
                             end repeat
-                        on error
-                            set itemSize to missing value
-                            try
-                                repeat 20 times
-                                    delay 0.1
-                                    set itemSize to size of item i of trash
-                                    if itemSize is not missing value then exit repeat
-                                end repeat
-                            end try
                         end try
                         if itemSize is missing value then return -1
                     end if

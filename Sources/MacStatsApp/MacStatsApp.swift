@@ -7,8 +7,9 @@ import MacStatsCore
 /// Owns the store, the syscall pipeline, and the adaptive refresh timers.
 ///
 /// One sampling path (`sample`) serves both modes: while the popover is closed a 10s timer
-/// runs it (alerts + a coarse history, so the graph isn't empty on open); while open a 0.5s
-/// timer runs it plus the slower sensor tiers (temperature ~2s, battery ~10s).
+/// runs it (alerts + a coarse history, so the graph isn't empty on open); while open a 1 s
+/// timer (2 s on a breakdown or Settings) runs it plus the slower sensor tiers (temperature
+/// ~2s, battery ~10s).
 @MainActor
 final class AppModel: ObservableObject {
     /// The graphs span 60 s and slide up to two open ticks behind the newest sample
@@ -40,6 +41,11 @@ final class AppModel: ObservableObject {
     private var lastTrashRead: Date?
     private var lastTrashStamp: Date?
     private var trashReadInFlight = false
+    /// Every Finder script (size reads, Empty) runs here, one at a time: `NSAppleScript` isn't
+    /// thread-safe, and Finder answers Apple Events one by one anyway.
+    private let finderQueue = DispatchQueue(label: "MacStats.finder", qos: .userInitiated)
+    /// Bumped by Empty, so a size read that started before it can't publish over the new size.
+    private var trashGeneration = 0
     private var visibility: MacStatsCore.Visibility = .idle
     /// Open = SwiftUI showed the panel's content (`onAppear`, not yet `onDisappear`) AND its
     /// window is on screen. `MenuBarExtra` can take the window off screen without `onDisappear`
@@ -508,10 +514,10 @@ final class AppModel: ObservableObject {
     }
 
     /// Back on the overview from a breakdown or Settings: sample now rather than at the slower
-    /// tick, so the graphs and cards are current as it slides in.
+    /// tick, so the graphs and cards are current and slide from the start (`sparklineSlideLag`).
     private func overviewShown() {
-        guard panelShown, visibility == .popoverOpen, panelScreen == .overview,
-              let timer, timer.fireDate.timeIntervalSinceNow > refreshInterval(for: .popoverOpen) else { return }
+        guard panelShown, visibility == .popoverOpen, panelScreen == .overview else { return }
+        if let last = snapshots.last?.time, Date().timeIntervalSince(last) < 0.25 { return }   // just sampled
         tick()
     }
 
@@ -530,11 +536,12 @@ final class AppModel: ObservableObject {
         NSApp.activate(ignoringOtherApps: true)
         guard confirm.runModal() == .alertFirstButtonReturn else { return }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        trashGeneration &+= 1   // a read still running describes the Trash before this Empty
+        lastTrashRead = nil     // read again on the next open
+        finderQueue.async {
             let message = TrashActions.emptyTrash()
             let reading = TrashActions.trashSize()   // reflect the new (usually empty) Trash
             Task { @MainActor in
-                self.lastTrashRead = nil   // read again on the next open
                 self.publishTrash(reading)
                 if let message { self.presentTrashError(message) }
             }
@@ -560,10 +567,12 @@ final class AppModel: ObservableObject {
         guard !trashReadInFlight,
               trashReadDue(lastRead: lastTrashRead, lastStamp: lastTrashStamp, now: Date(), stamp: stamp) else { return }
         trashReadInFlight = true
-        DispatchQueue.global(qos: .utility).async {
+        let generation = trashGeneration
+        finderQueue.async {
             let reading = TrashActions.trashSize()
             Task { @MainActor in
                 self.trashReadInFlight = false
+                guard generation == self.trashGeneration else { return }   // emptied meanwhile
                 if reading == .notPermitted {
                     self.lastTrashRead = nil
                 } else {

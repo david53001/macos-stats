@@ -70,7 +70,7 @@ public final class MetricsStore: ObservableObject {
     /// Seconds of history the sparklines span (newest point at the right edge).
     public let historyWindow: TimeInterval
     /// Hard cap on points per history, whatever their timestamps (safety net only — at the
-    /// 0.5s open cadence the window holds ~121 points).
+    /// 1 s open cadence the window holds ~63 points).
     public let maxHistoryPoints: Int
 
     /// While paused (popover closed), samples are kept here instead of being published.

@@ -103,7 +103,17 @@ var tickIndex = 0.0
     print("overview window occlusion visible:", ov.occlusionState.contains(.visible))
     var overview: [Double] = []
     for _ in 0..<3 { overview.append(run(store, interval: overviewInterval, scans: false)) }
-    ov.orderOut(nil); ov.close()
+    // Closed as AppModel closes it: the store paused, the window ordered out but kept (MenuBarExtra
+    // keeps the hidden panel's views alive). Nothing should run.
+    store.pausePublishing()
+    ov.orderOut(nil)
+    settle(1)
+    let closed = { () -> Double in
+        let c0 = cpuSeconds(), t0 = Date(); settle(8)
+        return (cpuSeconds() - c0) / Date().timeIntervalSince(t0) * 100
+    }()
+    ov.close(); ov.contentView = nil
+    store.resumePublishing()
 
     store.beginBreakdown(metric: .cpu)
     store.setBreakdown(fakeApps(0), measuring: false, totalCPU: 25)
@@ -111,7 +121,8 @@ var tickIndex = 0.0
     settle(1.5)
     var breakdown: [Double] = []
     for _ in 0..<3 { breakdown.append(run(store, interval: breakdownInterval, scans: true)) }
-    bd.orderOut(nil); bd.close()
+    bd.orderOut(nil); bd.close(); bd.contentView = nil
+    settle(1)
 
     let idle = { () -> Double in
         let c0 = cpuSeconds(), t0 = Date(); settle(5)
@@ -120,6 +131,7 @@ var tickIndex = 0.0
     func fmt(_ v: [Double]) -> String { v.map { String(format: "%.2f", $0) }.joined(separator: " ") }
     print("overview  process_cpu_pct runs:", fmt(overview), String(format: " mean %.2f", overview.reduce(0, +) / 3))
     print("breakdown process_cpu_pct runs:", fmt(breakdown), String(format: " mean %.2f", breakdown.reduce(0, +) / 3))
+    print(String(format: "overview window hidden + store paused (panel closed) process_cpu_pct: %.2f", closed))
     print(String(format: "no window (floor) process_cpu_pct: %.2f", idle))
 }
 
