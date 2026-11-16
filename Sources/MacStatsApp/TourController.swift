@@ -13,11 +13,12 @@ final class TourController: ObservableObject {
     @Published private(set) var state = TourState()
     /// The existing-user chip in the overview header.
     @Published private(set) var offersTour = false
-    /// New user who hasn't answered the welcome: the notification and Finder prompts wait.
+    /// New user who hasn't answered the welcome: the notification prompt waits. (The Finder prompt
+    /// comes with the first Empty Trash, `TrashActions`.)
     private(set) var defersPermissionPrompts: Bool
     /// Fires once when the intro is over (No Thanks, or the tour's Done / Skip / 2nd close) while
-    /// the prompts were deferred. Not at Show Me Around: the Finder prompt is a window of its own,
-    /// which would close the panel mid-tour.
+    /// the prompt was deferred. Not at Show Me Around: a prompt takes focus, which would close the
+    /// panel mid-tour.
     var onIntroFinished: (() -> Void)?
 
     var isActive: Bool { state.phase != .off }

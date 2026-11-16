@@ -55,7 +55,7 @@ public enum TourCatalog {
     public static let alertsPermission =
         "MacStats will ask to send alerts when your Mac stays busy or runs low on memory."
     public static let finderPermission =
-        "macOS will ask to let MacStats use Finder, so it can show and empty the Trash."
+        "The first time you empty the Trash, macOS will ask to let MacStats use Finder."
     public static let welcomeQuestion = "Want a quick tour?"
     public static let welcomeSubline = "You can skip it any time."
 

@@ -62,7 +62,6 @@ var tickIndex = 0.0
     }
     s.setBattery(BatterySample(percent: 64, state: .discharging, timeToEmptyMinutes: 245))
     s.setCPUTemperature(47)
-    s.setTrashBytes(842_000_000)
     return s
 }
 

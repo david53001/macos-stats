@@ -78,20 +78,11 @@ struct OverviewView: View {
                 .font(.callout).foregroundStyle(.secondary).frame(width: 18)
             Text("Trash").font(.callout)
             Spacer()
-            Text(trashValue)
-                .font(.callout).foregroundStyle(.secondary).monospacedDigit()
-            if store.trashNeedsPermission {
-                // Finder access was refused: macOS won't ask again, so say where to allow it.
-                Button("Allow\u{2026}") { TrashActions.openAutomationSettings() }
-                    .buttonStyle(SubtleButtonStyle())
-                    .help("Opens System Settings → Privacy & Security → Automation")
-            } else {
-                Button("Empty") { onEmptyTrash() }
-                    .buttonStyle(SubtleButtonStyle())
-                    // Only a known-empty Trash disables it: an unknown size ("—", e.g. Finder
-                    // couldn't size a folder in time) may still be a full Trash.
-                    .disabled(store.trashBytes == 0)
-            }
+            // No size (`TrashActions`): the button asks first, and a refused Finder access is
+            // explained, with a way to the settings, in the alert that follows.
+            Button("Empty") { onEmptyTrash() }
+                .buttonStyle(SubtleButtonStyle())
+                .help("Empties the Trash (asks first)")
         }
         .padding(.horizontal, Design.cardPadding)
         .padding(.vertical, 7)
@@ -107,13 +98,6 @@ struct OverviewView: View {
     private var memoryValue: String {
         guard let m = store.cardMemory else { return "—" }
         return "\(gb(m.usedBytes, of: m.totalBytes)) / \(gb(m.totalBytes, of: m.totalBytes)) GB"
-    }
-    private var trashValue: String {
-        if store.trashNeedsPermission { return "Needs permission" }
-        guard let bytes = store.trashBytes else { return "—" }   // still reading / unknown
-        guard bytes > 0 else { return "Nothing in it" }   // not "empty" beside the Empty button
-        // Finder's own style (1000-based): 1.5 GB in Finder read "1.4 GB" when divided by 1024.
-        return ByteCountFormatter.string(fromByteCount: Int64(clamping: bytes), countStyle: .file)
     }
     private var cpuMeta: String {
         guard let t = store.cpuTempCelsius else { return "" }   // no usable sensor on this chip

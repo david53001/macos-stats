@@ -16,26 +16,6 @@ import Foundation
         #expect(breakdownScanInterval >= refreshInterval(for: .popoverOpen))
     }
 
-    // MARK: Trash re-read on open
-
-    @Test func trashIsReadWhenNeverRead() {
-        #expect(trashReadDue(lastRead: nil, lastStamp: nil, now: Date(), stamp: Date()))
-    }
-
-    @Test func unchangedTrashIsNotReReadWithinAMinute() {
-        let t0 = Date(timeIntervalSinceReferenceDate: 1_000), stamp = Date(timeIntervalSinceReferenceDate: 500)
-        #expect(!trashReadDue(lastRead: t0, lastStamp: stamp, now: t0.addingTimeInterval(59), stamp: stamp))
-        #expect(trashReadDue(lastRead: t0, lastStamp: stamp, now: t0.addingTimeInterval(60), stamp: stamp))
-    }
-
-    @Test func changedOrUnknownTrashIsReadAtOnce() {
-        let t0 = Date(timeIntervalSinceReferenceDate: 1_000), stamp = Date(timeIntervalSinceReferenceDate: 500)
-        let later = stamp.addingTimeInterval(1)
-        #expect(trashReadDue(lastRead: t0, lastStamp: stamp, now: t0.addingTimeInterval(1), stamp: later))
-        #expect(trashReadDue(lastRead: t0, lastStamp: stamp, now: t0.addingTimeInterval(1), stamp: nil))
-        #expect(trashReadDue(lastRead: t0, lastStamp: nil, now: t0.addingTimeInterval(1), stamp: stamp))
-    }
-
     @Test func rateWindowIsLongerThanOpenCadence() {
         // Rates average over ≥2 ticks, so the faster cadence doesn't make values flicker.
         #expect(rateWindowSeconds >= 2 * refreshInterval(for: .popoverOpen))

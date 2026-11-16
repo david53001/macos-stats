@@ -33,19 +33,6 @@ public func refreshTolerance(for visibility: Visibility) -> TimeInterval {
 public let temperatureInterval: TimeInterval = 2.0   // IOHID thermal event copies
 public let batteryInterval: TimeInterval = 10.0      // IOPowerSources dictionary parse; changes slowly
 
-/// An open re-reads the Trash size (Finder Apple Events) unless the last read is this recent and
-/// the home Trash folder hasn't changed since (`trashReadDue`); other volumes' Trash folders show
-/// up at the next read after this long.
-public let trashRecheckSeconds: TimeInterval = 60
-
-/// Whether opening the panel should re-read the Trash: never read, or the home Trash's change
-/// date (`stamp`) is unknown or differs from the one taken at the last read, or that read is
-/// `trashRecheckSeconds` old.
-public func trashReadDue(lastRead: Date?, lastStamp: Date?, now: Date, stamp: Date?) -> Bool {
-    guard let lastRead, let stamp, stamp == lastStamp else { return true }
-    return now.timeIntervalSince(lastRead) >= trashRecheckSeconds
-}
-
 /// Hovering the menu-bar icon takes an extra idle sample; skip it if one was taken this recently.
 public let prewarmMinInterval: TimeInterval = 1.0
 

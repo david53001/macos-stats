@@ -38,10 +38,6 @@ public final class MetricsStore: ObservableObject {
     @Published public private(set) var memHistory: [SamplePoint] = []      // used fraction 0...1
     @Published public private(set) var netDownHistory: [SamplePoint] = []  // bytes/sec
 
-    @Published public private(set) var trashBytes: UInt64?
-    /// Finder access was refused, so the Trash can't be read or emptied until it's allowed.
-    @Published public private(set) var trashNeedsPermission = false
-
     @Published public private(set) var cpuTempCelsius: Double?
 
     @Published public private(set) var breakdown: [AppUsage] = []
@@ -241,17 +237,6 @@ public final class MetricsStore: ObservableObject {
         h.append(point)
         trimHistory(&h, window: historyWindow, maxCount: maxHistoryPoints)
         return h
-    }
-
-    /// Publishes the latest Trash size (bytes). `nil` means "not yet read / unreadable" —
-    /// kept distinct from `0` ("empty"). Set off the main tick because the Trash is read via
-    /// Finder (`~/.Trash` is TCC-protected), not on the per-second collection path.
-    public func setTrashBytes(_ bytes: UInt64?) {
-        if bytes != trashBytes { trashBytes = bytes }
-    }
-
-    public func setTrashNeedsPermission(_ needed: Bool) {
-        if needed != trashNeedsPermission { trashNeedsPermission = needed }
     }
 
     /// Enter a drill-in for `metric`. CPU and energy start in the "measuring" state (they

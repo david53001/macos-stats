@@ -36,16 +36,6 @@ final class AppModel: ObservableObject {
     private var timer: Timer?                    // open-popover tick (one-shot, rescheduled)
     private var idleTimer: Timer?                // closed-popover sampler (repeating)
     private var reliefTimer: Timer?              // returns freed memory to the OS after close
-    /// The last successful Trash read (and the home Trash's change date then), so an open
-    /// re-reads only when it may have changed (`trashReadDue`); one read at a time.
-    private var lastTrashRead: Date?
-    private var lastTrashStamp: Date?
-    private var trashReadInFlight = false
-    /// Every Finder script (size reads, Empty) runs here, one at a time: `NSAppleScript` isn't
-    /// thread-safe, and Finder answers Apple Events one by one anyway.
-    private let finderQueue = DispatchQueue(label: "MacStats.finder", qos: .userInitiated)
-    /// Bumped by Empty, so a size read that started before it can't publish over the new size.
-    private var trashGeneration = 0
     private var visibility: MacStatsCore.Visibility = .idle
     /// Open = SwiftUI showed the panel's content (`onAppear`, not yet `onDisappear`) AND its
     /// window is on screen. `MenuBarExtra` can take the window off screen without `onDisappear`
@@ -153,12 +143,12 @@ final class AppModel: ObservableObject {
     init() {
         // Launch at login is no longer turned on silently at first launch: `loginPrompt` asks once.
         if tour.defersPermissionPrompts {
-            // A new user: the welcome card explains both prompts first, then they fire.
+            // A new user: the welcome card explains the alerts prompt first, then it fires. (The
+            // Finder prompt comes with the first Empty Trash.)
             tour.onIntroFinished = { [weak self] in
                 #if !SPARKLE_E2E_TEST   // the update test build (docs/sparkle-updates) must not leave a prompt behind
                 self?.notifier.requestAuthorization()
                 #endif
-                self?.refreshTrashSizeIfDue()
             }
         } else {
             #if !SPARKLE_E2E_TEST
@@ -203,8 +193,6 @@ final class AppModel: ObservableObject {
                 // After the tour has decided: its welcome, a resumed step or its chip keep the
                 // login card for a later open, and so would any screen but the overview.
                 loginPrompt.panelOpened(screen: panelScreen, tourActive: tour.isActive, offersTour: tour.offersTour)
-                // A real open, not an uncover (unlock, display wake): Finder asks on the first read.
-                if !tour.defersPermissionPrompts { refreshTrashSizeIfDue() }
             } else {
                 loginPrompt.panelClosed()
                 tour.panelClosed()
@@ -536,57 +524,23 @@ final class AppModel: ObservableObject {
         NSApp.activate(ignoringOtherApps: true)
         guard confirm.runModal() == .alertFirstButtonReturn else { return }
 
-        trashGeneration &+= 1   // a read still running describes the Trash before this Empty
-        lastTrashRead = nil     // read again on the next open
-        finderQueue.async {
-            let message = TrashActions.emptyTrash()
-            let reading = TrashActions.trashSize()   // reflect the new (usually empty) Trash
+        DispatchQueue.global(qos: .userInitiated).async {
+            let failure = TrashActions.emptyTrash()
             Task { @MainActor in
-                self.publishTrash(reading)
-                if let message { self.presentTrashError(message) }
+                if let failure { self.presentTrashError(failure) }
             }
         }
     }
 
-    private func presentTrashError(_ message: String) {
+    private func presentTrashError(_ failure: TrashActions.Failure) {
         let alert = NSAlert()
         alert.messageText = "Couldn\u{2019}t empty the Trash"
-        alert.informativeText = message
+        alert.informativeText = failure.message
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
+        if failure.notPermitted { alert.addButton(withTitle: "Open Settings") }
         NSApp.activate(ignoringOtherApps: true)
-        alert.runModal()
-    }
-
-    /// Reads the Trash size via Finder off the main thread and publishes it, on a real open when
-    /// it may have changed (`trashReadDue`) and after an Empty: not on the tick or an uncover,
-    /// since Finder Apple Events are too heavy to repeat. A refused read isn't remembered, so the
-    /// next open after the user allows Finder access reads again.
-    private func refreshTrashSizeIfDue() {
-        let stamp = TrashActions.homeTrashStamp()
-        guard !trashReadInFlight,
-              trashReadDue(lastRead: lastTrashRead, lastStamp: lastTrashStamp, now: Date(), stamp: stamp) else { return }
-        trashReadInFlight = true
-        let generation = trashGeneration
-        finderQueue.async {
-            let reading = TrashActions.trashSize()
-            Task { @MainActor in
-                self.trashReadInFlight = false
-                guard generation == self.trashGeneration else { return }   // emptied meanwhile
-                if reading == .notPermitted {
-                    self.lastTrashRead = nil
-                } else {
-                    self.lastTrashRead = Date()
-                    self.lastTrashStamp = stamp
-                }
-                self.publishTrash(reading)
-            }
-        }
-    }
-
-    private func publishTrash(_ reading: TrashReading) {
-        if case .bytes(let bytes) = reading { store.setTrashBytes(bytes) } else { store.setTrashBytes(nil) }
-        store.setTrashNeedsPermission(reading == .notPermitted)
+        if alert.runModal() == .alertSecondButtonReturn { TrashActions.openAutomationSettings() }
     }
 
     /// Background sampler while the popover is closed: CPU%, memory and network every ~10s

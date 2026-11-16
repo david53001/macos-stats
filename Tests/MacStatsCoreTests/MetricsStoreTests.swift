@@ -227,20 +227,6 @@ import Testing
         #expect(store.battery?.timeToEmptyMinutes == 99)
     }
 
-    @Test func trashPermissionStateIsSeparateFromTheSize() {
-        let store = MetricsStore()
-        #expect(!store.trashNeedsPermission)
-        store.setTrashBytes(nil)
-        store.setTrashNeedsPermission(true)
-        #expect(store.trashNeedsPermission)
-        #expect(store.trashBytes == nil)
-        // Allowed later: the next read has a size and clears the flag.
-        store.setTrashBytes(0)
-        store.setTrashNeedsPermission(false)
-        #expect(!store.trashNeedsPermission)
-        #expect(store.trashBytes == 0)
-    }
-
     @Test func isPublishingFollowsPauseAndResume() {
         let store = MetricsStore()
         #expect(store.isPublishing)
@@ -249,18 +235,5 @@ import Testing
         #expect(!store.isPublishing)
         store.resumePublishing()
         #expect(store.isPublishing)
-    }
-
-    @Test func unchangedTrashSizeDoesNotPublish() {
-        let store = MetricsStore()
-        store.setTrashBytes(500)
-        var changes = 0
-        let watch = store.objectWillChange.sink { _ in changes += 1 }
-        store.setTrashBytes(500)
-        #expect(changes == 0)
-        store.setTrashBytes(nil)
-        #expect(changes == 1)
-        #expect(store.trashBytes == nil)
-        withExtendedLifetime(watch) {}
     }
 }
