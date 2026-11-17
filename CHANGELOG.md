@@ -3,6 +3,17 @@
 What changed in each MacStats release, in plain language. The newest version is at the top. The
 same text is used as the GitHub release notes and in MacStats' own update window.
 
+## MacStats 1.3.1: lighter while the panel is open
+
+**Uses much less CPU with the panel open.** The graphs are now drawn by macOS's own animation
+system, and the panel refreshes once a second instead of twice. With the overview open, MacStats
+went from about 12 % of one CPU core to under 5 %. With the panel closed it was already near zero
+and still is.
+
+**Trash.** The Trash card is now just an **Empty** button. MacStats no longer reads the size of
+your Trash, which Finder often couldn't report anyway. The first time you empty it, macOS asks to
+let MacStats use Finder.
+
 ## MacStats 1.3.0: steadier numbers, a short tour, more accurate readings
 
 **Numbers and lists hold still.** The app lists under CPU, Memory and Battery no longer reshuffle
