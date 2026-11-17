@@ -4,7 +4,7 @@ A lightweight **macOS menu-bar system monitor** (native Swift). Lives next to th
 battery/clock. Click the menu-bar item → overview popover with one card per stat +
 live sparkline; click a card → per-app breakdown with quick actions (Quit / Force Quit).
 
-## Status (as of 2026-11-16)
+## Status (as of 2026-11-17)
 
 - ✅ Design **approved**, visual mockups **approved**.
 - ✅ **Milestone 1 BUILT** — runnable menu-bar app: live CPU %, Memory, Network, Battery + sparklines + adaptive refresh (1s open; now 0.5s, see polish pass). `swift build` green; `./Scripts/bundle.sh` produces a Dock-iconless `MacStats.app`.
@@ -33,21 +33,20 @@ live sparkline; click a card → per-app breakdown with quick actions (Quit / Fo
 - ✅ **Battery health = macOS's figure (2026-10-18, branch `fix/battery-health`; health + Trash parts shipped in v1.2.0 as cherry-picks `4a4c7e0`/`c461e09`; the whole branch merged for v1.3.0)** — the Battery drill-in's Health showed 97 % while System Settings said 99 %: we computed `NominalChargeCapacity / DesignCapacity` (4429 / 4563), which swings with the charge, but powerd keeps its own persisted "Maximum Capacity" that only entitled callers can read directly. Now read from `system_profiler SPPowerDataType -json` (`readMaximumCapacityPercent`, `BatteryTelemetry.swift`; ~0.15 s, off the main thread, at launch then hourly), with the old gauge-peak value as fallback (Intel / no field). Follow-up audit of **every** reading vs Apple's own values (`docs/superpowers/plans/2026-10-18-apple-values-progress.md`): all others already use Apple's counters/sensors except Trash (now Finder's 1000-based units, and folders Finder hasn't sized yet no longer count as 0); time left / time to 85 % stay MacStats' own on purpose (Apple's time to full counts to 100 %, measured ~1 h off at the limit). Owner then chose: macOS's own times in the time rows' tooltips; at the charge limit the status reads "Charged to 85% limit" (macOS only says "not charging"); exited processes' CPU/energy now exact from the kernel's per-app **coalition** counters with a guarded fallback to the old estimate (`CoalitionWork.swift`, `docs/design/breakdown-stability.md` rule 4a).
 - **Integration branch `integrate/stability-tour-sparkle` (2026-10-18; owner approved its choices; merged into `release/1.3.0` with `fix/battery-health`)** — `feat/stability-tour` + `feat/sparkle-updates` merged, conflicts resolved (details: `docs/sparkle-updates/README.md` → "Integration with feat/stability-tour"). The login card never shows in an open the tour, its welcome card or its chip has, an open the tour took part in isn't a use, the dim uses the panel squircle, and the old silent `LoginItem.registerOnce()` stays removed. Review round 3 (2026-10-18): the card only shows over the overview and every close returns the panel there (`LoginCardGate`); Settings/breakdown drop Esc while it is up; `E2E_UI=1 ./Scripts/sparkle-e2e-test.sh` clicks through Sparkle's real windows; live probe in `docs/research/2026-10-18-probes/login-prompt/`.
 - ✅ **v1.3.0 RELEASED (2026-10-18; `main` fast-forwarded to `release/1.3.0` = `bb41c0f`, pushed, GitHub release `v1.3.0` marked Latest with the appcast, live feed serves build 5; installed in `~/Applications`, the previous 1.1.0 dev build backed up outside the repo)** — `main` (v1.2.0) + `integrate/stability-tour-sparkle` + `fix/battery-health`, by `git merge` (two merge commits, no rebase). So everything above marked "not installed/released" on `feat/stability-tour`, `fix/readings-accuracy` (contained in it) and `fix/battery-health` ships in 1.3.0; the stability + tour review loop itself stays paused at 8.4 (its open findings are in the continuation plan). Version **1.3.0 / build 5**; user notes in `CHANGELOG.md` (new; seeded with the earlier GitHub release notes); `MUST_CONTAIN` in `Scripts/package-release.sh` stays empty (nothing the owner runs is unmerged). Merge details, verification and the release steps left for the owner: `docs/sparkle-updates/README.md`, STATUS / NEXT STEPS, first item. **Review round 1 (2026-10-18): 7.5 / 10; every finding (M1 Settings clipping Quit in the needs-approval state, M2 release steps run from the `sparkle-updates` worktree that has `main`, L1-L6) fixed in the commit after `55aa4d3`**, details in the same README section ("Review round 1 of 1.3.0"). **Round 2: 9.0 / 10** (four Lows; README paths and the report location fixed, L2 tour/card timing and L4 duplicated `MenuBarExtra` body left as owner checks/nits).
-- 🔶 **Open-panel cost pass (2026-11-16/17, branch `perf/open-panel-cost` off `main`, NOT pushed/released)**
-  - **Audit:** closed-panel cost was already ~0; the cost is the **open** overview (live: **12.5 %** of a core on v1.3.0).
-  - **Committed (2026-11-16):**
+- ✅ **v1.3.1 RELEASED (2026-11-17, build 6): open-panel cost pass** (branch `perf/open-panel-cost`, fast-forwarded into
+  `main` = `9bc2894`, pushed; GitHub release `v1.3.1` marked Latest, live feed serves build 6; installed in `~/Applications`)
+  - **Audit:** closed-panel cost was already ~0. The cost was the **open** overview.
+  - **Changes:**
     - open tick 0.5 → 1 s (2 s on a breakdown/Settings);
-    - the close reset runs without animation, plus a second malloc relief;
-    - **the Trash card is just Empty** (no size, no Finder reads; owner's choice);
-    - live after: **8.0 %**.
-  - **Fix B (2026-11-17), in the working tree, uncommitted:** the graphs are Core Animation layers, so the slide is a
-    layer animation the window server runs and the app does nothing between samples.
-    - A tour-toggle graph jump was found and fixed.
-    - Off-screen probe: overview 5.27 → 2.56 %.
-    - Still open: the **live measurement with the owner** and the owner's visual check.
-  - Details: `docs/superpowers/plans/2026-11-16-open-panel-cost-progress.md` (section 4a); probes:
-    `docs/research/2026-11-16-probes/open-cost/`.
-- ✅ **422 tests pass** on `perf/open-panel-cost` (415 on `release/1.3.0`) (it pins the working SDK itself, see the SDK note under Build & test).
+    - close resets without animation, plus a second malloc relief;
+    - **the Trash card is just Empty** (no size, no Finder reads);
+    - **Fix B:** the graphs are Core Animation layers (the slide is a layer animation, so the app does no per-frame
+      work).
+  - **Live, panel open:** **12.5 % → 4.7 %** of one core. Closed: 0.02 %.
+  - **What's left:** about 3 % is the 0.25 s number fade (each card re-rendered on the CPU per frame) and about 0.7 %
+    the temperature read every 2 s. The owner chose to leave both as they are (2026-11-17).
+  - Details: `docs/superpowers/plans/2026-11-16-open-panel-cost-progress.md`.
+- ✅ **422 tests pass** on `main` / v1.3.1 (it pins the working SDK itself, see the SDK note under Build & test).
 - ⬜ **Milestone 4** remainder (Settings UI, customizable menu-bar display, adjustable alert thresholds) not started. Per-app **Network** breakdown remains deferred (no clean per-app network API).
 
 ## Start here
@@ -59,7 +58,7 @@ live sparkline; click a card → per-app breakdown with quick actions (Quit / Fo
 | Per-app breakdown plan | `docs/superpowers/plans/2026-05-29-macstats-per-app-breakdown.md` |
 | Design language (reusable in other apps) + JVoice / BetterScreenshot redesign specs | `docs/design-language/` |
 | Approved UI mockups | `docs/mockups/menubar-mockup.html`, `docs/mockups/per-app-breakdown-mockup.html` (open in a browser) |
-| **Resume the open-panel CPU work (Fix B built; live check next)** | `docs/superpowers/plans/2026-11-16-open-panel-cost-progress.md` (branch `perf/open-panel-cost`) |
+| Open-panel CPU work (done, v1.3.1) | `docs/superpowers/plans/2026-11-16-open-panel-cost-progress.md` |
 | **Resume the stability + tour work** | `docs/superpowers/plans/2026-10-07-stability-tour-continuation-plan.md` (progress: `docs/superpowers/plans/2026-10-06-stability-tour-progress.md`) |
 
 ## To resume building

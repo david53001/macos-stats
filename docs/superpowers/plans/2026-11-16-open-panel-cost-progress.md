@@ -4,9 +4,9 @@
 released**. Built with `./Scripts/install.sh` and **installed** in `~/Applications/MacStats.app`. The version number
 is still 1.3.0 / build 5, so Sparkle won't offer anything over it.
 
-**Status (2026-11-17):** Fix B (section 4) is **built in the working tree, not committed**. `./Scripts/test.sh` passes
-422 tests. What's left: the live measurement with the owner and the owner's visual check (section 5, steps 5-6). Results
-are in section 4a.
+**Status (2026-11-17): done and released as v1.3.1 (build 6).** Fix B is built (section 4a). The owner checked it live
+(4.7 % open, against 12.5 % on v1.3.0) and chose to leave the rest: the number fade costs about 3 % and the temperature
+read about 0.7 %. `main` is at `9bc2894`, GitHub release `v1.3.1` is Latest, and it is installed in `~/Applications`.
 
 ## 1. Why
 
@@ -193,7 +193,13 @@ skeptical reproducer, one fixer and one final checker. Every window stayed off-s
 - **Live, real app, panel open on the overview for 19 s (2026-11-17, `live.py`):**
   - MacStats used **4.66 %** of one core (v1.3.0: 12.5 %, `d9f492e`: 8.0 %). Closed: 0.02 %.
   - WindowServer used 36.3 %, which is rough and includes everything else on screen.
-  - That misses the 1–2 % target. **Next:** profile it with `sample-when-open.py` to find what is left.
+  - That misses the 1–2 % target. A profile (`sample-when-open.py`, 12 s) found what is left of the main thread's ~4.5 %:
+    - about 3 %: SwiftUI re-rendering each card on the CPU during the 0.25 s `.contentTransition(.interpolate)` fade
+      of its number/meta (`StatCard.swift:41-52`), roughly once a second per card;
+    - about 0.7 %: `CPUTemperatureReader.read()` (~10 ms every 2 s);
+    - the rest: 1 s sampling.
+  - Options if wanted later: temperature every 5 s (-0.4 %), a shorter fade (-1.5 %) or no fade (-2-3 %). The owner
+    chose to leave all three as they are (2026-11-17).
 
 ## 5. How to verify Fix B
 
