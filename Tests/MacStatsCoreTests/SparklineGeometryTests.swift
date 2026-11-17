@@ -122,6 +122,62 @@ import CoreGraphics
         #expect(stickyUpperBound(previous: 5, peak: 0, minimum: 1) == 1)
     }
 
+    // MARK: Path
+
+    /// Each element's kind and the point it ends at (nil for a close).
+    private func elements(_ path: CGPath) -> [(type: CGPathElementType, end: CGPoint?)] {
+        var out: [(type: CGPathElementType, end: CGPoint?)] = []
+        path.applyWithBlock { e in
+            let el = e.pointee
+            switch el.type {
+            case .moveToPoint, .addLineToPoint: out.append((el.type, el.points[0]))
+            case .addQuadCurveToPoint: out.append((el.type, el.points[1]))
+            case .addCurveToPoint: out.append((el.type, el.points[2]))
+            case .closeSubpath: out.append((el.type, nil))
+            @unknown default: out.append((el.type, nil))
+            }
+        }
+        return out
+    }
+
+    private let pathRect = CGRect(x: 0, y: 0, width: 102.5, height: 38)   // plot width 100
+    private let pathSamples = [SamplePoint(time: 30, value: 10), SamplePoint(time: 50, value: 80),
+                               SamplePoint(time: 70, value: 0), SamplePoint(time: 100, value: 50)]
+
+    @Test func pathPassesThroughEverySample() {
+        let line = elements(sparklinePath(samples: pathSamples, end: 100, window: 60, upper: 100,
+                                          in: pathRect, area: false))
+        // y: 0 → 37 (1 pt above the bottom), 100 → 2 (2 pt below the top); newest sample at x = 100.
+        let expected = pathSamples.map { s in
+            CGPoint(x: 100 * (1 - (100 - s.time) / 60), y: 37 - s.value / 100 * 35)
+        }
+        #expect(line.map(\.type) == [.moveToPoint, .addCurveToPoint, .addCurveToPoint, .addCurveToPoint])
+        for (got, want) in zip(line.compactMap(\.end), expected) {
+            #expect(abs(got.x - want.x) < 1e-9 && abs(got.y - want.y) < 1e-9)
+        }
+    }
+
+    @Test func areaPathClosesAtTheBottom() {
+        let area = elements(sparklinePath(samples: pathSamples, end: 100, window: 60, upper: 100,
+                                          in: pathRect, area: true))
+        #expect(area.count == 7)
+        #expect(area.suffix(3).map(\.type) == [.addLineToPoint, .addLineToPoint, .closeSubpath])
+        #expect(area[4].end == CGPoint(x: 100, y: 38))                  // down from the newest sample
+        #expect(area[5].end == CGPoint(x: area[0].end!.x, y: 38))       // back under the oldest
+    }
+
+    @Test func pathClampsValuesToTheChart() {
+        let pts = [SamplePoint(time: 90, value: -5), SamplePoint(time: 100, value: 250)]
+        let line = elements(sparklinePath(samples: pts, end: 100, window: 60, upper: 100, in: pathRect, area: false))
+        #expect(line.first?.end?.y == 37)
+        #expect(line.last?.end?.y == 2)
+    }
+
+    @Test func noSamplesGiveAnEmptyPath() {
+        #expect(sparklinePath(samples: [], end: 0, window: 60, upper: 1, in: pathRect, area: false).isEmpty)
+        #expect(sparklinePath(samples: [], end: 0, window: 60, upper: 1, in: pathRect, area: true).isEmpty)
+    }
+
     // MARK: Slide
 
     @Test func slideStartsOneIntervalBehindAndReachesZero() {

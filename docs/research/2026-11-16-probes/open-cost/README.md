@@ -46,7 +46,9 @@ Results (% of one core; mean of 3 runs):
 **Bug the probe caught during development:** SwiftUI's `TimelineView` keeps firing in an ordered-out
 window. The first probe version kept the overview window alive and unpaused, and measured 1.86 %
 with "no window". So pausing the timeline on close (`Sparkline.live` ← `MetricsStore.isPublishing`)
-is required, and the "Closed" row (0.32 %, the same as before) shows that it works.
+was required then, and the "Closed" row (0.32 %, the same as before) showed that it works. Fix B (2026-11-17) removed
+the `TimelineView` and that flag: the graphs are now Core Animation layers. Fix B's probe numbers are in the progress
+note, section 4a.
 
 ## 2. Live measurement of the real app (`live.py`)
 

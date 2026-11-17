@@ -4,7 +4,9 @@
 released**. Built with `./Scripts/install.sh` and **installed** in `~/Applications/MacStats.app`. The version number
 is still 1.3.0 / build 5, so Sparkle won't offer anything over it.
 
-**Next step:** Fix B, described in section 4. The owner approved it on 2026-11-16 for the next session.
+**Status (2026-11-17):** Fix B (section 4) is **built in the working tree, not committed**. `./Scripts/test.sh` passes
+422 tests. What's left: the live measurement with the owner and the owner's visual check (section 5, steps 5-6). Results
+are in section 4a.
 
 ## 1. Why
 
@@ -151,6 +153,47 @@ does no work per frame. The card's text is then only redrawn when its value chan
 - Read the chip temperature every 5 s instead of 2 s (`temperatureInterval` in `RefreshScheduler.swift`, about 0.5 %
   → 0.2 %).
 - Or find out why one read takes about 10 ms: how many `tdie` services it queries.
+
+## 4a. Fix B as built (2026-11-17)
+
+A 7-agent workflow did the work: one builder, three bug hunters (render equivalence, lifecycle/cost, code review), one
+skeptical reproducer, one fixer and one final checker. Every window stayed off-screen, and every build ran under one lock.
+
+- **Code:**
+  - `Sources/MacStatsApp/Sparkline.swift`: `SparklineLayers` (`NSViewRepresentable`) wraps `SparklineLayerView`.
+    - Its view is flipped and returns nil from `hitTest`, so clicks and hover still reach the card.
+    - It redraws only when the graph data changes.
+  - `sparklinePath` and `sparklinePlotWidth` are new in `Sources/MacStatsCore/SparklineGeometry.swift`.
+  - `isPublishing`, `Sparkline.live` and the `TimelineView` are removed.
+- **Differences from the plan:**
+  - The slide starts at `sparklineSlideLag` and lasts that long, so it follows the clock as before.
+  - The rescale eases from the new samples drawn at the old scale, so the element counts always match.
+- **Bug found and fixed:** the graphs snapped about 2 pt left whenever the tour started, ended, paused or resumed.
+  - Cause: `TourAnchorModifier`'s `if/else` rebuilds the card, so a new layer view came up at offset 0.
+  - Fix: a new view starts its slide from the clock once layout gives it a width (`needsInitialSlide`).
+  - Checked with an off-screen probe: before the fix the graph shifted 3-4 px in 7 of 8 toggles, after it 0 px in 8 of 8.
+- **Finding rejected:** a blank strip at the left edge during the slide. It was an artifact of the probe, which used a
+  60 s store. The app uses a 62 s store.
+- **Render compare against HEAD:** checked off-screen in light and dark, with rising, flat and spiky series.
+  - Graph regions: mean difference ≤ 0.23 and max 1-26 out of 255, all anti-aliasing.
+  - At rest the two match exactly. Mid-slide they are within ±0.5 pt.
+  - The tour dim, opacity, scale, offset and push transition all apply to the layer graph.
+- **Known cosmetic difference:** a network rescale eases over 0.4 s instead of the old quick spring. The end state is
+  identical.
+- **Off-screen probe** (`run.sh`, 1 s / 2 s ticks, % of one core, 3 × 15 s):
+
+  | Screen | HEAD `ceb9051` | Fix B |
+  |---|---|---|
+  | Overview | 5.27 | 2.56 |
+  | Breakdown | 2.14 | 2.19 |
+  | Closed | 0.61 | 0.63 |
+
+  The probe window is occluded, so these numbers leave out the window server and display-rate cost. The live
+  measurement in section 5 decides.
+- **Live, real app, panel open on the overview for 19 s (2026-11-17, `live.py`):**
+  - MacStats used **4.66 %** of one core (v1.3.0: 12.5 %, `d9f492e`: 8.0 %). Closed: 0.02 %.
+  - WindowServer used 36.3 %, which is rough and includes everything else on screen.
+  - That misses the 1–2 % target. **Next:** profile it with `sample-when-open.py` to find what is left.
 
 ## 5. How to verify Fix B
 

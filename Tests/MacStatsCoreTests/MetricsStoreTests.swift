@@ -89,10 +89,9 @@ import Testing
     @Test func pausedStoreRecordsWithoutPublishing() {
         let store = MetricsStore()
         store.record(cpuPercent: 10, memory: mem, network: net, time: 0)
-        store.pausePublishing()   // publishes once: `isPublishing` stops the graphs' slide
-        #expect(!store.isPublishing)
         var changes = 0
         let watch = store.objectWillChange.sink { _ in changes += 1 }
+        store.pausePublishing()
         store.record(cpuPercent: 20, memory: mem, network: net, time: 10)
         store.record(cpuPercent: 30, memory: mem, network: net, time: 20)
         store.setBattery(BatterySample(percent: 50, state: .discharging))
@@ -225,15 +224,5 @@ import Testing
         #expect(store.battery?.timeToFullMinutes == 28)
         store.setBattery(BatterySample(percent: 61, state: .discharging, timeToEmptyMinutes: 99))
         #expect(store.battery?.timeToEmptyMinutes == 99)
-    }
-
-    @Test func isPublishingFollowsPauseAndResume() {
-        let store = MetricsStore()
-        #expect(store.isPublishing)
-        store.pausePublishing()
-        store.pausePublishing()
-        #expect(!store.isPublishing)
-        store.resumePublishing()
-        #expect(store.isPublishing)
     }
 }

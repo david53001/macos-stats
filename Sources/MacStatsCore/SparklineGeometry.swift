@@ -79,6 +79,41 @@ public func sparklineX(time: TimeInterval, end: TimeInterval, window: TimeInterv
     return width * CGFloat(1 - (end - time) / window)
 }
 
+/// Margin (pt) that keeps the sparkline's round-capped line inside the chart's top and right edges.
+public let sparklineEdgeInset: CGFloat = 1.5
+
+/// Width of the sparkline's time axis in a chart `width` points wide (the newest sample's x).
+public func sparklinePlotWidth(_ width: CGFloat) -> CGFloat { max(width - sparklineEdgeInset - 1, 0) }
+
+/// The sparkline's curve, or with `area` the region under it, in `rect` with y pointing down (a
+/// flipped view). x is `sparklineX` over `sparklinePlotWidth`; a value of 0 sits 1 pt above the
+/// bottom and `upper` 2 pt below the top, clamped to that range; the curve is
+/// `monotoneCubicSegments`. The area closes straight down to `rect.maxY`. No samples: an empty path.
+public func sparklinePath(samples: [SamplePoint], end: TimeInterval, window: TimeInterval, upper: Double,
+                          in rect: CGRect, area: Bool) -> CGPath {
+    let width = sparklinePlotWidth(rect.width)
+    let top = rect.minY + sparklineEdgeInset + 0.5, bottom = rect.maxY - 1
+    let scale = upper > 0 ? upper : 1
+    let pts = samples.map { s -> CGPoint in
+        let fraction = CGFloat(min(max(s.value / scale, 0), 1))
+        return CGPoint(x: rect.minX + sparklineX(time: s.time, end: end, window: window, width: width),
+                       y: bottom - fraction * (bottom - top))
+    }
+    let path = CGMutablePath()
+    guard let first = pts.first else { return path }
+
+    path.move(to: first)
+    let segments = monotoneCubicSegments(pts)
+    for s in segments { path.addCurve(to: s.end, control1: s.control1, control2: s.control2) }
+    if area {
+        let lastX = segments.last?.end.x ?? first.x
+        path.addLine(to: CGPoint(x: lastX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: first.x, y: rect.maxY))
+        path.closeSubpath()
+    }
+    return path
+}
+
 /// The samples needed to draw the last `window` seconds before `end` (points must be in
 /// time order): everything inside the window plus the one sample just before it, so the
 /// curve enters from beyond the left edge instead of starting abruptly inside the chart.
